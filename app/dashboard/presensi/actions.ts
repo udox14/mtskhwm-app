@@ -163,25 +163,29 @@ export async function editWaktuPresensi(presensiId: string, jamMasuk: string | n
 // ============================================================
 // SET STATUS (sakit/izin/alfa/dinas_luar) — tanpa jam
 // ============================================================
-export async function setStatusPresensi(userId: string, status: string, diinputOleh: string, catatan?: string) {
+export async function setStatusPresensi(userId: string, status: string, diinputOleh: string, catatan?: string): Promise<{ success?: boolean; error?: string }> {
   const db = await getDB()
   const today = new Date().toISOString().split('T')[0]
 
-  const existing = await db.prepare('SELECT id FROM presensi_pegawai WHERE user_id = ? AND tanggal = ?')
-    .bind(userId, today).first<any>()
+  try {
+    const existing = await db.prepare('SELECT id FROM presensi_pegawai WHERE user_id = ? AND tanggal = ?')
+      .bind(userId, today).first<any>()
 
-  if (existing) {
-    await db.prepare(`
+    if (existing) {
+      await db.prepare(`
       UPDATE presensi_pegawai SET status = ?, jam_masuk = NULL, jam_pulang = NULL, is_telat = 0, is_pulang_cepat = 0, catatan = ?, diinput_oleh = ?, updated_at = datetime('now')
       WHERE id = ?
     `).bind(status, catatan || null, diinputOleh, existing.id).run()
-  } else {
-    await db.prepare(`
+    } else {
+      await db.prepare(`
       INSERT INTO presensi_pegawai (id, user_id, tanggal, status, catatan, diinput_oleh)
       VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?, ?)
     `).bind(userId, today, status, catatan || null, diinputOleh).run()
-  }
+    }
 
-  revalidatePath('/dashboard/presensi')
-  return { success: true }
+    revalidatePath('/dashboard/presensi')
+    return { success: true }
+  } catch (e: any) {
+    return { error: e.message || 'Gagal menyimpan status presensi.' }
+  }
 }

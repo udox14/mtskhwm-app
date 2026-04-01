@@ -130,7 +130,7 @@ export function MonitoringClient({
         batas_telat_menit: sBatasTelat, batas_pulang_cepat_menit: sBatasCepat,
         hari_kerja: sHariKerja,
       })
-      alert(res.success || (res as any).error || 'Gagal menyimpan')
+      alert(res.success || res.error)
     })
   }
 
@@ -140,7 +140,7 @@ export function MonitoringClient({
         nominal_dalam: tNominalDalam, nominal_luar: tNominalLuar,
         tanggal_bayar: tTglBayar, aturan_tiers: tTiers,
       })
-      alert(res.success || (res as any).error || 'Gagal menyimpan')
+      alert(res.success || res.error)
     })
   }
 

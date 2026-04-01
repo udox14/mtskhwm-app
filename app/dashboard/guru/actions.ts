@@ -243,16 +243,20 @@ export async function tambahJabatanStruktural(nama: string) {
   return { success: 'Jabatan struktural berhasil ditambahkan.' }
 }
 
-export async function hapusJabatanStruktural(id: string) {
+export async function hapusJabatanStruktural(id: string): Promise<{ success?: string; error?: string }> {
   const db = await getDB()
-  // Set null dulu di user yang pakai jabatan ini
-  await db.prepare('UPDATE "user" SET jabatan_struktural_id = NULL WHERE jabatan_struktural_id = ?').bind(id).run()
-  await db.prepare('DELETE FROM master_jabatan_struktural WHERE id = ?').bind(id).run()
-  revalidatePath('/dashboard/guru')
-  return { success: 'Jabatan struktural berhasil dihapus.' }
+  try {
+    // Set null dulu di user yang pakai jabatan ini
+    await db.prepare('UPDATE "user" SET jabatan_struktural_id = NULL WHERE jabatan_struktural_id = ?').bind(id).run()
+    await db.prepare('DELETE FROM master_jabatan_struktural WHERE id = ?').bind(id).run()
+    revalidatePath('/dashboard/guru')
+    return { success: 'Jabatan struktural berhasil dihapus.' }
+  } catch (e: any) {
+    return { error: e.message || 'Gagal menghapus jabatan struktural.' }
+  }
 }
 
-export async function editJabatanStruktural(id: string, nama: string) {
+export async function editJabatanStruktural(id: string, nama: string): Promise<{ success?: string; error?: string }> {
   if (!nama.trim()) return { error: 'Nama jabatan wajib diisi.' }
   const db = await getDB()
   try {

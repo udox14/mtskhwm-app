@@ -109,7 +109,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     if (!confirm('Yakin ubah hak akses pegawai ini?')) return
     setIsPending(true)
     const res = await ubahRolePegawai(id, newRole)
-    if ((res as any)?.error) alert((res as any).error)
+    if (res?.error) alert(res.error)
     setIsPending(false)
   }
 
@@ -117,7 +117,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     if (!confirm(`PERMANEN!\nYakin hapus semua data dan akses login ${nama}?`)) return
     setIsPending(true)
     const res = await hapusPegawai(id)
-    if ((res as any)?.error) alert((res as any).error)
+    if (res?.error) alert(res.error)
     setIsPending(false)
   }
 
@@ -125,8 +125,8 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     if (!confirm(`Reset password ${nama} ke "mtskhwm2026"?`)) return
     setIsPending(true)
     const res = await resetPasswordPegawai(id)
-    if ((res as any)?.error) alert((res as any).error)
-    else alert((res as any).success)
+    if (res?.error) alert(res.error)
+    else alert(res.success)
     setIsPending(false)
   }
 
@@ -135,8 +135,8 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     setIsPending(true)
     const formData = new FormData(e.currentTarget)
     const res = await editPegawai(formData.get('id') as string, formData.get('nama_lengkap') as string, formData.get('email') as string)
-    if ((res as any)?.error) alert((res as any).error)
-    else { alert((res as any).success); setEditingPegawai(null) }
+    if (res?.error) alert(res.error)
+    else { alert(res.success); setEditingPegawai(null) }
     setIsPending(false)
   }
 
@@ -144,7 +144,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     setIsPending(true)
     const val = jabatanId === 'NONE' ? null : jabatanId
     const res = await assignJabatanStruktural(userId, val)
-    if ((res as any)?.error) alert((res as any).error)
+    if (res?.error) alert(res.error)
     setIsPending(false)
   }
 
@@ -152,7 +152,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     setIsPending(true)
     const val = domisili === 'NONE' ? null : domisili
     const res = await setDomisiliPegawai(userId, val)
-    if ((res as any)?.error) alert((res as any).error)
+    if (res?.error) alert(res.error)
     setIsPending(false)
   }
 
@@ -160,7 +160,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     if (!newJabatan.trim()) return
     setIsPending(true)
     const res = await tambahJabatanStruktural(newJabatan)
-    if ((res as any)?.error) alert((res as any).error)
+    if (res?.error) alert(res.error)
     else setNewJabatan('')
     setIsPending(false)
   }
@@ -169,7 +169,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     if (!confirm(`Hapus jabatan "${nama}"? Pegawai yang menjabat akan di-unset.`)) return
     setIsPending(true)
     const res = await hapusJabatanStruktural(id)
-    if ((res as any)?.error) alert((res as any).error)
+    if (res?.error) alert(res.error)
     setIsPending(false)
   }
 
@@ -177,7 +177,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     if (!editingJabatan || !editJabatanNama.trim()) return
     setIsPending(true)
     const res = await editJabatanStruktural(editingJabatan.id, editJabatanNama)
-    if ((res as any)?.error) alert((res as any).error)
+    if (res?.error) alert(res.error)
     else setEditingJabatan(null)
     setIsPending(false)
   }

@@ -73,23 +73,26 @@ export async function simpanPengaturanPresensi(data: {
   jam_masuk: string; jam_pulang: string;
   batas_telat_menit: number; batas_pulang_cepat_menit: number;
   hari_kerja: number[]
-}) {
+}): Promise<{ success?: string; error?: string }> {
   const db = await getDB()
-  await db.prepare(`
+  try {
+    await db.prepare(`
     UPDATE pengaturan_presensi SET
       jam_masuk = ?, jam_pulang = ?,
       batas_telat_menit = ?, batas_pulang_cepat_menit = ?,
       hari_kerja = ?, updated_at = datetime('now')
     WHERE id = 'global'
   `).bind(
-    data.jam_masuk, data.jam_pulang,
-    data.batas_telat_menit, data.batas_pulang_cepat_menit,
-    JSON.stringify(data.hari_kerja)
-  ).run()
-
-  revalidatePath('/dashboard/monitoring-presensi')
-  revalidatePath('/dashboard/presensi')
-  return { success: 'Pengaturan presensi berhasil disimpan.' }
+      data.jam_masuk, data.jam_pulang,
+      data.batas_telat_menit, data.batas_pulang_cepat_menit,
+      JSON.stringify(data.hari_kerja)
+    ).run()
+    revalidatePath('/dashboard/monitoring-presensi')
+    revalidatePath('/dashboard/presensi')
+    return { success: 'Pengaturan presensi berhasil disimpan.' }
+  } catch (e: any) {
+    return { error: e.message || 'Gagal menyimpan pengaturan presensi.' }
+  }
 }
 
 // ============================================================
@@ -99,21 +102,24 @@ export async function simpanPengaturanTunjangan(data: {
   nominal_dalam: number; nominal_luar: number;
   tanggal_bayar: number;
   aturan_tiers: { min: number; max: number; persen: number }[]
-}) {
+}): Promise<{ success?: string; error?: string }> {
   const db = await getDB()
-  await db.prepare(`
+  try {
+    await db.prepare(`
     UPDATE pengaturan_tunjangan SET
       nominal_dalam = ?, nominal_luar = ?,
       tanggal_bayar = ?, aturan_tiers = ?,
       updated_at = datetime('now')
     WHERE id = 'global'
   `).bind(
-    data.nominal_dalam, data.nominal_luar,
-    data.tanggal_bayar, JSON.stringify(data.aturan_tiers)
-  ).run()
-
-  revalidatePath('/dashboard/monitoring-presensi')
-  return { success: 'Pengaturan tunjangan berhasil disimpan.' }
+      data.nominal_dalam, data.nominal_luar,
+      data.tanggal_bayar, JSON.stringify(data.aturan_tiers)
+    ).run()
+    revalidatePath('/dashboard/monitoring-presensi')
+    return { success: 'Pengaturan tunjangan berhasil disimpan.' }
+  } catch (e: any) {
+    return { error: e.message || 'Gagal menyimpan pengaturan tunjangan.' }
+  }
 }
 
 // ============================================================
