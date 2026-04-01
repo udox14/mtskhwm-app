@@ -3,18 +3,7 @@
 
 import { getDB, parseJsonCol } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
-
-// Label semester untuk MTs (3 tahun × 2 semester)
-export const SEMESTER_MAP: Record<string, string> = {
-  nilai_smt1: 'Kelas 7 — Semester 1',
-  nilai_smt2: 'Kelas 7 — Semester 2',
-  nilai_smt3: 'Kelas 8 — Semester 1',
-  nilai_smt4: 'Kelas 8 — Semester 2',
-  nilai_smt5: 'Kelas 9 — Semester 1',
-  nilai_smt6: 'Kelas 9 — Semester 2',
-}
-
-export const SEMESTER_KEYS = Object.keys(SEMESTER_MAP)
+import { SEMESTER_MAP, SEMESTER_KEYS } from './constants'
 
 // ============================================================
 // IMPORT NILAI DARI EXCEL (dipertahankan dari MANSATAS)

@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileSpreadsheet, Loader2, AlertCircle, Upload, Trash2, CheckCircle2, Info } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { importNilaiDariExcel, resetNilaiKolom, SEMESTER_MAP, SEMESTER_KEYS } from '../actions'
+import { importNilaiDariExcel, resetNilaiKolom } from '../actions'
+import { SEMESTER_MAP, SEMESTER_KEYS } from '../constants'
 import { useRouter } from 'next/navigation'
 
 type RingkasanType = Record<string, number>
