@@ -12,6 +12,7 @@ import {
   DoorOpen,
   HeartHandshake,
   Brain,
+  FileSpreadsheet,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -50,6 +51,12 @@ export const MENU_ITEMS: MenuItem[] = [
     title: 'Pusat Akademik',
     href: '/dashboard/akademik',
     icon: BookOpen,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
+  },
+  {
+    title: 'Rekap Nilai',
+    href: '/dashboard/akademik/nilai',
+    icon: FileSpreadsheet,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
   },
   {

@@ -33,7 +33,7 @@ export function DetailSiswaClient({
   const canFullEdit = ['super_admin', 'admin_tu'].includes(userRole)
 
   // State untuk Accordion Akademik (Otomatis buka kelas saat ini, atau kelas 7 jika belum ada)
-  const [openAccordion, setOpenAccordion] = useState<number | null>(siswa.kelas?.tingkat || 10)
+  const [openAccordion, setOpenAccordion] = useState<number | null>(siswa.kelas?.tingkat || 7)
   const toggleAccordion = (val: number) => setOpenAccordion(prev => prev === val ? null : val)
 
   // 1. Kalkulasi Total Poin Pelanggaran
@@ -69,7 +69,7 @@ export function DetailSiswaClient({
   const rna = siswa.rekap_nilai_akademik || {}
   const mapels10 = Array.from(new Set([...Object.keys(rna.nilai_smt1 || {}), ...Object.keys(rna.nilai_smt2 || {})])).sort()
   const mapels11 = Array.from(new Set([...Object.keys(rna.nilai_smt3 || {}), ...Object.keys(rna.nilai_smt4 || {})])).sort()
-  const mapels12 = Array.from(new Set([...Object.keys(rna.nilai_smt5 || {}), ...Object.keys(rna.nilai_um || {})])).sort()
+  const mapels12 = Array.from(new Set([...Object.keys(rna.nilai_smt5 || {}), ...Object.keys(rna.nilai_smt6 || {})])).sort()
 
   // Helper untuk warna inisial (fallback foto)
   const getAvatarColor = (name: string) => {
@@ -359,9 +359,9 @@ export function DetailSiswaClient({
             </div>
 
             {/* RENDER ACCORDION UNTUK KELAS 10, 11, 12 */}
-            {renderAccordionItem(10, 'Fase E (Umum)', 'Semester 1', 'nilai_smt1', 'Semester 2', 'nilai_smt2', mapels10)}
-            {renderAccordionItem(11, 'Fase F (Penjurusan)', 'Semester 3', 'nilai_smt3', 'Semester 4', 'nilai_smt4', mapels11)}
-            {renderAccordionItem(12, 'Fase F (Akhir)', 'Semester 5', 'nilai_smt5', 'Ujian Madrasah (UM)', 'nilai_um', mapels12)}
+            {renderAccordionItem(7, 'Kelas 7', 'Semester 1', 'nilai_smt1', 'Semester 2', 'nilai_smt2', mapels10)}
+            {renderAccordionItem(8, 'Kelas 8', 'Semester 3', 'nilai_smt3', 'Semester 4', 'nilai_smt4', mapels11)}
+            {renderAccordionItem(9, 'Kelas 9', 'Semester 5', 'nilai_smt5', 'Semester 6', 'nilai_smt6', mapels12)}
 
           </div>
         </TabsContent>

@@ -250,7 +250,7 @@ CREATE TABLE IF NOT EXISTS rekap_nilai_akademik (
   nilai_smt3  TEXT DEFAULT '{}',
   nilai_smt4  TEXT DEFAULT '{}',
   nilai_smt5  TEXT DEFAULT '{}',
-  nilai_um    TEXT DEFAULT '{}',
+  nilai_smt6  TEXT DEFAULT '{}',
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

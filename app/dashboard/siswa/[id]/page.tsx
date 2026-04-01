@@ -78,7 +78,7 @@ export default async function DetailSiswaPage({ params }: { params: Promise<{ id
 
     // FIX: Ganti SELECT * → kolom spesifik
     db.prepare(`
-      SELECT siswa_id, nilai_smt1, nilai_smt2, nilai_smt3, nilai_smt4, nilai_smt5, nilai_um
+      SELECT siswa_id, nilai_smt1, nilai_smt2, nilai_smt3, nilai_smt4, nilai_smt5, nilai_smt6
       FROM rekap_nilai_akademik WHERE siswa_id = ?
     `).bind(id).all<any>(),
 
