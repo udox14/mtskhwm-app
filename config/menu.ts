@@ -13,6 +13,8 @@ import {
   HeartHandshake,
   Brain,
   FileSpreadsheet,
+  ClipboardCheck,
+  BarChart3,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -94,6 +96,18 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/psikotes',
     icon: Brain,
     roles: ['super_admin', 'kepsek', 'wakamad', 'guru_bk', 'guru']
+  },
+  {
+    title: 'Presensi Pegawai',
+    href: '/dashboard/presensi',
+    icon: ClipboardCheck,
+    roles: ['super_admin', 'admin_tu', 'resepsionis']
+  },
+  {
+    title: 'Monitoring Presensi',
+    href: '/dashboard/monitoring-presensi',
+    icon: BarChart3,
+    roles: ['super_admin', 'admin_tu', 'kepsek']
   },
   {
     title: 'Pengaturan',

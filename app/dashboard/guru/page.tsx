@@ -13,20 +13,36 @@ export const metadata = { title: 'Data Guru & Pegawai - MTSKHWM App' }
 async function GuruDataFetcher() {
   const db = await getDB()
 
-  const result = await db.prepare(`
-    SELECT id, email, name, role, nama_lengkap
-    FROM "user"
-    ORDER BY nama_lengkap ASC
-  `).all<any>()
+  const [usersResult, jabatanResult] = await Promise.all([
+    db.prepare(`
+      SELECT u.id, u.email, u.name, u.role, u.nama_lengkap,
+             u.jabatan_struktural_id, u.domisili_pegawai,
+             j.nama as jabatan_struktural_nama
+      FROM "user" u
+      LEFT JOIN master_jabatan_struktural j ON u.jabatan_struktural_id = j.id
+      ORDER BY u.nama_lengkap ASC
+    `).all<any>(),
+    db.prepare(`
+      SELECT id, nama, urutan FROM master_jabatan_struktural ORDER BY urutan ASC
+    `).all<any>(),
+  ])
 
-  const mergedData = (result.results || []).map((u: any) => ({
+  const mergedData = (usersResult.results || []).map((u: any) => ({
     id: u.id,
     nama_lengkap: u.nama_lengkap || u.name || '',
     role: u.role || '',
-    email: u.email || 'Email tidak ditemukan'
+    email: u.email || 'Email tidak ditemukan',
+    jabatan_struktural_id: u.jabatan_struktural_id || null,
+    jabatan_struktural_nama: u.jabatan_struktural_nama || null,
+    domisili_pegawai: u.domisili_pegawai || null,
   }))
 
-  return <GuruClient initialData={mergedData} />
+  return (
+    <GuruClient
+      initialData={mergedData}
+      masterJabatan={jabatanResult.results || []}
+    />
+  )
 }
 
 export const dynamic = 'force-dynamic'
@@ -36,7 +52,7 @@ export default async function GuruPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
-      <PageHeader title="Guru & Pegawai" description="Kelola data pendidik, hak akses, dan reset password." icon={GraduationCap} iconColor="text-indigo-500" />
+      <PageHeader title="Guru & Pegawai" description="Kelola data pendidik, hak akses, jabatan struktural, dan domisili." icon={GraduationCap} iconColor="text-indigo-500" />
       <Suspense fallback={
 <PageLoading text="Memuat data kepegawaian..." />
       }>

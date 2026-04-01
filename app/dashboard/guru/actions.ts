@@ -192,3 +192,75 @@ export async function importPegawaiMassal(dataExcel: any[]) {
     logs: errorLogs,
   }
 }
+
+// ============================================================
+// ASSIGN JABATAN STRUKTURAL
+// ============================================================
+export async function assignJabatanStruktural(userId: string, jabatanId: string | null) {
+  const db = await getDB()
+  const result = await dbUpdate(
+    db, '"user"',
+    { jabatan_struktural_id: jabatanId, updatedAt: new Date().toISOString() },
+    { id: userId }
+  )
+  if (result.error) return { error: result.error }
+  revalidatePath('/dashboard/guru')
+  return { success: 'Jabatan struktural berhasil diperbarui.' }
+}
+
+// ============================================================
+// SET DOMISILI PEGAWAI
+// ============================================================
+export async function setDomisiliPegawai(userId: string, domisili: string | null) {
+  const db = await getDB()
+  const result = await dbUpdate(
+    db, '"user"',
+    { domisili_pegawai: domisili, updatedAt: new Date().toISOString() },
+    { id: userId }
+  )
+  if (result.error) return { error: result.error }
+  revalidatePath('/dashboard/guru')
+  return { success: 'Domisili pegawai berhasil diperbarui.' }
+}
+
+// ============================================================
+// CRUD MASTER JABATAN STRUKTURAL
+// ============================================================
+export async function tambahJabatanStruktural(nama: string) {
+  if (!nama.trim()) return { error: 'Nama jabatan wajib diisi.' }
+  const db = await getDB()
+  // Ambil urutan max + 1
+  const max = await db.prepare('SELECT MAX(urutan) as mx FROM master_jabatan_struktural').first<any>()
+  const urutan = (max?.mx || 0) + 1
+  try {
+    await db.prepare('INSERT INTO master_jabatan_struktural (id, nama, urutan) VALUES (lower(hex(randomblob(16))), ?, ?)')
+      .bind(nama.trim(), urutan).run()
+  } catch (e: any) {
+    if (e.message?.includes('UNIQUE')) return { error: 'Jabatan sudah ada.' }
+    return { error: e.message }
+  }
+  revalidatePath('/dashboard/guru')
+  return { success: 'Jabatan struktural berhasil ditambahkan.' }
+}
+
+export async function hapusJabatanStruktural(id: string) {
+  const db = await getDB()
+  // Set null dulu di user yang pakai jabatan ini
+  await db.prepare('UPDATE "user" SET jabatan_struktural_id = NULL WHERE jabatan_struktural_id = ?').bind(id).run()
+  await db.prepare('DELETE FROM master_jabatan_struktural WHERE id = ?').bind(id).run()
+  revalidatePath('/dashboard/guru')
+  return { success: 'Jabatan struktural berhasil dihapus.' }
+}
+
+export async function editJabatanStruktural(id: string, nama: string) {
+  if (!nama.trim()) return { error: 'Nama jabatan wajib diisi.' }
+  const db = await getDB()
+  try {
+    await db.prepare('UPDATE master_jabatan_struktural SET nama = ? WHERE id = ?').bind(nama.trim(), id).run()
+  } catch (e: any) {
+    if (e.message?.includes('UNIQUE')) return { error: 'Nama jabatan sudah ada.' }
+    return { error: e.message }
+  }
+  revalidatePath('/dashboard/guru')
+  return { success: 'Jabatan struktural berhasil diperbarui.' }
+}
