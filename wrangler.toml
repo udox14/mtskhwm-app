@@ -1,0 +1,29 @@
+name = "mtskhwm"
+main = ".open-next/worker.js"
+compatibility_date = "2025-05-05"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "STATIC_ASSETS"
+
+# KV untuk incremental cache Next.js
+[[kv_namespaces]]
+binding = "NEXT_INC_CACHE_KV"
+id = "57a5c2001d69462ca67f5c40ab24c36b"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "mtskhwm-db"
+database_id = "35020034-0bf5-4357-b504-2f23c2a2f4c4"
+
+# R2 Storage (foto siswa, avatar, bukti pelanggaran)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "mtskhwm-media"
+
+[vars]
+BETTER_AUTH_SECRET = "Kfa9zVehGtjD2ARODz5GX9C0wbxO756J3bssf6nyTOk="
+BETTER_AUTH_URL = "https://mtskhwm.workers.dev"
+R2_PUBLIC_URL = "https://pub-cf9e4144c81e46f1b06fb2a0d277b844.r2.dev"

@@ -1,0 +1,1447 @@
+// Lokasi: app/dashboard/psikotes/components/psikotes-client.tsx
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Brain, Search, Upload, Loader2, X, ChevronRight, ChevronDown, ChevronUp,
+  BarChart2, Info, Pencil, Trash2, Plus, CheckCircle2, AlertCircle,
+  BookOpen, Users, RefreshCw, HelpCircle, Eye
+} from 'lucide-react'
+import {
+  getListPsikotes, getDetailPsikotes, getAnalitikPsikotes,
+  fuzzyMatchNama, importPsikotesChunk,
+  tambahMapping, editMapping, hapusMapping, normalizeGayaBelajar,
+} from '../actions'
+import type { RekomMapping } from '../actions'
+import { cn } from '@/lib/utils'
+
+// ── Types ──────────────────────────────────────────────────────────────
+type KelasItem = { id: string; tingkat: number; nomor_kelas: string; kelompok: string }
+type Stats = { total: number; superior: number; diatas: number; rata: number; visual: number; auditori: number; kinestetik: number } | null
+type PsikotesRow = {
+  id: string; siswa_id: string; nama_lengkap: string; nisn: string; foto_url: string | null
+  tingkat: number | null; nomor_kelas: string | null; kelas_kelompok: string | null
+  iq_score: number | null; iq_klasifikasi: string | null
+  riasec: string | null; rekom_jurusan: string | null; rekom_raw: string | null
+  mbti: string | null; gaya_belajar: string | null; updated_at: string
+}
+
+// ── Kamus Istilah ──────────────────────────────────────────────────────
+const KAMUS: { kode: string; nama: string; deskripsi: string; kategori: string }[] = [
+  { kode: 'CFIT', nama: 'Culture Fair Intelligence Test', deskripsi: 'Tes kecerdasan yang bebas pengaruh budaya dan bahasa, mengukur kemampuan berpikir murni.', kategori: 'IQ' },
+  { kode: 'VER', nama: 'Verbal', deskripsi: 'Kemampuan memahami dan menggunakan bahasa secara efektif, termasuk kosakata dan pemahaman bacaan.', kategori: 'Bakat' },
+  { kode: 'NUM', nama: 'Numerikal', deskripsi: 'Kemampuan berhitung, memahami pola angka, dan logika matematis.', kategori: 'Bakat' },
+  { kode: 'SKL', nama: 'Skolastik', deskripsi: 'Kemampuan belajar akademis secara umum, mencerminkan potensi keberhasilan di sekolah.', kategori: 'Bakat' },
+  { kode: 'ABS', nama: 'Abstrak', deskripsi: 'Kemampuan berpikir non-verbal, memahami pola, bentuk, dan hubungan visual.', kategori: 'Bakat' },
+  { kode: 'MEK (Bakat)', nama: 'Mekanikal', deskripsi: 'Kemampuan memahami prinsip mekanis, fisika terapan, dan cara kerja alat.', kategori: 'Bakat' },
+  { kode: 'RR', nama: 'Relasi Ruang', deskripsi: 'Kemampuan visualisasi dan manipulasi objek dalam ruang tiga dimensi.', kategori: 'Bakat' },
+  { kode: 'KKK', nama: 'Kecepatan & Ketelitian Klerikal', deskripsi: 'Kemampuan bekerja cepat, teliti, dan akurat dalam tugas administratif atau data.', kategori: 'Bakat' },
+  { kode: 'PS', nama: 'Personal-Sosial', deskripsi: 'Minat bekerja dengan dan untuk orang lain, membantu, mendidik, dan berinteraksi sosial.', kategori: 'Minat' },
+  { kode: 'NAT', nama: 'Natural', deskripsi: 'Minat terhadap alam, biologi, lingkungan, dan ilmu pengetahuan alam.', kategori: 'Minat' },
+  { kode: 'MEK (Minat)', nama: 'Mekanikal', deskripsi: 'Minat terhadap mesin, teknologi, teknik, dan cara kerja peralatan.', kategori: 'Minat' },
+  { kode: 'BIS', nama: 'Bisnis', deskripsi: 'Minat di bidang ekonomi, kewirausahaan, manajemen, dan dunia bisnis.', kategori: 'Minat' },
+  { kode: 'ART', nama: 'Artistik', deskripsi: 'Minat terhadap seni, kreativitas, estetika, musik, dan ekspresi diri.', kategori: 'Minat' },
+  { kode: 'SI', nama: 'Sains-Investigatif', deskripsi: 'Minat meneliti, menganalisis, dan memecahkan masalah ilmiah.', kategori: 'Minat' },
+  { kode: 'V', nama: 'Visual', deskripsi: 'Gaya belajar dengan melihat: diagram, grafik, video, dan presentasi visual.', kategori: 'Gaya Belajar' },
+  { kode: 'M', nama: 'Auditori', deskripsi: 'Gaya belajar dengan mendengar: ceramah, diskusi, musik, dan penjelasan lisan.', kategori: 'Gaya Belajar' },
+  { kode: 'K', nama: 'Kinestetik', deskripsi: 'Gaya belajar dengan bergerak dan menyentuh: praktik, eksperimen, dan simulasi.', kategori: 'Gaya Belajar' },
+  { kode: 'RIASEC', nama: 'Holland Occupational Themes', deskripsi: 'Model kepribadian karir: Realistic (praktis), Investigative (analitis), Artistic (kreatif), Social (sosial), Enterprising (pemimpin), Conventional (teratur).', kategori: 'Karir' },
+  { kode: 'MBTI', nama: 'Myers-Briggs Type Indicator', deskripsi: '16 tipe kepribadian berdasarkan 4 dimensi: E/I (Ekstrover/Introver), S/N (Sensing/Intuition), T/F (Thinking/Feeling), J/P (Judging/Perceiving).', kategori: 'Kepribadian' },
+  { kode: 'ISTJ', nama: 'Inspektur', deskripsi: 'Tenang, serius, bertanggung jawab. Menghargai tradisi dan kesetiaan. Cocok: auditor, akuntan, manajer.', kategori: 'MBTI' },
+  { kode: 'ISFJ', nama: 'Pelindung', deskripsi: 'Hangat, teliti, perhatian. Berkomitmen tinggi dan ingin membuat perbedaan. Cocok: perawat, guru, konselor.', kategori: 'MBTI' },
+  { kode: 'INFJ', nama: 'Penasihat', deskripsi: 'Penuh wawasan dan inspiratif. Berprinsip kuat dan visioner. Cocok: psikolog, penulis, dokter.', kategori: 'MBTI' },
+  { kode: 'INTJ', nama: 'Arsitek', deskripsi: 'Strategis, mandiri, analitis. Perfeksionis dengan standar tinggi. Cocok: ilmuwan, insinyur, pengacara.', kategori: 'MBTI' },
+  { kode: 'ISTP', nama: 'Pengrajin', deskripsi: 'Toleran, fleksibel, praktis. Suka menganalisis cara kerja sesuatu. Cocok: mekanik, teknisi, pilot.', kategori: 'MBTI' },
+  { kode: 'ISFP', nama: 'Seniman', deskripsi: 'Tenang, ramah, peka. Menikmati momen sekarang. Cocok: desainer, musisi, fotografer.', kategori: 'MBTI' },
+  { kode: 'INFP', nama: 'Mediator', deskripsi: 'Idealis, setia pada nilai. Ingin memahami dan membantu orang lain. Cocok: penulis, konselor, aktivis.', kategori: 'MBTI' },
+  { kode: 'INTP', nama: 'Pemikir', deskripsi: 'Tenang, analitis, skeptis. Suka teori dan ide abstrak. Cocok: filsuf, arsitek, programmer.', kategori: 'MBTI' },
+  { kode: 'ESTP', nama: 'Pengusaha', deskripsi: 'Spontan, energik, suka memecahkan masalah langsung. Cocok: pengusaha, polisi, paramedis.', kategori: 'MBTI' },
+  { kode: 'ESFP', nama: 'Penghibur', deskripsi: 'Spontan, semangat, suka membuat orang senang. Cocok: aktor, guru, event organizer.', kategori: 'MBTI' },
+  { kode: 'ENFP', nama: 'Penggagas', deskripsi: 'Kreatif, antusias, imajinatif. Melihat potensi di mana-mana. Cocok: jurnalis, konsultan, seniman.', kategori: 'MBTI' },
+  { kode: 'ENTP', nama: 'Pendebat', deskripsi: 'Cepat, cerdas, suka berdebat. Pandai menemukan solusi inovatif. Cocok: pengacara, ilmuwan, entrepreneur.', kategori: 'MBTI' },
+  { kode: 'ESTJ', nama: 'Eksekutif', deskripsi: 'Praktis, realistis, tegas. Suka mengorganisasi orang dan proyek. Cocok: manajer, hakim, kepala sekolah.', kategori: 'MBTI' },
+  { kode: 'ESFJ', nama: 'Konsul', deskripsi: 'Hangat, bertanggung jawab, suka harmoni. Ingin menyenangkan orang lain. Cocok: guru, dokter, perawat.', kategori: 'MBTI' },
+  { kode: 'ENFJ', nama: 'Protagonis', deskripsi: 'Karismatik, empatik, pemimpin alami. Sensitif terhadap kebutuhan orang lain. Cocok: guru, konselor, politisi.', kategori: 'MBTI' },
+  { kode: 'ENTJ', nama: 'Komandan', deskripsi: 'Tegas, berani, imajinatif. Selalu menemukan cara untuk mencapai tujuan. Cocok: CEO, pengacara, direktur.', kategori: 'MBTI' },
+]
+
+// ── Helpers ────────────────────────────────────────────────────────────
+const IQ_COLORS: Record<string, string> = {
+  'Superior':            'bg-violet-100 text-violet-700 border-violet-200',
+  'Di atas rata-rata':   'bg-blue-100 text-blue-700 border-blue-200',
+  'Rata-rata':           'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'Di bawah rata-rata':  'bg-amber-100 text-amber-700 border-amber-200',
+}
+const GAYA_COLORS: Record<string, string> = {
+  'VISUAL':      'bg-blue-50 text-blue-700 border-blue-200',
+  'AUDITORI':    'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'KINESTETIK':  'bg-amber-50 text-amber-700 border-amber-200',
+}
+
+function Badge({ label, colorClass }: { label: string; colorClass?: string }) {
+  return (
+    <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded border', colorClass ?? 'bg-surface-3 text-slate-500 border-surface')}>
+      {label}
+    </span>
+  )
+}
+
+// ── Radar Chart SVG ────────────────────────────────────────────────────
+function RadarChart({ data, labels, color = '#7c3aed' }: {
+  data: number[]; labels: string[]; color?: string
+}) {
+  const n = data.length
+  const cx = 120, cy = 120, r = 90
+  const angles = Array.from({ length: n }, (_, i) => (i * 2 * Math.PI) / n - Math.PI / 2)
+  const maxVal = 100
+
+  const point = (val: number, i: number) => {
+    const ratio = val / maxVal
+    return [cx + r * ratio * Math.cos(angles[i]), cy + r * ratio * Math.sin(angles[i])]
+  }
+
+  const polygon = data.map((v, i) => point(v, i)).map(p => p.join(',')).join(' ')
+
+  // Grid circles
+  const grids = [25, 50, 75, 100]
+
+  return (
+    <svg viewBox="0 0 240 240" className="w-full max-w-[220px]">
+      {/* Grid */}
+      {grids.map(g => (
+        <polygon key={g}
+          points={angles.map((_, i) => {
+            const [x, y] = [cx + r * (g/100) * Math.cos(angles[i]), cy + r * (g/100) * Math.sin(angles[i])]
+            return `${x},${y}`
+          }).join(' ')}
+          fill="none" stroke="#e2e8f0" strokeWidth="1"
+        />
+      ))}
+      {/* Axis lines */}
+      {angles.map((a, i) => (
+        <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(a)} y2={cy + r * Math.sin(a)} stroke="#e2e8f0" strokeWidth="1" />
+      ))}
+      {/* Data polygon */}
+      <polygon points={polygon} fill={color} fillOpacity="0.2" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+      {/* Data points */}
+      {data.map((v, i) => {
+        const [x, y] = point(v, i)
+        return <circle key={i} cx={x} cy={y} r="3" fill={color} />
+      })}
+      {/* Labels */}
+      {labels.map((label, i) => {
+        const [x, y] = [cx + (r + 14) * Math.cos(angles[i]), cy + (r + 14) * Math.sin(angles[i])]
+        return (
+          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle"
+            fontSize="9" fontWeight="600" fill="#64748b">
+            {label}
+          </text>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ── Bar Chart SVG ──────────────────────────────────────────────────────
+function BarChart({ data, colors }: {
+  data: { label: string; value: number; total: number; color?: string }[]
+  colors?: string[]
+}) {
+  const maxVal = Math.max(...data.map(d => d.value), 1)
+  const n = data.length
+  const svgW = 260
+  const barW = Math.max(24, Math.floor((svgW - 8) / n) - 6)
+  const slotW = (svgW - 8) / n
+  // Tinggi SVG: 20 (angka atas) + 60 (bar) + 12 (label) + 12 (pct) = 104
+  const svgH = 104
+  const barMaxH = 52
+
+  return (
+    <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full">
+      {data.map((d, i) => {
+        const h = Math.max(3, (d.value / maxVal) * barMaxH)
+        const cx = 4 + slotW * i + slotW / 2
+        const barX = cx - barW / 2
+        const barTop = 20 + barMaxH - h
+        const pct = d.total > 0 ? Math.round(d.value / d.total * 100) : 0
+        const col = d.color ?? (colors?.[i]) ?? '#7c3aed'
+        return (
+          <g key={i}>
+            {/* Angka di atas bar — tidak terpotong karena ada ruang 20px */}
+            <text x={cx} y={barTop - 3} textAnchor="middle" fontSize="8" fontWeight="700" fill={col}>
+              {d.value}
+            </text>
+            <rect x={barX} y={barTop} width={barW} height={h} rx="3" fill={col} fillOpacity="0.85" />
+            {/* Label */}
+            <text x={cx} y={20 + barMaxH + 10} textAnchor="middle" fontSize="7" fill="#94a3b8">{d.label}</text>
+            {/* Persen */}
+            <text x={cx} y={20 + barMaxH + 20} textAnchor="middle" fontSize="7" fill="#94a3b8">{pct}%</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ── Modal Kamus ────────────────────────────────────────────────────────
+function ModalKamus({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const kategori = [...new Set(KAMUS.map(k => k.kategori))]
+  return (
+    <Dialog open={open} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg rounded-xl">
+        <DialogHeader className="border-b border-surface-2 pb-3">
+          <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-violet-500" /> Kamus Istilah Psikotes
+          </DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[65vh] pr-1">
+          <div className="space-y-4 py-2">
+            {kategori.map(kat => (
+              <div key={kat}>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 mb-1.5">{kat}</p>
+                <div className="space-y-1.5">
+                  {KAMUS.filter(k => k.kategori === kat).map(k => (
+                    <div key={k.kode} className="flex gap-3 px-2 py-2 rounded-lg hover:bg-surface-2 transition-colors">
+                      <div className="shrink-0">
+                        <span className="text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded font-mono">{k.kode.split(' ')[0]}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-tight">{k.nama}</p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed mt-0.5">{k.deskripsi}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Modal Detail Siswa ─────────────────────────────────────────────────
+function ModalDetail({ siswaId, onClose, isAdmin }: {
+  siswaId: string; onClose: () => void; isAdmin: boolean
+}) {
+  const [data, setData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [showKamus, setShowKamus] = useState(false)
+
+  useEffect(() => {
+    getDetailPsikotes(siswaId).then(d => { setData(d); setIsLoading(false) })
+  }, [siswaId])
+
+  const bakatData = data ? [
+    data.bakat_ver, data.bakat_num, data.bakat_skl,
+    data.bakat_abs, data.bakat_mek, data.bakat_rr, data.bakat_kkk
+  ].map(v => v ?? 0) : []
+  const bakatLabels = ['VER', 'NUM', 'SKL', 'ABS', 'MEK', 'RR', 'KKK']
+
+  const minatData = data ? [
+    data.minat_ps, data.minat_nat, data.minat_mek,
+    data.minat_bis, data.minat_art, data.minat_si
+  ].map(v => v ?? 0) : []
+  const minatLabels = ['PS', 'NAT', 'MEK', 'BIS', 'ART', 'SI']
+
+  return (
+    <>
+      <Dialog open onOpenChange={open => !open && onClose()}>
+        <DialogContent className="sm:max-w-2xl rounded-xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-4 pt-4 pb-3 border-b border-surface-2 shrink-0">
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Memuat data...</span>
+              </div>
+            ) : data ? (
+              <div className="flex items-start gap-3 pr-8">
+                {/* pr-8 = beri ruang untuk tombol X bawaan Dialog yang absolute */}
+                <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
+                  {data.foto_url
+                    ? <img src={data.foto_url} alt="" className="h-full w-full object-cover" />
+                    : <span className="text-sm font-bold text-violet-600">{data.nama_lengkap?.charAt(0)}</span>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <DialogTitle className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">{data.nama_lengkap}</DialogTitle>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                    Kelas {data.tingkat}-{data.nomor_kelas} {data.kelas_kelompok}
+                    {data.usia_thn ? ` · Usia ${data.usia_thn} thn ${data.usia_bln ?? 0} bln saat tes` : ''}
+                  </p>
+                  {/* Tombol kamus di bawah info siswa — tidak bersinggungan dengan X */}
+                  <button onClick={() => setShowKamus(true)}
+                    className="mt-1.5 flex items-center gap-1 text-[11px] text-violet-500 hover:text-violet-700 font-medium transition-colors"
+                    title="Kamus Istilah">
+                    <HelpCircle className="h-3 w-3" /> Kamus Istilah
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </DialogHeader>
+
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {!isLoading && data && (
+              <div className="px-4 py-4 space-y-5">
+                {/* IQ & Kepribadian */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="col-span-2 sm:col-span-1 rounded-xl bg-surface-2 border border-surface p-3 text-center">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">IQ (CFIT)</p>
+                    <p className="text-3xl font-black text-violet-600 leading-none">{data.iq_score ?? '—'}</p>
+                    {data.iq_klasifikasi && (
+                      <span className={cn('mt-1.5 inline-block text-[10px] font-semibold px-2 py-0.5 rounded border', IQ_COLORS[data.iq_klasifikasi] ?? 'bg-surface-3 text-slate-500 border-surface')}>
+                        {data.iq_klasifikasi}
+                      </span>
+                    )}
+                  </div>
+                  <div className="rounded-xl bg-surface-2 border border-surface p-3 text-center">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">MBTI</p>
+                    <p className="text-xl font-black text-blue-600">{data.mbti ?? '—'}</p>
+                  </div>
+                  <div className="rounded-xl bg-surface-2 border border-surface p-3 text-center">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Gaya Belajar</p>
+                    {data.gaya_belajar
+                      ? <Badge label={data.gaya_belajar} colorClass={GAYA_COLORS[data.gaya_belajar?.toUpperCase()] ?? 'bg-surface-3 text-slate-500 border-surface'} />
+                      : <span className="text-sm text-slate-400 dark:text-slate-500">—</span>}
+                  </div>
+                  <div className="rounded-xl bg-surface-2 border border-surface p-3 text-center">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Rekom Jurusan</p>
+                    <p className="text-sm font-bold text-emerald-600">{data.rekom_jurusan ?? data.rekom_raw ?? '—'}</p>
+                    {data.rekom_raw && data.rekom_jurusan && data.rekom_raw !== data.rekom_jurusan && (
+                      <p className="text-[9px] text-slate-400 dark:text-slate-500">asli: {data.rekom_raw}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIASEC */}
+                {data.riasec && (
+                  <div className="rounded-xl bg-surface-2 border border-surface p-3">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Kematangan Karir (RIASEC)</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {data.riasec.split(',').map((r: string, i: number) => (
+                        <span key={i} className={cn(
+                          'text-xs font-semibold px-2.5 py-1 rounded-full border',
+                          i === 0 ? 'bg-violet-100 text-violet-700 border-violet-200' :
+                          i === 1 ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                          'bg-surface text-slate-500 border-surface'
+                        )}>{r.trim()}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mapel Pilihan */}
+                {data.mapel_pilihan && (
+                  <div className="rounded-xl bg-surface-2 border border-surface p-3">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Mata Pelajaran Pilihan</p>
+                    <div className="flex flex-wrap gap-1">
+                      {data.mapel_pilihan.split(',').map((m: string, i: number) => (
+                        <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded bg-surface border border-surface text-slate-600 dark:text-slate-300">{m.trim()}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Radar Charts */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Bakat */}
+                  <div className="rounded-xl bg-surface-2 border border-surface p-3">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Profil Bakat</p>
+                    <div className="flex flex-col items-center gap-2">
+                      <RadarChart data={bakatData} labels={bakatLabels} color="#7c3aed" />
+                      <div className="w-full space-y-1">
+                        {bakatLabels.map((label, i) => (
+                          <div key={label} className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 w-8 shrink-0">{label}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                              <div className="h-full rounded-full bg-violet-500" style={{ width: `${bakatData[i]}%` }} />
+                            </div>
+                            <span className="text-[10px] font-bold text-violet-600 w-6 text-right">{bakatData[i]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Minat */}
+                  <div className="rounded-xl bg-surface-2 border border-surface p-3">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Profil Minat</p>
+                    <div className="flex flex-col items-center gap-2">
+                      <RadarChart data={minatData} labels={minatLabels} color="#0891b2" />
+                      <div className="w-full space-y-1">
+                        {minatLabels.map((label, i) => (
+                          <div key={label} className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 w-8 shrink-0">{label}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                              <div className="h-full rounded-full bg-cyan-500" style={{ width: `${minatData[i]}%` }} />
+                            </div>
+                            <span className="text-[10px] font-bold text-cyan-600 w-6 text-right">{minatData[i]}</span>
+                          </div>
+                        ))}
+                        {/* Tambahan V, M, K */}
+                        {[
+                          { l: 'V', v: data.minat_v }, { l: 'M', v: data.minat_m }, { l: 'K', v: data.minat_k }
+                        ].map(({ l, v }) => v != null && (
+                          <div key={l} className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 w-8 shrink-0">{l}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                              <div className="h-full rounded-full bg-cyan-300" style={{ width: `${v}%` }} />
+                            </div>
+                            <span className="text-[10px] font-bold text-cyan-500 w-6 text-right">{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <ModalKamus open={showKamus} onClose={() => setShowKamus(false)} />
+    </>
+  )
+}
+
+// ── Tab Daftar Siswa ───────────────────────────────────────────────────
+function TabDaftar({ kelasList, isAdmin, userRole }: {
+  kelasList: KelasItem[]; isAdmin: boolean; userRole: string
+}) {
+  const [filterKelas, setFilterKelas] = useState('')
+  const [filterRekom, setFilterRekom] = useState('')
+  const [filterGaya, setFilterGaya] = useState('')
+  const [filterIQ, setFilterIQ] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [rows, setRows] = useState<PsikotesRow[]>([])
+  const [total, setTotal] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [selectedSiswa, setSelectedSiswa] = useState<string | null>(null)
+  const [showKamus, setShowKamus] = useState(false)
+  const searchRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const PAGE_SIZE = 10
+
+  const loadData = useCallback(async (p = 1) => {
+    setIsLoading(true)
+    const res = await getListPsikotes(
+      { kelas_id: filterKelas || undefined, rekom_jurusan: filterRekom || undefined,
+        gaya_belajar: filterGaya || undefined, iq_klasifikasi: filterIQ || undefined,
+        search: search || undefined },
+      p, PAGE_SIZE
+    )
+    setRows(res.rows as PsikotesRow[])
+    setTotal(res.total)
+    setPage(p)
+    setIsLoading(false)
+  }, [filterKelas, filterRekom, filterGaya, filterIQ, search])
+
+  useEffect(() => { loadData(1) }, [filterKelas, filterRekom, filterGaya, filterIQ])
+
+  useEffect(() => {
+    if (searchRef.current) clearTimeout(searchRef.current)
+    searchRef.current = setTimeout(() => loadData(1), 400)
+    return () => { if (searchRef.current) clearTimeout(searchRef.current) }
+  }, [search])
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  return (
+    <div className="space-y-3">
+      {/* Toolbar */}
+      <div className="bg-surface border border-surface rounded-xl p-3 space-y-2">
+        {/* Filter row */}
+        <div className="flex flex-wrap gap-2">
+          <Select value={filterKelas || 'all'} onValueChange={v => setFilterKelas(v === 'all' ? '' : v)}>
+            <SelectTrigger className="h-8 w-36 text-xs rounded-lg border-surface"><SelectValue placeholder="Semua kelas" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">Semua kelas</SelectItem>
+              {[7,8,9].map(t => {
+                const items = kelasList.filter(k => k.tingkat === t)
+                if (!items.length) return null
+                return <div key={t}>
+                  <div className="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Kelas {t}</div>
+                  {items.map(k => <SelectItem key={k.id} value={k.id} className="text-xs">{k.tingkat}-{k.nomor_kelas} {k.kelompok}</SelectItem>)}
+                </div>
+              })}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterIQ || 'all'} onValueChange={v => setFilterIQ(v === 'all' ? '' : v)}>
+            <SelectTrigger className="h-8 w-40 text-xs rounded-lg border-surface"><SelectValue placeholder="Semua IQ" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">Semua klasifikasi IQ</SelectItem>
+              {['Superior', 'Di atas rata-rata', 'Rata-rata', 'Di bawah rata-rata'].map(v =>
+                <SelectItem key={v} value={v} className="text-xs">{v}</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterGaya || 'all'} onValueChange={v => setFilterGaya(v === 'all' ? '' : v)}>
+            <SelectTrigger className="h-8 w-36 text-xs rounded-lg border-surface"><SelectValue placeholder="Gaya belajar" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">Semua gaya belajar</SelectItem>
+              {['VISUAL', 'AUDITORI', 'KINESTETIK'].map(v =>
+                <SelectItem key={v} value={v} className="text-xs">{v}</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+
+          <button onClick={() => { setFilterKelas(''); setFilterRekom(''); setFilterGaya(''); setFilterIQ('') }}
+            className="h-8 px-3 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 hover:bg-surface-2 rounded-lg border border-surface transition-colors ml-auto">
+            Reset filter
+          </button>
+
+          <button onClick={() => setShowKamus(true)}
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-violet-500 hover:bg-violet-50 border border-violet-200 transition-colors"
+            title="Kamus Istilah">
+            <HelpCircle className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+          <Input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Cari nama siswa..."
+            className="pl-9 h-9 rounded-lg border-surface bg-surface-2 text-xs" />
+        </div>
+      </div>
+
+      {/* Tabel/List */}
+      <div className="bg-surface border border-surface rounded-xl overflow-hidden">
+        {/* Header info */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-surface-2">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {isLoading ? 'Memuat...' : `${total} siswa`}
+          </p>
+          <button onClick={() => loadData(page)} className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 flex items-center gap-1">
+            <RefreshCw className="h-3 w-3" /> Refresh
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12 gap-2 text-slate-400 dark:text-slate-500">
+            <Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">Memuat data...</span>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 gap-2 text-slate-400 dark:text-slate-500">
+            <Brain className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Belum ada data psikotes</p>
+            <p className="text-xs">Import data dari tab Import</p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-surface-2 border-b border-surface-2">
+                    <th className="text-left px-4 py-2.5 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[10px]">Siswa</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[10px]">Kelas</th>
+                    <th className="text-center px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[10px]">IQ</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[10px]">RIASEC</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[10px]">Rekom Jurusan</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[10px]">MBTI</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[10px]">Gaya Belajar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-2">
+                  {rows.map(row => (
+                    <tr key={row.siswa_id} onClick={() => setSelectedSiswa(row.siswa_id)}
+                      className="hover:bg-surface-2 cursor-pointer transition-colors">
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-7 w-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
+                            {row.foto_url ? <img src={row.foto_url} alt="" className="h-full w-full object-cover" />
+                              : <span className="text-[10px] font-bold text-violet-600">{row.nama_lengkap?.charAt(0)}</span>}
+                          </div>
+                          <p className="font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[160px]">{row.nama_lengkap}</p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {row.tingkat ? `${row.tingkat}-${row.nomor_kelas}` : '—'}
+                        <span className="text-slate-400 dark:text-slate-500 ml-1 text-[10px]">{row.kelas_kelompok}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="font-bold text-violet-600">{row.iq_score ?? '—'}</span>
+                          {row.iq_klasifikasi && (
+                            <Badge label={row.iq_klasifikasi.replace('Di atas rata-rata', '↑ Rata-rata').replace('Di bawah rata-rata', '↓ Rata-rata')}
+                              colorClass={IQ_COLORS[row.iq_klasifikasi]} />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="text-[11px] text-slate-600 dark:text-slate-300 truncate max-w-[120px] block">
+                          {row.riasec?.split(',').slice(0, 2).join(',') ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {row.rekom_jurusan
+                          ? <Badge label={row.rekom_jurusan} colorClass="bg-emerald-50 text-emerald-700 border-emerald-200" />
+                          : <span className="text-slate-400 dark:text-slate-500">—</span>}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-blue-600 font-bold">{row.mbti ?? '—'}</td>
+                      <td className="px-3 py-2.5">
+                        {row.gaya_belajar
+                          ? <Badge label={row.gaya_belajar} colorClass={GAYA_COLORS[row.gaya_belajar?.toUpperCase()] ?? 'bg-surface-3 text-slate-500 border-surface'} />
+                          : <span className="text-slate-400 dark:text-slate-500">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-surface-2">
+              {rows.map(row => (
+                <div key={row.siswa_id} onClick={() => setSelectedSiswa(row.siswa_id)}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2 cursor-pointer transition-colors">
+                  <div className="h-9 w-9 rounded-full bg-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
+                    {row.foto_url ? <img src={row.foto_url} alt="" className="h-full w-full object-cover" />
+                      : <span className="text-xs font-bold text-violet-600">{row.nama_lengkap?.charAt(0)}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{row.nama_lengkap}</p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                      {row.tingkat ? `${row.tingkat}-${row.nomor_kelas}` : '—'}
+                      {row.iq_score ? ` · IQ ${row.iq_score}` : ''}
+                    </p>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {row.iq_klasifikasi && <Badge label={row.iq_klasifikasi} colorClass={IQ_COLORS[row.iq_klasifikasi]} />}
+                      {row.gaya_belajar && <Badge label={row.gaya_belajar} colorClass={GAYA_COLORS[row.gaya_belajar?.toUpperCase()] ?? 'bg-surface-3 text-slate-500 border-surface'} />}
+                      {row.rekom_jurusan && <Badge label={row.rekom_jurusan} colorClass="bg-emerald-50 text-emerald-700 border-emerald-200" />}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600 shrink-0" />
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-2.5 border-t border-surface-2">
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">Hal. {page} dari {totalPages}</span>
+                <div className="flex gap-1.5">
+                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => loadData(page - 1)}
+                    className="h-7 px-3 text-xs rounded-lg">← Prev</Button>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => loadData(page + 1)}
+                    className="h-7 px-3 text-xs rounded-lg">Next →</Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {selectedSiswa && (
+        <ModalDetail
+          siswaId={selectedSiswa}
+          onClose={() => setSelectedSiswa(null)}
+          isAdmin={isAdmin}
+        />
+      )}
+      <ModalKamus open={showKamus} onClose={() => setShowKamus(false)} />
+    </div>
+  )
+}
+
+// ── Tab Analitik ───────────────────────────────────────────────────────
+function TabAnalitik({ kelasList }: { kelasList: KelasItem[] }) {
+  const [filterKelas, setFilterKelas] = useState('')
+  const [data, setData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    setIsLoading(true)
+    getAnalitikPsikotes(filterKelas || undefined).then(d => { setData(d); setIsLoading(false) })
+  }, [filterKelas])
+
+  const totalSiswa = data?.iqDist?.reduce((a: number, d: any) => a + d.n, 0) ?? 0
+
+  return (
+    <div className="space-y-3">
+      {/* Filter kelas */}
+      <div className="flex items-center gap-2">
+        <Select value={filterKelas || 'all'} onValueChange={v => setFilterKelas(v === 'all' ? '' : v)}>
+          <SelectTrigger className="h-8 w-44 text-xs rounded-lg border-surface bg-surface">
+            <SelectValue placeholder="Semua kelas" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">Semua kelas</SelectItem>
+            {kelasList.map(k => <SelectItem key={k.id} value={k.id} className="text-xs">{k.tingkat}-{k.nomor_kelas} {k.kelompok}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-slate-400 dark:text-slate-500">{isLoading ? '...' : `${totalSiswa} siswa`}</span>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12 gap-2 text-slate-400 dark:text-slate-500">
+          <Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">Memuat analitik...</span>
+        </div>
+      ) : !data || totalSiswa === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-2 text-slate-400 dark:text-slate-500">
+          <BarChart2 className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+          <p className="text-sm">Belum ada data untuk ditampilkan</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+
+          {/* IQ Distribusi */}
+          <div className="bg-surface border border-surface rounded-xl p-4">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Distribusi Klasifikasi IQ</p>
+            <BarChart
+              data={data.iqDist.map((d: any) => ({
+                label: d.iq_klasifikasi?.replace('Di atas rata-rata', '↑Avg').replace('Di bawah rata-rata', '↓Avg').replace('Rata-rata', 'Avg') ?? '?',
+                value: d.n, total: totalSiswa, color: '#7c3aed',
+              }))}
+            />
+          </div>
+
+          {/* Gaya Belajar */}
+          <div className="bg-surface border border-surface rounded-xl p-4">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Distribusi Gaya Belajar</p>
+            {(() => {
+              const GAYA_COL: Record<string, string> = {
+                VISUAL: '#3b82f6', AUDITORI: '#10b981', KINESTETIK: '#f59e0b',
+                AUDITORY: '#f59e0b',
+              }
+              return (
+                <>
+                  <BarChart
+                    data={data.gayaDist.map((d: any) => ({
+                      label: d.gaya_belajar ?? '?',
+                      value: d.n,
+                      total: totalSiswa,
+                      color: GAYA_COL[d.gaya_belajar?.toUpperCase()] ?? '#64748b',
+                    }))}
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                    {data.gayaDist.map((d: any) => {
+                      const col = GAYA_COL[d.gaya_belajar?.toUpperCase()] ?? '#64748b'
+                      return (
+                        <div key={d.gaya_belajar} className="flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ background: col }} />
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">{d.gaya_belajar}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+
+          {/* Rekom Jurusan */}
+          <div className="bg-surface border border-surface rounded-xl p-4">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Rekomendasi Jurusan</p>
+            <BarChart
+              data={data.rekomDist.map((d: any) => ({ label: d.rekom_jurusan ?? '?', value: d.n, total: totalSiswa, color: '#059669' }))}
+            />
+          </div>
+
+          {/* RIASEC */}
+          <div className="bg-surface border border-surface rounded-xl p-4">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Tipe RIASEC</p>
+            <div className="space-y-2.5">
+              {data.riasecDist.map((d: any) => {
+                const pct = Math.round(d.n / totalSiswa * 100)
+                return (
+                  <div key={d.tipe}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-bold text-violet-600">{d.tipe}</span>
+                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{d.n} <span className="text-slate-400 dark:text-slate-500 font-normal">({pct}%)</span></span>
+                    </div>
+                    <div className="h-2 rounded-full bg-surface-3 overflow-hidden">
+                      <div className="h-full rounded-full bg-violet-400 transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* MBTI */}
+          <div className="bg-surface border border-surface rounded-xl p-4">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Distribusi MBTI</p>
+            <div className="space-y-2">
+              {data.mbtiDist.map((d: any) => {
+                const pct = Math.round(d.n / totalSiswa * 100)
+                return (
+                  <div key={d.mbti}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-mono font-bold text-blue-600">{d.mbti}</span>
+                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{d.n} <span className="text-slate-400 dark:text-slate-500 font-normal">({pct}%)</span></span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-400 transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Rata-rata Bakat */}
+          {data.bakatAvg && (
+            <div className="bg-surface border border-surface rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Rata-rata Profil Bakat</p>
+              <RadarChart
+                data={['ver','num','skl','abs','mek','rr','kkk'].map(k => data.bakatAvg[k] ?? 0)}
+                labels={['VER','NUM','SKL','ABS','MEK','RR','KKK']}
+                color="#7c3aed"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Tab Import ─────────────────────────────────────────────────────────
+function TabImport({ mappingList: initialMapping }: { mappingList: RekomMapping[] }) {
+  const [activeSubTab, setActiveSubTab] = useState<'mapping' | 'import'>('import')
+  const [mappingList, setMappingList] = useState<RekomMapping[]>(initialMapping)
+
+  // Mapping CRUD state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editJurusan, setEditJurusan] = useState('')
+  const [editKet, setEditKet] = useState('')
+  const [newLabel, setNewLabel] = useState('')
+  const [newJurusan, setNewJurusan] = useState('')
+  const [newKet, setNewKet] = useState('')
+  const [isSavingMap, setIsSavingMap] = useState(false)
+
+  // Import state
+  const fileRef1 = useRef<HTMLInputElement>(null)
+  const fileRef2 = useRef<HTMLInputElement>(null)
+  const [isParsing, setIsParsing] = useState(false)
+  const [previewData, setPreviewData] = useState<any[]>([])
+  const [matchResults, setMatchResults] = useState<any[]>([])
+  const [isMatching, setIsMatching] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 })
+  const [importResult, setImportResult] = useState<{ success: number; error: number; errors: string[] } | null>(null)
+  const [previewFilter, setPreviewFilter] = useState<'all' | 'ambiguous' | 'notfound'>('all')
+
+  // ── SheetJS: preload saat mount, simpan di ref ───────────────────────
+  // Alasan: Server Action binding hilang jika SheetJS di-load lazy di tengah
+  // async flow. Solusi: load di useEffect (sebelum user klik apapun).
+  const xlsxRef = useRef<any>(null)
+  const [xlsxReady, setXlsxReady] = useState(false)
+
+  useEffect(() => {
+    if ((window as any).XLSX) {
+      xlsxRef.current = (window as any).XLSX
+      setXlsxReady(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'
+    script.async = true
+    script.onload = () => {
+      xlsxRef.current = (window as any).XLSX
+      setXlsxReady(true)
+    }
+    script.onerror = () => console.error('Gagal memuat SheetJS dari CDN')
+    document.head.appendChild(script)
+  }, [])
+
+  const parseXlsxFile = (file: File): Promise<any[][]> => {
+    return new Promise((resolve, reject) => {
+      if (!xlsxRef.current) { reject(new Error('SheetJS belum siap. Tunggu sebentar lalu coba lagi.')); return }
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target!.result as ArrayBuffer)
+          const wb = xlsxRef.current.read(data, { type: 'array', cellText: false, cellDates: false })
+          const ws = wb.Sheets[wb.SheetNames[0]]
+          const rows = xlsxRef.current.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][]
+          resolve(rows)
+        } catch (err) {
+          reject(err)
+        }
+      }
+      reader.onerror = () => reject(new Error('Gagal membaca file'))
+      reader.readAsArrayBuffer(file)
+    })
+  }
+
+  const parseExcel = async () => {
+    const f1 = fileRef1.current?.files?.[0]
+    const f2 = fileRef2.current?.files?.[0]
+    if (!f1 && !f2) { alert('Upload minimal satu file Excel.'); return }
+
+    setIsParsing(true)
+    setPreviewData([])
+    setMatchResults([])
+
+    try {
+      const rekapData = new Map<string, any>()
+      const riasecData = new Map<string, any>()
+
+      // Parse File 2 (Rekapitulasi — IQ, Bakat, Minat)
+      if (f2) {
+        const raw2 = await parseXlsxFile(f2)
+        for (const row of raw2) {
+          // Baris data: kolom 0 = nomor (angka), kolom 1 = nama string
+          const col0 = row[0]
+          if (col0 === '' || col0 === null || col0 === undefined) continue
+          const num = typeof col0 === 'number' ? col0 : parseInt(String(col0))
+          if (isNaN(num) || num <= 0) continue
+          if (!row[1] || String(row[1]).trim() === '') continue
+
+          const nama = String(row[1]).trim().toUpperCase()
+          const toInt = (v: any) => {
+            if (v === '' || v === null || v === undefined) return null
+            const n = typeof v === 'number' ? v : parseInt(String(v))
+            return isNaN(n) ? null : n
+          }
+          const toStr = (v: any) => {
+            if (v === '' || v === null || v === undefined) return null
+            return String(v).trim() || null
+          }
+
+          rekapData.set(nama, {
+            nama,
+            usia_thn: toInt(row[3]),
+            usia_bln: toInt(row[4]),
+            iq_score: toInt(row[5]),
+            iq_klasifikasi: toStr(row[6]),
+            bakat_ver: toInt(row[7]),
+            bakat_num: toInt(row[8]),
+            bakat_skl: toInt(row[9]),
+            bakat_abs: toInt(row[10]),
+            bakat_mek: toInt(row[11]),
+            bakat_rr:  toInt(row[12]),
+            bakat_kkk: toInt(row[13]),
+            minat_ps:  toInt(row[14]),
+            minat_nat: toInt(row[15]),
+            minat_mek: toInt(row[16]),
+            minat_bis: toInt(row[17]),
+            minat_art: toInt(row[18]),
+            minat_si:  toInt(row[19]),
+            minat_v:   toInt(row[20]),
+            minat_m:   toInt(row[21]),
+            minat_k:   toInt(row[22]),
+            rekom_raw:    toStr(row[23]),
+            mbti:         toStr(row[24]),
+            gaya_belajar: toStr(row[25]) ? String(row[25]).trim().toUpperCase() : null,
+          })
+        }
+      }
+
+      // Parse File 1 (RIASEC & Mapel Pilihan)
+      if (f1) {
+        const raw1 = await parseXlsxFile(f1)
+        for (const row of raw1) {
+          const col0 = row[0]
+          if (col0 === '' || col0 === null || col0 === undefined) continue
+          const num = typeof col0 === 'number' ? col0 : parseInt(String(col0))
+          if (isNaN(num) || num <= 0) continue
+          if (!row[1] || String(row[1]).trim() === '') continue
+
+          const nama = String(row[1]).trim().toUpperCase()
+          const toStr = (v: any) => {
+            if (v === '' || v === null || v === undefined) return null
+            return String(v).trim() || null
+          }
+          riasecData.set(nama, {
+            mapel_pilihan: toStr(row[2]),
+            riasec: toStr(row[3]) ? String(row[3]).trim().toUpperCase() : null,
+          })
+        }
+      }
+
+      // Merge kedua file by nama
+      const allNama = new Set([...rekapData.keys(), ...riasecData.keys()])
+      const merged = Array.from(allNama).map(nama => ({
+        nama,
+        ...rekapData.get(nama),
+        ...riasecData.get(nama),
+      }))
+
+      if (merged.length === 0) {
+        alert('Tidak ada data yang berhasil dibaca. Pastikan format file benar.')
+        setIsParsing(false)
+        return
+      }
+
+      setPreviewData(merged)
+
+      // Kirim semua nama sekaligus — 1 server action call = 1 DB query
+      // Server sudah load semua siswa sekali, matching dilakukan in-memory
+      setIsMatching(true)
+      const allNamaList = merged.map(r => r.nama)
+      const allResults = await fuzzyMatchNama(allNamaList)
+      setMatchResults(allResults)
+      setIsMatching(false)
+      // Auto-fokus ke tab ambigu jika ada, supaya user langsung tahu
+      const hasAmbig = allResults.some(r => r.status === 'ambiguous')
+      const hasNotFound = allResults.some(r => r.status === 'notfound')
+      setPreviewFilter(hasAmbig ? 'ambiguous' : hasNotFound ? 'notfound' : 'all')
+
+    } catch (e: any) {
+      alert('Gagal parse Excel: ' + (e as Error).message)
+      setIsMatching(false)
+    }
+    setIsParsing(false)
+  }
+
+  // ── Import ke DB ───────────────────────────────────────────────────
+  const handleImport = async () => {
+    const resolved = matchResults.filter(m => m.status === 'matched' && m.matched)
+    if (resolved.length === 0) { alert('Tidak ada data yang siap diimport.'); return }
+    if (!confirm(`Import ${resolved.length} data psikotes? Data yang sudah ada akan di-update.`)) return
+
+    setIsImporting(true)
+    setImportResult(null)
+    const CHUNK = 10
+    let totalSuccess = 0, totalError = 0
+    const allErrors: string[] = []
+
+    setImportProgress({ done: 0, total: resolved.length })
+
+    for (let i = 0; i < resolved.length; i += CHUNK) {
+      const chunk = resolved.slice(i, i + CHUNK)
+      const rows = chunk.map((m: any) => {
+        const d = previewData.find(p => p.nama === m.nama) ?? {}
+        return {
+          siswa_id: m.matched.siswa_id,
+          iq_score: d.iq_score ? Number(d.iq_score) : null,
+          iq_klasifikasi: d.iq_klasifikasi ?? null,
+          bakat_ver: d.bakat_ver ? Number(d.bakat_ver) : null,
+          bakat_num: d.bakat_num ? Number(d.bakat_num) : null,
+          bakat_skl: d.bakat_skl ? Number(d.bakat_skl) : null,
+          bakat_abs: d.bakat_abs ? Number(d.bakat_abs) : null,
+          bakat_mek: d.bakat_mek ? Number(d.bakat_mek) : null,
+          bakat_rr: d.bakat_rr ? Number(d.bakat_rr) : null,
+          bakat_kkk: d.bakat_kkk ? Number(d.bakat_kkk) : null,
+          minat_ps: d.minat_ps ? Number(d.minat_ps) : null,
+          minat_nat: d.minat_nat ? Number(d.minat_nat) : null,
+          minat_mek: d.minat_mek ? Number(d.minat_mek) : null,
+          minat_bis: d.minat_bis ? Number(d.minat_bis) : null,
+          minat_art: d.minat_art ? Number(d.minat_art) : null,
+          minat_si: d.minat_si ? Number(d.minat_si) : null,
+          minat_v: d.minat_v ? Number(d.minat_v) : null,
+          minat_m: d.minat_m ? Number(d.minat_m) : null,
+          minat_k: d.minat_k ? Number(d.minat_k) : null,
+          riasec: d.riasec ?? null,
+          mapel_pilihan: d.mapel_pilihan ?? null,
+          rekom_raw: d.rekom_raw ? String(d.rekom_raw).trim() : null,
+          mbti: d.mbti ?? null,
+          gaya_belajar: d.gaya_belajar ?? null,
+          usia_thn: d.usia_thn ? Number(d.usia_thn) : null,
+          usia_bln: d.usia_bln ? Number(d.usia_bln) : null,
+        }
+      })
+
+      const res = await importPsikotesChunk(rows)
+      totalSuccess += res.success
+      totalError += res.error
+      allErrors.push(...res.errors)
+      setImportProgress({ done: Math.min(i + CHUNK, resolved.length), total: resolved.length })
+    }
+
+    setImportResult({ success: totalSuccess, error: totalError, errors: allErrors })
+    setIsImporting(false)
+  }
+
+  const matchedCount = matchResults.filter(m => m.status === 'matched').length
+  const ambigCount = matchResults.filter(m => m.status === 'ambiguous').length
+  const notFoundCount = matchResults.filter(m => m.status === 'notfound').length
+
+  return (
+    <div className="space-y-3">
+      {/* Sub-tab toggle */}
+      <div className="flex rounded-lg border border-surface overflow-hidden w-fit">
+        <button onClick={() => setActiveSubTab('import')}
+          className={cn('px-4 py-1.5 text-xs font-medium transition-colors',
+            activeSubTab === 'import' ? 'bg-slate-900 text-white' : 'bg-surface text-slate-500 dark:text-slate-400 hover:bg-surface-2')}>
+          Import Data
+        </button>
+        <button onClick={() => setActiveSubTab('mapping')}
+          className={cn('px-4 py-1.5 text-xs font-medium transition-colors',
+            activeSubTab === 'mapping' ? 'bg-slate-900 text-white' : 'bg-surface text-slate-500 dark:text-slate-400 hover:bg-surface-2')}>
+          Mapping Jurusan
+        </button>
+      </div>
+
+      {/* ── Sub-tab Mapping ── */}
+      {activeSubTab === 'mapping' && (
+        <div className="space-y-3">
+          <div className="bg-surface border border-surface rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-surface-2">
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Mapping Label Excel → Jurusan Aplikasi</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Sesuaikan label rekomendasi dari Excel dengan jurusan yang aktif di aplikasi</p>
+            </div>
+            <div className="divide-y divide-surface-2">
+              {mappingList.map(m => (
+                <div key={m.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2 group transition-colors">
+                  <span className="font-mono text-xs font-bold text-violet-600 w-20 shrink-0">{m.label_excel}</span>
+                  <span className="text-slate-400 dark:text-slate-500 text-xs shrink-0">→</span>
+                  {editingId === m.id ? (
+                    <>
+                      <Input value={editJurusan} onChange={e => setEditJurusan(e.target.value)}
+                        className="h-7 text-xs flex-1 rounded border-surface" placeholder="Jurusan DB" />
+                      <Input value={editKet} onChange={e => setEditKet(e.target.value)}
+                        className="h-7 text-xs flex-1 rounded border-surface" placeholder="Keterangan" />
+                      <button onClick={async () => {
+                        setIsSavingMap(true)
+                        const res = await editMapping(m.id, editJurusan, editKet)
+                        if (res.error) alert(res.error)
+                        else setMappingList(prev => prev.map(x => x.id === m.id ? { ...x, jurusan_db: editJurusan, keterangan: editKet } : x))
+                        setEditingId(null); setIsSavingMap(false)
+                      }} disabled={isSavingMap}
+                        className="p-1 rounded text-emerald-600 hover:bg-emerald-50"><CheckCircle2 className="h-4 w-4" /></button>
+                      <button onClick={() => setEditingId(null)}
+                        className="p-1 rounded text-slate-400 dark:text-slate-500 hover:bg-surface-3"><X className="h-4 w-4" /></button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs font-semibold text-emerald-700 flex-1">{m.jurusan_db}</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 flex-1 truncate">{m.keterangan ?? ''}</span>
+                      <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                        <button onClick={() => { setEditingId(m.id); setEditJurusan(m.jurusan_db); setEditKet(m.keterangan ?? '') }}
+                          className="p-1.5 rounded text-blue-500 hover:bg-blue-50"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={async () => {
+                          if (!confirm(`Hapus mapping "${m.label_excel}"?`)) return
+                          const res = await hapusMapping(m.id)
+                          if (res.error) alert(res.error)
+                          else setMappingList(prev => prev.filter(x => x.id !== m.id))
+                        }} className="p-1.5 rounded text-rose-500 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Tambah baru */}
+            <div className="px-4 py-3 border-t border-surface-2 flex gap-2">
+              <Input value={newLabel} onChange={e => setNewLabel(e.target.value.toUpperCase())}
+                placeholder="Label (misal: MIA)" className="h-8 text-xs w-24 rounded font-mono font-bold" />
+              <Input value={newJurusan} onChange={e => setNewJurusan(e.target.value)}
+                placeholder="Jurusan DB" className="h-8 text-xs flex-1 rounded" />
+              <Input value={newKet} onChange={e => setNewKet(e.target.value)}
+                placeholder="Keterangan (opsional)" className="h-8 text-xs flex-1 rounded" />
+              <Button size="sm" onClick={async () => {
+                if (!newLabel || !newJurusan) return
+                setIsSavingMap(true)
+                const res = await tambahMapping(newLabel, newJurusan, newKet)
+                if (res.error) alert(res.error)
+                else { setMappingList(prev => [...prev, { id: Date.now().toString(), label_excel: newLabel, jurusan_db: newJurusan, keterangan: newKet }]); setNewLabel(''); setNewJurusan(''); setNewKet('') }
+                setIsSavingMap(false)
+              }} disabled={isSavingMap || !newLabel || !newJurusan}
+                className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white rounded gap-1 shrink-0">
+                <Plus className="h-3.5 w-3.5" /> Tambah
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Sub-tab Import ── */}
+      {activeSubTab === 'import' && (
+        <div className="space-y-3">
+          {/* Upload area */}
+          <div className="bg-surface border border-surface rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Upload File Excel</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">File Rekapitulasi (IQ, Bakat, Minat)</label>
+                <input ref={fileRef2} type="file" accept=".xlsx,.xls"
+                  className="w-full h-9 text-xs file:mr-2 file:h-full file:border-0 file:bg-violet-50 file:px-3 file:text-xs file:font-medium file:text-violet-700 hover:file:bg-violet-100 rounded-lg border border-surface bg-surface-2 cursor-pointer" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">File RIASEC & Mapel Pilihan</label>
+                <input ref={fileRef1} type="file" accept=".xlsx,.xls"
+                  className="w-full h-9 text-xs file:mr-2 file:h-full file:border-0 file:bg-violet-50 file:px-3 file:text-xs file:font-medium file:text-violet-700 hover:file:bg-violet-100 rounded-lg border border-surface bg-surface-2 cursor-pointer" />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">Bisa upload satu atau dua file sekaligus. File boleh berisi banyak kelas dalam satu sheet.</p>
+            {/* Normalize existing data */}
+            <div className="flex items-center gap-2 pt-1 border-t border-surface-2">
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 flex-1">
+                Ada data AUDITORY di DB? Klik normalize untuk menyamakan ejaan.
+              </p>
+              <Button size="sm" variant="outline" onClick={async () => {
+                const res = await normalizeGayaBelajar()
+                alert(res.success)
+              }} className="h-7 text-[11px] rounded-lg border-blue-200 text-blue-600 hover:bg-blue-50 shrink-0">
+                Normalize Gaya Belajar
+              </Button>
+            </div>
+            <Button onClick={parseExcel} disabled={isParsing || isMatching || !xlsxReady}
+              className="h-9 bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg gap-2">
+              {isParsing || isMatching
+                ? <><Loader2 className="h-4 w-4 animate-spin" />{isMatching ? 'Mencocokkan nama...' : 'Membaca file...'}</>
+                : !xlsxReady
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat library...</>
+                : <><Upload className="h-4 w-4" /> Baca & Cocokkan Nama</>}
+            </Button>
+          </div>
+
+          {/* Preview hasil matching */}
+          {matchResults.length > 0 && (
+            <div className="space-y-3">
+              {/* Summary cards — klik untuk filter */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'all',       label: '⚠️ Semua masalah', count: ambigCount + notFoundCount, color: 'bg-slate-50 border-slate-200 text-slate-700', active: 'bg-slate-900 text-white border-slate-900' },
+                  { key: 'ambiguous', label: '⚠️ Perlu dipilih', count: ambigCount,           color: 'bg-amber-50 border-amber-200 text-amber-700',  active: 'bg-amber-500 text-white border-amber-500' },
+                  { key: 'notfound',  label: '❌ Tidak ditemukan',count: notFoundCount,        color: 'bg-rose-50 border-rose-200 text-rose-700',    active: 'bg-rose-500 text-white border-rose-500' },
+                ].map(({ key, label, count, color, active }) => (
+                  <button key={key} type="button"
+                    onClick={() => setPreviewFilter(key as any)}
+                    className={cn('rounded-xl p-3 text-center border transition-all',
+                      previewFilter === key ? active : color)}>
+                    <p className="text-2xl font-black leading-tight">{count}</p>
+                    <p className="text-[11px] font-semibold mt-0.5 leading-tight">{label}</p>
+                  </button>
+                ))}
+              </div>
+
+              {/* Instruksi kontekstual */}
+              {previewFilter === 'ambiguous' && ambigCount > 0 && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>Nama-nama berikut cocok dengan lebih dari satu siswa di database. Pilih siswa yang tepat untuk setiap nama.</span>
+                </div>
+              )}
+              {previewFilter === 'notfound' && notFoundCount > 0 && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>Nama-nama berikut tidak ditemukan di database siswa. Kemungkinan perbedaan ejaan atau siswa belum terdaftar. Data ini akan dilewati saat import.</span>
+                </div>
+              )}
+
+              {/* Tabel preview — dinamis sesuai filter */}
+              <div className="bg-surface border border-surface rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-surface-2">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    {previewFilter === 'all' && `${ambigCount + notFoundCount} nama bermasalah (${ambigCount} ambigu + ${notFoundCount} tidak ditemukan)`}
+                    {previewFilter === 'ambiguous' && `${ambigCount} nama ambigu — wajib dipilih manual`}
+                    {previewFilter === 'notfound' && `${notFoundCount} nama tidak ditemukan — akan dilewati`}
+                  </p>
+                  {previewFilter === 'all' && (
+                    <span className="text-[11px] text-emerald-600 font-medium">
+                      ✓ {matchedCount} siap import
+                    </span>
+                  )}
+                </div>
+
+                <ScrollArea className="max-h-[60vh]">
+                  <div className="divide-y divide-surface-2">
+                    {matchResults
+                      .filter(m =>
+                        previewFilter === 'all'
+                          ? m.status === 'ambiguous' || m.status === 'notfound'
+                          : previewFilter === 'ambiguous'
+                          ? m.status === 'ambiguous'
+                          : m.status === 'notfound'
+                      )
+                      .map((m, i) => {
+                        const globalIdx = matchResults.findIndex(x => x === m)
+                        return (
+                          <div key={i} className={cn('px-4 py-3 space-y-2',
+                            m.status === 'ambiguous' ? 'bg-amber-50/40' :
+                            m.status === 'notfound' ? 'bg-rose-50/30' : '')}>
+                            {/* Baris atas: status + nama di excel */}
+                            <div className="flex items-center gap-2">
+                              <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0',
+                                m.status === 'matched'   ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                m.status === 'ambiguous' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                'bg-rose-100 text-rose-700 border-rose-200')}>
+                                {m.status === 'matched' ? '✓ MATCHED' : m.status === 'ambiguous' ? '? AMBIGU' : '✗ TIDAK DITEMUKAN'}
+                              </span>
+                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate flex-1">
+                                {m.nama}
+                              </span>
+                            </div>
+
+                            {/* Matched: tampilkan siswa yang cocok */}
+                            {m.status === 'matched' && m.matched && (
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500 pl-1">
+                                → {m.matched.nama_lengkap}
+                                <span className="ml-1.5 text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200 px-1.5 py-0.5 rounded">
+                                  {m.matched.kelas}
+                                </span>
+                              </p>
+                            )}
+
+                            {/* Ambiguous: dropdown pilih kandidat */}
+                            {m.status === 'ambiguous' && (
+                              <div className="pl-1 space-y-1.5">
+                                <p className="text-[11px] text-amber-700 font-medium">
+                                  Ditemukan {m.candidates.length} kandidat — pilih yang benar:
+                                </p>
+                                <div className="flex flex-col gap-1.5">
+                                  {m.candidates.map((c: any) => (
+                                    <button key={c.siswa_id} type="button"
+                                      onClick={() => setMatchResults(prev => prev.map((x, j) =>
+                                        j === globalIdx ? { ...x, status: 'matched', matched: c } : x
+                                      ))}
+                                      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-white hover:bg-amber-50 hover:border-amber-400 transition-colors text-left w-full">
+                                      <div className="h-6 w-6 rounded-full bg-amber-100 flex items-center justify-center text-[10px] font-bold text-amber-700 shrink-0">
+                                        {c.nama_lengkap.charAt(0)}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{c.nama_lengkap}</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500">{c.nisn} · {c.kelas}</p>
+                                      </div>
+                                      <ChevronRight className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                                    </button>
+                                  ))}
+                                  <button type="button"
+                                    onClick={() => setMatchResults(prev => prev.map((x, j) =>
+                                      j === globalIdx ? { ...x, status: 'notfound' } : x
+                                    ))}
+                                    className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-rose-500 text-left pl-1 transition-colors">
+                                    Lewati data ini
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Not found: info */}
+                            {m.status === 'notfound' && (
+                              <p className="text-[11px] text-rose-500 pl-1 italic">
+                                Tidak ada siswa dengan nama serupa di database. Data ini akan dilewati.
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })
+                    }
+                    {/* Empty state per filter */}
+                    {matchResults.filter(m =>
+                      previewFilter === 'all'
+                        ? m.status === 'ambiguous' || m.status === 'notfound'
+                        : previewFilter === 'ambiguous'
+                        ? m.status === 'ambiguous'
+                        : m.status === 'notfound'
+                    ).length === 0 && (
+                      <div className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                        {previewFilter === 'ambiguous' ? '🎉 Tidak ada nama yang ambigu!' : previewFilter === 'notfound' ? '🎉 Semua nama berhasil dicocokkan!' : '🎉 Tidak ada masalah! Semua nama cocok.'}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Import button */}
+              <div className="flex items-center gap-3">
+                <Button onClick={handleImport} disabled={isImporting || matchedCount === 0}
+                  className="h-9 bg-slate-900 hover:bg-slate-800 text-white text-sm rounded-lg gap-2">
+                  {isImporting
+                    ? <><Loader2 className="h-4 w-4 animate-spin" />Importing... ({importProgress.done}/{importProgress.total})</>
+                    : `Import ${matchedCount} data yang matched`}
+                </Button>
+                {ambigCount > 0 && (
+                  <p className="text-[11px] text-amber-600">{ambigCount} data ambigu akan dilewati jika belum dipilih</p>
+                )}
+              </div>
+
+              {/* Import result */}
+              {importResult && (
+                <div className={cn('p-3 rounded-xl border text-xs space-y-1',
+                  importResult.error === 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800')}>
+                  <div className="flex items-center gap-2 font-semibold">
+                    {importResult.error === 0 ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                    Import selesai: {importResult.success} berhasil, {importResult.error} gagal
+                  </div>
+                  {importResult.errors.length > 0 && (
+                    <details>
+                      <summary className="cursor-pointer opacity-70">{importResult.errors.length} error detail</summary>
+                      <div className="mt-1 space-y-0.5 max-h-24 overflow-y-auto">
+                        {importResult.errors.map((e, i) => <p key={i} className="font-mono text-[10px]">• {e}</p>)}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── MAIN ────────────────────────────────────────────────────────────────
+export function PsikotesClient({ mappingList, kelasList, stats, userRole, isAdmin }: {
+  mappingList: RekomMapping[]
+  kelasList: KelasItem[]
+  stats: Stats
+  userRole: string
+  isAdmin: boolean
+}) {
+  const canImport = ['super_admin', 'kepsek', 'guru_bk'].includes(userRole)
+
+  return (
+    <div className="space-y-3">
+      {/* Stats strip */}
+      {stats && stats.total > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="bg-surface border border-surface rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-violet-50 border border-violet-100"><Brain className="h-4 w-4 text-violet-600" /></div>
+            <div><p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium">Total Data</p><p className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight">{stats.total}</p></div>
+          </div>
+          <div className="bg-surface border border-surface rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-100"><Users className="h-4 w-4 text-blue-600" /></div>
+            <div><p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium">Visual</p><p className="text-lg font-black text-blue-600 leading-tight">{stats.visual}</p></div>
+          </div>
+          <div className="bg-surface border border-surface rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-100"><BookOpen className="h-4 w-4 text-emerald-600" /></div>
+            <div><p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium">Auditori</p><p className="text-lg font-black text-emerald-600 leading-tight">{stats.auditori}</p></div>
+          </div>
+          <div className="bg-surface border border-surface rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-100"><BarChart2 className="h-4 w-4 text-amber-600" /></div>
+            <div><p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium">Kinestetik</p><p className="text-lg font-black text-amber-600 leading-tight">{stats.kinestetik}</p></div>
+          </div>
+        </div>
+      )}
+
+      <Tabs defaultValue="daftar" className="space-y-3">
+        <TabsList className={cn('bg-surface border border-surface p-0.5 h-auto rounded-lg', canImport ? 'grid grid-cols-3' : 'grid grid-cols-2')}>
+          <TabsTrigger value="daftar" className="py-2 rounded-md data-[state=active]:bg-violet-600 data-[state=active]:text-white text-xs font-medium">
+            Daftar Siswa
+          </TabsTrigger>
+          <TabsTrigger value="analitik" className="py-2 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs font-medium">
+            Analitik
+          </TabsTrigger>
+          {canImport && (
+            <TabsTrigger value="import" className="py-2 rounded-md data-[state=active]:bg-slate-700 data-[state=active]:text-white text-xs font-medium">
+              Import
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="daftar" className="m-0">
+          <TabDaftar kelasList={kelasList} isAdmin={isAdmin} userRole={userRole} />
+        </TabsContent>
+
+        <TabsContent value="analitik" className="m-0">
+          <TabAnalitik kelasList={kelasList} />
+        </TabsContent>
+
+        {canImport && (
+          <TabsContent value="import" className="m-0">
+            <TabImport mappingList={mappingList} />
+          </TabsContent>
+        )}
+      </Tabs>
+    </div>
+  )
+}
