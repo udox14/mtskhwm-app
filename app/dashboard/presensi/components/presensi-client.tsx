@@ -58,14 +58,14 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }
   const handleMasuk = (userId: string) => {
     startTransition(async () => {
       const res = await catatPresensiMasuk(userId, 'current_user', undefined)
-      if (res.error) alert(res.error)
+      if ((res as any)?.error) alert((res as any).error)
     })
   }
 
   const handlePulang = (userId: string) => {
     startTransition(async () => {
       const res = await catatPresensiPulang(userId, 'current_user')
-      if (res.error) alert(res.error)
+      if ((res as any)?.error) alert((res as any).error)
     })
   }
 
@@ -73,7 +73,7 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }
     if (!statusModal) return
     startTransition(async () => {
       const res = await setStatusPresensi(statusModal.id, statusValue, 'current_user', statusCatatan || undefined)
-      if (res.error) alert(res.error)
+      if ((res as any)?.error) alert((res as any).error)
       else setStatusModal(null)
     })
   }
@@ -87,7 +87,7 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }
         editJamPulang || null,
         'current_user'
       )
-      if (res?.error) alert(res.error)
+      if ((res as any)?.error) alert((res as any).error)
       else setEditData(null)
     })
   }
