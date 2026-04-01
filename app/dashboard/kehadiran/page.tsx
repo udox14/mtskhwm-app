@@ -9,6 +9,7 @@ import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Kehadiran & Jurnal - MTSKHWM App' }
+export const dynamic = 'force-dynamic'
 
 async function KehadiranDataFetcher({ profile, isAdmin }: { profile: any, isAdmin: boolean }) {
   const db = await getDB()

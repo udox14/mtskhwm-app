@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 export const metadata = { title: 'Dashboard - MTSKHWM App' }
+export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()

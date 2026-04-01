@@ -7,6 +7,7 @@ import { ProfileClient } from './components/profile-client'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Profil Saya - MTSKHWM App' }
+export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage() {
   const user = await getCurrentUser()

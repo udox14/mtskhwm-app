@@ -9,6 +9,7 @@ import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Data Guru & Pegawai - MTSKHWM App' }
+export const dynamic = 'force-dynamic'
 
 async function GuruDataFetcher() {
   const db = await getDB()

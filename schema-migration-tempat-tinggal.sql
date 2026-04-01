@@ -1,14 +1,6 @@
--- ============================================================
--- Migration: Perluas CHECK constraint tempat_tinggal di tabel siswa
--- SQLite tidak support DROP CONSTRAINT, jadi perlu recreate tabel
---
--- Jalankan via:
--- wrangler d1 execute mtskhwm-db --remote --file=schema-migration-tempat-tinggal.sql
--- ============================================================
-
+-- Fix: Perluas CHECK constraint tempat_tinggal (49 kolom)
 PRAGMA foreign_keys = OFF;
 
--- 1. Buat tabel sementara dengan constraint baru
 CREATE TABLE siswa_new (
   id                  TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
   nisn                TEXT NOT NULL UNIQUE,
@@ -63,21 +55,19 @@ CREATE TABLE siswa_new (
   pekerjaan_ibu       TEXT,
   penghasilan_ibu     TEXT,
   created_at          TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+  tanggal_keluar      TEXT,
+  alasan_keluar       TEXT,
+  keterangan_keluar   TEXT
 );
 
--- 2. Copy semua data dari tabel lama
 INSERT INTO siswa_new SELECT * FROM siswa;
-
--- 3. Hapus tabel lama
 DROP TABLE siswa;
-
--- 4. Rename tabel baru
 ALTER TABLE siswa_new RENAME TO siswa;
 
--- 5. Recreate indexes
 CREATE INDEX IF NOT EXISTS idx_siswa_kelas_id  ON siswa(kelas_id);
 CREATE INDEX IF NOT EXISTS idx_siswa_status    ON siswa(status);
 CREATE INDEX IF NOT EXISTS idx_siswa_nisn      ON siswa(nisn);
+CREATE INDEX IF NOT EXISTS idx_siswa_keluar    ON siswa(status, tanggal_keluar);
 
 PRAGMA foreign_keys = ON;

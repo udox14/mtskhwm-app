@@ -9,6 +9,7 @@ import { KedisiplinanClient } from './components/kedisiplinan-client'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Kedisiplinan & Tata Tertib - MTSKHWM App' }
+export const dynamic = 'force-dynamic'
 
 async function KedisiplinanDataFetcher({ currentUser, taAktifId }: { currentUser: any, taAktifId: string }) {
   const db = await getDB()
