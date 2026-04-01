@@ -7,7 +7,6 @@ import { SettingsClient } from './components/settings-client'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Pengaturan Global - MTSKHWM App' }
-export const dynamic = 'force-dynamic'
 
 // Normalize jam_pelajaran: handle format lama (flat array) vs baru (PolaJam[])
 function normalizeJamPelajaran(raw: string | null): any[] {
@@ -33,6 +32,7 @@ function normalizeJamPelajaran(raw: string | null): any[] {
   }
 }
 
+export const dynamic = 'force-dynamic'
 export default async function SettingsPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')

@@ -9,7 +9,6 @@ import { KedisiplinanClient } from './components/kedisiplinan-client'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Kedisiplinan & Tata Tertib - MTSKHWM App' }
-export const dynamic = 'force-dynamic'
 
 async function KedisiplinanDataFetcher({ currentUser, taAktifId }: { currentUser: any, taAktifId: string }) {
   const db = await getDB()
@@ -43,6 +42,7 @@ async function KedisiplinanDataFetcher({ currentUser, taAktifId }: { currentUser
   return <KedisiplinanClient currentUser={currentUser} kasusList={formattedKasus} masterList={masterResult.results || []} />
 }
 
+export const dynamic = 'force-dynamic'
 export default async function KedisiplinanPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')

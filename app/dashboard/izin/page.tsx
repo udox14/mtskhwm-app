@@ -9,7 +9,6 @@ import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Perizinan Siswa - MTSKHWM App' }
-export const dynamic = 'force-dynamic'
 
 async function IzinDataFetcher({ currentUserRole }: { currentUserRole: string }) {
   const db = await getDB()
@@ -52,6 +51,7 @@ async function IzinDataFetcher({ currentUserRole }: { currentUserRole: string })
   return <IzinClient izinKeluarList={filteredKeluar} izinKelasList={formattedIzinKelas} currentUserRole={currentUserRole} />
 }
 
+export const dynamic = 'force-dynamic'
 export default async function IzinPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')

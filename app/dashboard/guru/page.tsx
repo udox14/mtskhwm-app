@@ -9,7 +9,6 @@ import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Data Guru & Pegawai - MTSKHWM App' }
-export const dynamic = 'force-dynamic'
 
 async function GuruDataFetcher() {
   const db = await getDB()
@@ -30,6 +29,7 @@ async function GuruDataFetcher() {
   return <GuruClient initialData={mergedData} />
 }
 
+export const dynamic = 'force-dynamic'
 export default async function GuruPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')

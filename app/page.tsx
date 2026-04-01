@@ -5,11 +5,11 @@ import { getCurrentUser } from '@/utils/auth/server'
 import { ArrowRight, LayoutDashboard, LogIn, Shield } from 'lucide-react'
 
 export const metadata = {
-export const dynamic = 'force-dynamic'
   title: 'MTSKHWM ERP - Sistem Manajemen MTs KH. A. Wahab Muhsin Sukahideng',
   description: 'Portal Sistem Informasi Manajemen Terpadu MTs KH. A. Wahab Muhsin Sukahideng.',
 }
 
+export const dynamic = 'force-dynamic'
 export default async function LandingPage() {
   const user = await getCurrentUser()
 
