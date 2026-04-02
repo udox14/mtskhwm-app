@@ -215,8 +215,8 @@ export function AkademikClient({
   const handleDownloadTemplateASC = () => {
     const XLSX = (window as any).XLSX; if (!XLSX) return alert('Library belum siap.')
     const ws = XLSX.utils.json_to_sheet([
-      { NAMA_GURU: 'Muhammad Ropik Nazib, M.Ag.', NAMA_KELAS: '12-1', NAMA_MAPEL: 'Fikih' },
-      { NAMA_GURU: 'Drs. Khoerun', NAMA_KELAS: '12-1', NAMA_MAPEL: 'Pendidikan Pancasila' },
+      { NAMA_GURU: 'Alexander, M.Ag.', NAMA_KELAS: '7-1', NAMA_MAPEL: 'Fikih' },
+      { NAMA_GURU: 'Drs. Pedro', NAMA_KELAS: '7-1', NAMA_MAPEL: 'PPKN' },
     ])
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Jadwal_ASC')
     XLSX.writeFile(wb, 'Template_Import_ASC.xlsx')

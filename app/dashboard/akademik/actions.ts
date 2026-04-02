@@ -161,9 +161,9 @@ export async function importJadwalASC(xmlText: string): Promise<{
     const upper = name.toUpperCase().trim()
     let tingkat = 0
     let rest = ''
-    if (upper.startsWith('XII-')) { tingkat = 9; rest = upper.slice(4) }
-    else if (upper.startsWith('XI-')) { tingkat = 8; rest = upper.slice(3) }
-    else if (upper.startsWith('X-')) { tingkat = 7; rest = upper.slice(2) }
+    if (upper.startsWith('IX-')) { tingkat = 9; rest = upper.slice(4) }
+    else if (upper.startsWith('VIII-')) { tingkat = 8; rest = upper.slice(3) }
+    else if (upper.startsWith('VII-')) { tingkat = 7; rest = upper.slice(2) }
     else return null
     const nomor = rest.trim()
     if (!nomor) return null
