@@ -199,7 +199,7 @@ function ImportXMLPanel({ onDone }: { onDone: () => void }) {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<{
     success: string | null; error: string | null
-    logs: string[]; stats: { penugasan: number; jadwal: number }
+    logs: string[]; stats: { mapel: number; penugasan: number; jadwal: number }
   } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -217,7 +217,7 @@ function ImportXMLPanel({ onDone }: { onDone: () => void }) {
       setResult(res)
       if (res.success) onDone()
     } catch (e: any) {
-      setResult({ success: null, error: e.message, logs: [], stats: { penugasan: 0, jadwal: 0 } })
+      setResult({ success: null, error: e.message, logs: [], stats: { mapel: 0, penugasan: 0, jadwal: 0 } })
     }
     setIsLoading(false)
   }
@@ -240,8 +240,9 @@ function ImportXMLPanel({ onDone }: { onDone: () => void }) {
             <div className="flex gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <div className="text-[11px] leading-relaxed space-y-1">
-                <p className="font-semibold">Perhatian!</p>
-                <p>Import akan <strong>menghapus semua penugasan & jadwal</strong> semester aktif dan menggantinya dengan data dari file XML.</p>
+                <p className="font-semibold">Import All-in-One</p>
+                <p>Cukup upload file XML, maka <strong>master mapel</strong> (+ kode ASC), <strong>penugasan/beban mengajar</strong>, dan <strong>jadwal</strong> akan terisi sekaligus.</p>
+                <p className="text-amber-700">Penugasan & jadwal semester aktif yang lama akan <strong>dihapus</strong> dan diganti.</p>
               </div>
             </div>
 
@@ -265,7 +266,8 @@ function ImportXMLPanel({ onDone }: { onDone: () => void }) {
                   {result.success || result.error}
                 </div>
                 {result.success && (
-                  <div className="flex gap-3 text-[11px]">
+                  <div className="flex gap-3 text-[11px] flex-wrap">
+                    <span>📚 {result.stats.mapel} mapel</span>
                     <span>✅ {result.stats.penugasan} penugasan</span>
                     <span>📅 {result.stats.jadwal} slot jadwal</span>
                   </div>

@@ -16,7 +16,7 @@ import { tambahMapel, editMapel, hapusMapel, importPenugasanASC, hapusPenugasan,
 import { JadwalTab } from './components/jadwal-tab'
 import { cn } from '@/lib/utils'
 
-type MapelType = { id: string; nama_mapel: string; kode_mapel?: string; kelompok: string; tingkat: string; kategori: string }
+type MapelType = { id: string; nama_mapel: string; kode_mapel?: string; kode_asc?: string; kelompok: string; tingkat: string; kategori: string }
 type PenugasanType = {
   id: string
   guru: { nama_lengkap: string }
@@ -215,8 +215,8 @@ export function AkademikClient({
   const handleDownloadTemplateASC = () => {
     const XLSX = (window as any).XLSX; if (!XLSX) return alert('Library belum siap.')
     const ws = XLSX.utils.json_to_sheet([
-      { NAMA_GURU: 'Alexander, M.Ag.', NAMA_KELAS: '7-1', NAMA_MAPEL: 'Fikih' },
-      { NAMA_GURU: 'Drs. Pedro', NAMA_KELAS: '7-1', NAMA_MAPEL: 'PPKN' },
+      { NAMA_GURU: 'Muhammad Ropik Nazib, M.Ag.', NAMA_KELAS: '12-1', NAMA_MAPEL: 'Fikih' },
+      { NAMA_GURU: 'Drs. Khoerun', NAMA_KELAS: '12-1', NAMA_MAPEL: 'Pendidikan Pancasila' },
     ])
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Jadwal_ASC')
     XLSX.writeFile(wb, 'Template_Import_ASC.xlsx')
@@ -735,7 +735,13 @@ export function AkademikClient({
                         <button onClick={() => handleHapusMapel(m.id, m.nama_mapel)} className="p-1.5 rounded text-rose-500 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {m.kode_asc && (
+                        <>
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase shrink-0">ASC</span>
+                          <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">{m.kode_asc}</span>
+                        </>
+                      )}
                       <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase shrink-0">RDM</span>
                       <Input
                         value={currentKode} onChange={e => handleQueueMapelChange(m.id, e.target.value)}
@@ -759,6 +765,7 @@ export function AkademikClient({
                   <TableHeader>
                     <TableRow className="bg-surface-2 hover:bg-surface-2">
                       <TableHead className="h-9 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">Nama Mata Pelajaran</TableHead>
+                      <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500 w-28">Kode ASC</TableHead>
                       <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500 w-36">Kode RDM</TableHead>
                       <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500 w-28">Kelompok</TableHead>
                       <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500 w-28">Tingkat</TableHead>
@@ -767,13 +774,16 @@ export function AkademikClient({
                   </TableHeader>
                   <TableBody>
                     {paginatedMapel.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="h-24 text-center text-sm text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">Belum ada mata pelajaran.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="h-24 text-center text-sm text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">Belum ada mata pelajaran.</TableCell></TableRow>
                     ) : paginatedMapel.map(m => {
                       const currentKode = getMapelValue(m.id, m.kode_mapel)
                       const isPendingChange = pendingMapelChanges[m.id]?.kode_mapel !== undefined
                       return (
                         <TableRow key={m.id} className={cn("border-surface-2 group transition-colors", isPendingChange ? 'bg-emerald-50/20' : 'hover:bg-surface-2/60')}>
                           <TableCell className="px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100">{m.nama_mapel}</TableCell>
+                          <TableCell className="py-2.5">
+                            <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">{m.kode_asc || <span className="text-slate-300 dark:text-slate-600 font-normal">—</span>}</span>
+                          </TableCell>
                           <TableCell className="py-2.5">
                             <Input
                               value={currentKode} onChange={e => handleQueueMapelChange(m.id, e.target.value)}

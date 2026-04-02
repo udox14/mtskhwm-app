@@ -30,7 +30,7 @@ async function AkademikDataFetcher({ userRole }: { userRole: string }) {
 
   const [taAktif, mapelResult, guruResult] = await Promise.all([
     db.prepare('SELECT id, nama, semester, daftar_jurusan, jam_pelajaran FROM tahun_ajaran WHERE is_active = 1').first<any>(),
-    db.prepare('SELECT id, nama_mapel, kode_mapel, kelompok, tingkat, kategori FROM mata_pelajaran ORDER BY nama_mapel ASC').all<any>(),
+    db.prepare('SELECT id, nama_mapel, kode_mapel, kode_asc, kelompok, tingkat, kategori FROM mata_pelajaran ORDER BY nama_mapel ASC').all<any>(),
     db.prepare(`SELECT id, nama_lengkap FROM "user" WHERE role IN ('guru','guru_bk','wakamad','kepsek','guru_piket') AND nama_lengkap IS NOT NULL ORDER BY nama_lengkap ASC`).all<any>(),
   ])
 
