@@ -15,6 +15,8 @@ import {
   FileSpreadsheet,
   ClipboardCheck,
   BarChart3,
+  Star,
+  Crown,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -59,6 +61,18 @@ export const MENU_ITEMS: MenuItem[] = [
     title: 'Rekap Nilai',
     href: '/dashboard/akademik/nilai',
     icon: FileSpreadsheet,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
+  },
+  {
+    title: 'Program Unggulan',
+    href: '/dashboard/program-unggulan',
+    icon: Star,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas']
+  },
+  {
+    title: 'Kelola Unggulan',
+    href: '/dashboard/program-unggulan/kelola',
+    icon: Crown,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
   },
   {
