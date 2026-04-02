@@ -226,13 +226,46 @@ export async function uploadFotoSiswaAction(siswaId: string, formData: FormData)
 
 // ============================================================
 // 7. IMPORT MASSAL SISWA
+// Mendukung format export PPDB langsung (header nama panjang dengan spasi)
+// maupun format lama (CAPS_WITH_UNDERSCORES) untuk backward compatibility
 // ============================================================
 export async function importSiswaMassal(dataSiswa: any[]) {
   const db = await getDB()
   const user = await getCurrentUser()
   if (!user) return { error: 'Unauthorized' }
 
-  // Ambil data kelas dan siswa existing dalam 1 query masing-masing
+  // Helper: ambil nilai string dari kolom, support multiple nama kolom (alias)
+  const s = (row: any, ...keys: string[]): string | null => {
+    for (const k of keys) {
+      const v = row[k]
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim()
+    }
+    return null
+  }
+  // Helper: ambil nilai float
+  const f = (row: any, ...keys: string[]): number | null => {
+    for (const k of keys) {
+      const v = row[k]
+      if (v !== undefined && v !== null && String(v).trim() !== '') {
+        const n = parseFloat(String(v).replace(',', '.'))
+        return isNaN(n) ? null : n
+      }
+    }
+    return null
+  }
+  // Helper: ambil nilai integer
+  const n = (row: any, ...keys: string[]): number | null => {
+    for (const k of keys) {
+      const v = row[k]
+      if (v !== undefined && v !== null && String(v).trim() !== '') {
+        const num = parseInt(String(v))
+        return isNaN(num) ? null : num
+      }
+    }
+    return null
+  }
+
+  // Ambil data kelas dan siswa existing
   const [kelasDb, existingDb] = await Promise.all([
     db.prepare('SELECT id, tingkat, kelompok, nomor_kelas FROM kelas').all<any>(),
     db.prepare('SELECT id, nisn, nama_lengkap FROM siswa').all<any>(),
@@ -246,35 +279,184 @@ export async function importSiswaMassal(dataSiswa: any[]) {
 
   const existingByNama = new Map<string, { id: string; nisn: string }>()
   const existingByNisn = new Map<string, { id: string; nama_lengkap: string }>()
-  existingDb.results.forEach((s: any) => {
-    existingByNama.set(s.nama_lengkap.toLowerCase().trim(), { id: s.id, nisn: s.nisn })
-    if (s.nisn) existingByNisn.set(s.nisn.trim(), { id: s.id, nama_lengkap: s.nama_lengkap })
+  existingDb.results.forEach((s2: any) => {
+    existingByNama.set(s2.nama_lengkap.toLowerCase().trim(), { id: s2.id, nisn: s2.nisn })
+    if (s2.nisn) existingByNisn.set(s2.nisn.trim(), { id: s2.id, nama_lengkap: s2.nama_lengkap })
   })
 
   const toInsert: any[] = []
   const toUpdate: any[] = []
   const errors: string[] = []
 
+  const VALID_TEMPAT_TINGGAL = [
+    'Non-Pesantren', 'Pesantren', 'Pesantren Sukahideng',
+    'Pesantren Sukamanah', 'Pesantren Sukaguru', "Pesantren Al-Ma'mur",
+  ]
+
   for (const row of dataSiswa) {
-    const nisn = row.NISN ? String(row.NISN).trim() : ''
-    const nama_lengkap = row.NAMA_LENGKAP ? String(row.NAMA_LENGKAP).trim() : ''
+    // --- Identitas wajib ---
+    const nisn = s(row, 'NISN', 'nisn') ?? ''
+    const nama_lengkap = s(row, 'Nama Peserta', 'NAMA_LENGKAP', 'nama_lengkap') ?? ''
 
-    if (!nama_lengkap) { errors.push(`Baris kosong nama dilewati`); continue }
+    if (!nama_lengkap) { errors.push(`Baris tanpa nama dilewati`); continue }
 
-    const tingkat = row.TINGKAT ? parseInt(row.TINGKAT) : null
-    const kelompok = row.KELOMPOK ? String(row.KELOMPOK).trim().toUpperCase() : 'UMUM'
-    const nomor_kelas = row.NOMOR_KELAS ? String(row.NOMOR_KELAS).trim() : null
+    // --- Kelas (kolom khusus aplikasi) ---
+    const tingkat = n(row, 'Tingkat Kelas', 'TINGKAT', 'tingkat')
+    const kelompok = s(row, 'Kelompok Kelas', 'KELOMPOK', 'kelompok')?.toUpperCase() ?? 'UMUM'
+    const nomor_kelas = s(row, 'Nomor Kelas', 'NOMOR_KELAS', 'nomor_kelas')
     const kelasKey = tingkat && nomor_kelas ? `${tingkat}-${kelompok}-${nomor_kelas}` : null
     const kelas_id = kelasKey ? (kelasMap.get(kelasKey) ?? null) : null
 
+    // --- Tempat tinggal (enum aplikasi) ---
+    // Kolom 'Pesantren' khusus template aplikasi, 'TEMPAT_TINGGAL' format lama
+    // 'Tempat Tinggal' dari PPDB disimpan terpisah di tempat_tinggal_ppdb
+    const pesantrenRaw = s(row, 'Pesantren', 'PESANTREN', 'TEMPAT_TINGGAL') ?? ''
+    const tempat_tinggal = VALID_TEMPAT_TINGGAL.includes(pesantrenRaw) ? pesantrenRaw : 'Non-Pesantren'
+
+    // --- JK ---
+    const jkRaw = s(row, 'JK', 'JENIS_KELAMIN', 'jenis_kelamin') ?? ''
+    const jenis_kelamin = jkRaw.toUpperCase() === 'P' ? 'P' : 'L'
+
+    // --- Build payload lengkap PPDB ---
     const payload: any = {
+      // Core (wajib ada)
       nisn: nisn || null,
       nama_lengkap,
-      jenis_kelamin: row.JENIS_KELAMIN === 'P' ? 'P' : 'L',
-      tempat_tinggal: row.TEMPAT_TINGGAL === 'Pesantren' ? 'Pesantren' : 'Non-Pesantren',
+      jenis_kelamin,
+      tempat_tinggal,
       kelas_id,
       status: 'aktif',
+
+      // Identitas & Pendaftaran
+      no_pendaftaran:   s(row, 'No Pendaftaran'),
+      tanggal_daftar:   s(row, 'Tanggal Daftar'),
+      tahun_daftar:     s(row, 'Tahun'),
+
+      // Data diri
+      tempat_lahir:     s(row, 'Tempat Lahir', 'TEMPAT_LAHIR'),
+      tanggal_lahir:    s(row, 'Tanggal Lahir', 'TANGGAL_LAHIR'),
+      agama:            s(row, 'Agama', 'AGAMA'),
+      nik:              s(row, 'NIK', 'nik'),
+      nomor_kk:         s(row, 'No KK', 'No. KK', 'NOMOR_KK'),
+      no_akta_lahir:    s(row, 'No Registrasi Akta Lahir'),
+      kewarganegaraan:  s(row, 'Kewarganegaraan'),
+      berkebutuhan_khusus: s(row, 'Berkebutuhan Khusus'),
+      hobi:             s(row, 'Hobi'),
+      email_siswa:      s(row, 'Email'),
+      nomor_whatsapp:   s(row, 'Nomor HP', 'NOMOR_WHATSAPP', 'nomor_whatsapp'),
+      no_telepon_rumah: s(row, 'No Telepon Rumah'),
+      tinggi_badan:     f(row, 'Tinggi Badan'),
+      berat_badan:      f(row, 'Berat Badan'),
+      lingkar_kepala:   f(row, 'Lingkar Kepala'),
+      anak_ke:          n(row, 'Anak Ke', 'ANAK_KE'),
+      jumlah_saudara:   n(row, 'Jumlah Saudara Kandung', 'JUMLAH_SAUDARA'),
+
+      // Alamat
+      alamat_lengkap:   s(row, 'Alamat', 'ALAMAT_LENGKAP'),
+      rt:               s(row, 'RT'),
+      rw:               s(row, 'RW'),
+      dusun:            s(row, 'Dusun'),
+      desa_kelurahan:   s(row, 'Kelurahan', 'DESA_KELURAHAN'),
+      kecamatan:        s(row, 'Kecamatan', 'KECAMATAN'),
+      kabupaten_kota:   s(row, 'Kabupaten/Kota', 'KABUPATEN_KOTA'),
+      provinsi:         s(row, 'Provinsi', 'PROVINSI'),
+      kode_pos:         s(row, 'Kode Pos', 'KODE_POS'),
+      tempat_tinggal_ppdb: s(row, 'Tempat Tinggal'),
+      moda_transportasi: s(row, 'Moda Transportasi'),
+
+      // Bantuan sosial
+      no_kks:           s(row, 'No KKS'),
+      penerima_kps_pkh: s(row, 'Penerima KPS/PKH'),
+      no_kps_pkh:       s(row, 'No KPS/PKH'),
+      penerima_kip:     s(row, 'Penerima KIP'),
+      no_kip:           s(row, 'No KIP'),
+      nama_di_kip:      s(row, 'Nama Tertera Di KIP'),
+      terima_fisik_kip: s(row, 'Terima Fisik Kartu KIP'),
+
+      // Ayah
+      nama_ayah:        s(row, 'Nama Ayah', 'NAMA_AYAH'),
+      nik_ayah:         s(row, 'NIK Ayah'),
+      tempat_lahir_ayah: s(row, 'Tempat Lahir Ayah'),
+      tanggal_lahir_ayah: s(row, 'Tanggal Lahir Ayah'),
+      pendidikan_ayah:  s(row, 'Pendidikan Ayah', 'PENDIDIKAN_AYAH'),
+      pekerjaan_ayah:   s(row, 'Pekerjaan Ayah', 'PEKERJAAN_AYAH'),
+      penghasilan_ayah: s(row, 'Penghasilan Bulanan Ayah', 'PENGHASILAN_AYAH'),
+      berkebutuhan_khusus_ayah: s(row, 'Berkebutuhan Khusus Ayah'),
+      no_hp_ayah:       s(row, 'No Hp Ayah'),
+
+      // Ibu
+      nama_ibu:         s(row, 'Nama Ibu', 'NAMA_IBU'),
+      nik_ibu:          s(row, 'NIK Ibu'),
+      tempat_lahir_ibu: s(row, 'Tempat Lahir Ibu'),
+      tanggal_lahir_ibu: s(row, 'Tanggal Lahir Ibu'),
+      pendidikan_ibu:   s(row, 'Pendidikan Ibu', 'PENDIDIKAN_IBU'),
+      pekerjaan_ibu:    s(row, 'Pekerjaan Ibu', 'PEKERJAAN_IBU'),
+      penghasilan_ibu:  s(row, 'Penghasilan Bulanan Ibu', 'PENGHASILAN_IBU'),
+      berkebutuhan_khusus_ibu: s(row, 'Berkebutuhan Khusus Ibu'),
+      no_hp_ibu:        s(row, 'No Hp Ibu'),
+
+      // Wali
+      nama_wali:        s(row, 'Nama Wali'),
+      nik_wali:         s(row, 'NIK Wali'),
+      tempat_lahir_wali: s(row, 'Tempat Lahir Wali'),
+      tanggal_lahir_wali: s(row, 'Tanggal Lahir Wali'),
+      pendidikan_wali:  s(row, 'Pendidikan Wali'),
+      pekerjaan_wali:   s(row, 'Pekerjaan Wali'),
+      penghasilan_wali: s(row, 'Penghasilan Bulanan Wali'),
+      no_hp_wali:       s(row, 'No Hp Wali'),
+
+      // Sekolah asal
+      asal_sekolah:     s(row, 'Asal Sekolah'),
+      akreditasi_sekolah: s(row, 'Akreditasi'),
+      no_un:            s(row, 'No UN'),
+      no_seri_ijazah:   s(row, 'No Seri Ijazah'),
+      no_seri_skhu:     s(row, 'No Seri SKHU'),
+      tahun_lulus:      s(row, 'Tahun Lulus'),
+
+      // Pilihan
+      sekolah_pilihan_2: s(row, 'Sekolah Pilihan 2'),
+      jurusan_pilihan_1: s(row, 'Jurusan Pilihan 1'),
+      jurusan_pilihan_2: s(row, 'Jurusan Pilihan 2'),
+      minat_jurusan:    s(row, 'Jurusan Pilihan 1', 'MINAT_JURUSAN'),  // sync ke kolom lama
+
+      // Geolokasi
+      latitude:         s(row, 'Latitude'),
+      longitude:        s(row, 'Longitude'),
+      radius:           s(row, 'Radius'),
+      rentang_jarak:    s(row, 'Rentang Jarak'),
+      waktu_tempuh:     s(row, 'Waktu Tempuh'),
+
+      // Penerimaan & Nilai
+      jalur_masuk:      s(row, 'Jalur'),
+      nilai_rapor:      f(row, 'Nilai Rapor'),
+      nilai_us:         f(row, 'Nilai US'),
+      nilai_un:         f(row, 'Nilai UN'),
+      nilai_rerata_rapor: f(row, 'Nilai Rerata rapor semester'),
+      jumlah_nilai:     f(row, 'Jumlah Nilai'),
+      nilai_jarak:      f(row, 'Nilai Jarak'),
+      nilai_prestasi:   f(row, 'Nilai Prestasi'),
+      nilai_tes:        f(row, 'Nilai Tes'),
+      nilai_wawancara:  f(row, 'Nilai Wawancara'),
+      nilai_akhir:      f(row, 'Nilai Akhir'),
+
+      // Status PPDB
+      status_hasil:         s(row, 'Status Hasil'),
+      status_daftar_ulang:  s(row, 'Status Daftar Ulang'),
+      catatan:              s(row, 'Catatan'),
+      keterangan:           s(row, 'Keterangan'),
     }
+
+    // Hapus semua key dengan nilai null agar tidak overwrite data existing yang sudah terisi
+    Object.keys(payload).forEach(k => {
+      if (payload[k] === null) delete payload[k]
+    })
+    // Pastikan field wajib selalu ada
+    payload.nisn = nisn || null
+    payload.nama_lengkap = nama_lengkap
+    payload.jenis_kelamin = jenis_kelamin
+    payload.tempat_tinggal = tempat_tinggal
+    payload.kelas_id = kelas_id
+    payload.status = 'aktif'
 
     const existBySisn = nisn ? existingByNisn.get(nisn) : null
     const existByNama = existingByNama.get(nama_lengkap.toLowerCase())
@@ -296,11 +478,11 @@ export async function importSiswaMassal(dataSiswa: any[]) {
   }
 
   if (toUpdate.length > 0) {
-    const chunkSize = 100
+    const chunkSize = 50  // lebih kecil karena payload per-baris lebih besar
     for (let i = 0; i < toUpdate.length; i += chunkSize) {
       const chunk = toUpdate.slice(i, i + chunkSize)
-      const stmts = chunk.map((s: any) => {
-        const { id, ...data } = s
+      const stmts = chunk.map((s2: any) => {
+        const { id, ...data } = s2
         const keys = Object.keys(data)
         const sets = keys.map((k) => `${k} = ?`).join(', ')
         const vals = keys.map((k) => serializeValue(data[k]))
