@@ -379,13 +379,21 @@ export function JadwalTab({
     setSelectedGuru('')
   }
 
-  // Kelompokkan kelas per tingkat
+  // Kelompokkan kelas per tingkat, sort nomor kelas secara numerik
   const kelasByTingkat = kelasList.reduce((acc, k) => {
     const t = String(k.tingkat)
     if (!acc[t]) acc[t] = []
     acc[t].push(k)
     return acc
   }, {} as Record<string, KelasItem[]>)
+  // Natural sort: 1, 2, 3, ... 10, 11 (bukan 1, 10, 11, 2, ...)
+  for (const t of Object.keys(kelasByTingkat)) {
+    kelasByTingkat[t].sort((a, b) => {
+      const na = parseInt(a.nomor_kelas) || 0
+      const nb = parseInt(b.nomor_kelas) || 0
+      return na - nb
+    })
+  }
 
   const activeJadwal = viewMode === 'kelas' ? jadwalKelas : jadwalGuru
 

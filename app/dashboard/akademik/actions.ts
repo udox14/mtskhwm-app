@@ -724,3 +724,102 @@ export async function importPenugasanASC(dataExcel: any[]) {
     logs: errorLogs,
   }
 }
+
+// ============================================================
+// 6. PELAJARAN BERGILIR (PIKET) ACTIONS
+// ============================================================
+
+// Ambil semua penugasan bergilir + daftar guru piketnya
+export async function getPenugasanBergilir(tahun_ajaran_id: string) {
+  const db = await getDB()
+  const penugasan = await db.prepare(`
+    SELECT pm.id, pm.guru_id,
+      mp.nama_mapel, mp.id as mapel_id,
+      k.tingkat, k.nomor_kelas, k.kelompok as kelas_kelompok, k.id as kelas_id,
+      u.nama_lengkap as guru_utama_nama
+    FROM penugasan_mengajar pm
+    JOIN mata_pelajaran mp ON pm.mapel_id = mp.id
+    JOIN kelas k ON pm.kelas_id = k.id
+    JOIN "user" u ON pm.guru_id = u.id
+    WHERE pm.tahun_ajaran_id = ? AND pm.is_piket_bergilir = 1
+    ORDER BY mp.nama_mapel, k.tingkat, k.nomor_kelas
+  `).bind(tahun_ajaran_id).all<any>()
+
+  const piketAll = await db.prepare(`
+    SELECT pgp.id, pgp.penugasan_id, pgp.guru_id, pgp.urutan, pgp.is_aktif_minggu_ini,
+      u.nama_lengkap as guru_nama
+    FROM penugasan_guru_piket pgp
+    JOIN "user" u ON pgp.guru_id = u.id
+    JOIN penugasan_mengajar pm ON pgp.penugasan_id = pm.id
+    WHERE pm.tahun_ajaran_id = ?
+    ORDER BY pgp.urutan ASC
+  `).bind(tahun_ajaran_id).all<any>()
+
+  // Group piket by penugasan_id
+  const piketMap = new Map<string, any[]>()
+  for (const p of (piketAll.results || [])) {
+    if (!piketMap.has(p.penugasan_id)) piketMap.set(p.penugasan_id, [])
+    piketMap.get(p.penugasan_id)!.push(p)
+  }
+
+  return (penugasan.results || []).map((p: any) => ({
+    ...p,
+    guru_piket: piketMap.get(p.id) || [],
+  }))
+}
+
+// Set guru aktif minggu ini untuk satu penugasan
+export async function setGuruAktifMingguIni(penugasan_id: string, guru_piket_id: string) {
+  const db = await getDB()
+  try {
+    // Reset semua guru di penugasan ini
+    await db.prepare('UPDATE penugasan_guru_piket SET is_aktif_minggu_ini = 0 WHERE penugasan_id = ?').bind(penugasan_id).run()
+    // Set yang dipilih jadi aktif
+    await db.prepare('UPDATE penugasan_guru_piket SET is_aktif_minggu_ini = 1 WHERE id = ?').bind(guru_piket_id).run()
+    revalidatePath('/dashboard/akademik')
+    return { success: 'Guru aktif minggu ini berhasil diubah.' }
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
+// Batch set guru aktif minggu ini — untuk banyak penugasan sekaligus
+export async function batchSetGuruAktif(assignments: Array<{ penugasan_id: string; guru_piket_id: string }>) {
+  const db = await getDB()
+  try {
+    // Reset semua dulu
+    const penugasanIds = [...new Set(assignments.map(a => a.penugasan_id))]
+    for (const pid of penugasanIds) {
+      await db.prepare('UPDATE penugasan_guru_piket SET is_aktif_minggu_ini = 0 WHERE penugasan_id = ?').bind(pid).run()
+    }
+    // Set aktif
+    for (const a of assignments) {
+      await db.prepare('UPDATE penugasan_guru_piket SET is_aktif_minggu_ini = 1 WHERE id = ?').bind(a.guru_piket_id).run()
+    }
+    revalidatePath('/dashboard/akademik')
+    return { success: `${assignments.length} guru aktif berhasil diatur.` }
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
+// Tambah guru ke daftar piket
+export async function tambahGuruPiket(penugasan_id: string, guru_id: string) {
+  const db = await getDB()
+  // Cari urutan tertinggi
+  const max = await db.prepare('SELECT MAX(urutan) as mx FROM penugasan_guru_piket WHERE penugasan_id = ?').bind(penugasan_id).first<any>()
+  const urutan = (max?.mx || 0) + 1
+  const result = await dbInsert(db, 'penugasan_guru_piket', { penugasan_id, guru_id, urutan, is_aktif_minggu_ini: 0 })
+  if (result.error) return { error: result.error.includes('UNIQUE') ? 'Guru ini sudah ada di daftar piket.' : result.error }
+  revalidatePath('/dashboard/akademik')
+  return { success: 'Guru berhasil ditambahkan ke daftar piket.' }
+}
+
+// Hapus guru dari daftar piket
+export async function hapusGuruPiket(id: string) {
+  const db = await getDB()
+  const result = await dbDelete(db, 'penugasan_guru_piket', { id })
+  if (result.error) return { error: result.error }
+  revalidatePath('/dashboard/akademik')
+  return { success: 'Guru berhasil dihapus dari daftar piket.' }
+}
