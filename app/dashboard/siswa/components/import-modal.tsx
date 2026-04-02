@@ -14,7 +14,6 @@ export function ImportModalSiswa() {
   const [isImporting, setIsImporting] = useState(false)
   const [xlsxReady, setXlsxReady] = useState(false)
   const [importLogs, setImportLogs] = useState<string[]>([])
-  const [chunkProgress, setChunkProgress] = useState<{ current: number; total: number } | null>(null)
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'error'; teks: string } | null>(null)
 
   const handleDownloadTemplate = () => {
@@ -139,7 +138,7 @@ export function ImportModalSiswa() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setIsImporting(true); setImportLogs([]); setPesan(null); setChunkProgress(null)
+    setIsImporting(true); setImportLogs([]); setPesan(null)
 
     const reader = new FileReader()
     reader.onload = async (event) => {
@@ -156,41 +155,14 @@ export function ImportModalSiswa() {
           return
         }
 
-        // Kirim per chunk 50 baris agar tidak melewati batas body & CPU Cloudflare
-        const CHUNK_SIZE = 50
-        const chunks: any[][] = []
-        for (let i = 0; i < jsonData.length; i += CHUNK_SIZE) {
-          chunks.push(jsonData.slice(i, i + CHUNK_SIZE))
-        }
-
-        let totalInsert = 0
-        let totalUpdate = 0
-        const allErrors: string[] = []
-        const allLogs: string[] = []
-
-        for (let i = 0; i < chunks.length; i++) {
-          setChunkProgress({ current: i + 1, total: chunks.length })
-          const result = await importSiswaMassal(chunks[i]) as any
-          if (result.error) allErrors.push(`Chunk ${i + 1}: ${result.error}`)
-          if (result.logs?.length > 0) allLogs.push(...result.logs)
-          // Parse angka dari pesan sukses "X ditambahkan, Y diperbarui"
-          if (result.success) {
-            const m = result.success.match(/(\d+) ditambahkan.*?(\d+) diperbarui/)
-            if (m) { totalInsert += parseInt(m[1]); totalUpdate += parseInt(m[2]) }
-          }
-        }
-
-        if (allLogs.length > 0) setImportLogs(allLogs)
-        if (allErrors.length > 0) {
-          setPesan({ tipe: 'error', teks: allErrors.slice(0, 3).join(' | ') })
-        } else {
-          setPesan({ tipe: 'sukses', teks: `Import selesai: ${totalInsert} ditambahkan, ${totalUpdate} diperbarui.` })
-        }
+        const result = await importSiswaMassal(jsonData) as any
+        if (result.error) setPesan({ tipe: 'error', teks: result.error })
+        else setPesan({ tipe: 'sukses', teks: result.success })
+        if (result.logs?.length > 0) setImportLogs(result.logs)
       } catch {
         setPesan({ tipe: 'error', teks: 'Gagal membaca file Excel.' })
       } finally {
         setIsImporting(false)
-        setChunkProgress(null)
         e.target.value = ''
       }
     }
@@ -263,10 +235,7 @@ export function ImportModalSiswa() {
 
             {isImporting && (
               <div className="flex items-center justify-center gap-2 p-2.5 text-xs text-emerald-600 bg-emerald-50 rounded-lg border border-emerald-100 animate-pulse">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                {chunkProgress
-                  ? `Memproses batch ${chunkProgress.current} dari ${chunkProgress.total}...`
-                  : 'Membaca file Excel...'}
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Memproses data biodata...
               </div>
             )}
 
