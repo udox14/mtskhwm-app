@@ -228,6 +228,10 @@ export async function uploadFotoSiswaAction(siswaId: string, formData: FormData)
 // 7. IMPORT MASSAL SISWA
 // Mendukung format export PPDB langsung (header nama panjang dengan spasi)
 // maupun format lama (CAPS_WITH_UNDERSCORES) untuk backward compatibility
+//
+// FIX: Payload kini dipisah ke tabel siswa + siswa_ppdb.
+//      Sebelumnya semua kolom PPDB dikirim ke tabel siswa → SQLite error
+//      "no such column" → dbBatchInsert catch → successCount: 0 (silent fail).
 // ============================================================
 export async function importSiswaMassal(dataSiswa: any[]) {
   const db = await getDB()
@@ -247,8 +251,8 @@ export async function importSiswaMassal(dataSiswa: any[]) {
     for (const k of keys) {
       const v = row[k]
       if (v !== undefined && v !== null && String(v).trim() !== '') {
-        const n = parseFloat(String(v).replace(',', '.'))
-        return isNaN(n) ? null : n
+        const num = parseFloat(String(v).replace(',', '.'))
+        return isNaN(num) ? null : num
       }
     }
     return null
@@ -264,6 +268,44 @@ export async function importSiswaMassal(dataSiswa: any[]) {
     }
     return null
   }
+
+  // -------------------------------------------------------
+  // WHITELIST kolom tabel siswa (49 kolom inti, NO PPDB cols)
+  // -------------------------------------------------------
+  const SISWA_COLS = new Set([
+    'id', 'nisn', 'nis_lokal', 'nama_lengkap', 'jenis_kelamin', 'tempat_tinggal',
+    'kelas_id', 'wali_murid_id', 'status', 'foto_url', 'minat_jurusan',
+    'nik', 'tempat_lahir', 'tanggal_lahir', 'agama',
+    'jumlah_saudara', 'anak_ke', 'status_anak',
+    'alamat_lengkap', 'rt', 'rw', 'desa_kelurahan', 'kecamatan', 'kabupaten_kota',
+    'provinsi', 'kode_pos', 'nomor_whatsapp', 'nomor_kk',
+    'nama_ayah', 'nik_ayah', 'tempat_lahir_ayah', 'tanggal_lahir_ayah', 'status_ayah',
+    'pendidikan_ayah', 'pekerjaan_ayah', 'penghasilan_ayah',
+    'nama_ibu', 'nik_ibu', 'tempat_lahir_ibu', 'tanggal_lahir_ibu', 'status_ibu',
+    'pendidikan_ibu', 'pekerjaan_ibu', 'penghasilan_ibu',
+    'updated_at',
+  ])
+
+  // -------------------------------------------------------
+  // WHITELIST kolom tabel siswa_ppdb
+  // -------------------------------------------------------
+  const PPDB_COLS = new Set([
+    'no_pendaftaran', 'tanggal_daftar', 'tahun_daftar',
+    'no_akta_lahir', 'kewarganegaraan', 'berkebutuhan_khusus', 'hobi', 'email_siswa',
+    'no_telepon_rumah', 'tinggi_badan', 'berat_badan', 'lingkar_kepala',
+    'dusun', 'tempat_tinggal_ppdb', 'moda_transportasi',
+    'no_kks', 'penerima_kps_pkh', 'no_kps_pkh', 'penerima_kip', 'no_kip',
+    'nama_di_kip', 'terima_fisik_kip',
+    'berkebutuhan_khusus_ayah', 'no_hp_ayah', 'berkebutuhan_khusus_ibu', 'no_hp_ibu',
+    'nama_wali', 'nik_wali', 'tempat_lahir_wali', 'tanggal_lahir_wali',
+    'pendidikan_wali', 'pekerjaan_wali', 'penghasilan_wali', 'no_hp_wali',
+    'asal_sekolah', 'akreditasi_sekolah', 'no_un', 'no_seri_ijazah', 'no_seri_skhu', 'tahun_lulus',
+    'sekolah_pilihan_2', 'jurusan_pilihan_1', 'jurusan_pilihan_2',
+    'latitude', 'longitude', 'radius', 'rentang_jarak', 'waktu_tempuh',
+    'jalur_masuk', 'nilai_rapor', 'nilai_us', 'nilai_un', 'nilai_rerata_rapor',
+    'jumlah_nilai', 'nilai_jarak', 'nilai_prestasi', 'nilai_tes', 'nilai_wawancara', 'nilai_akhir',
+    'status_hasil', 'status_daftar_ulang', 'catatan', 'keterangan',
+  ])
 
   // Ambil data kelas dan siswa existing
   const [kelasDb, existingDb] = await Promise.all([
@@ -284,8 +326,8 @@ export async function importSiswaMassal(dataSiswa: any[]) {
     if (s2.nisn) existingByNisn.set(s2.nisn.trim(), { id: s2.id, nama_lengkap: s2.nama_lengkap })
   })
 
-  const toInsert: any[] = []
-  const toUpdate: any[] = []
+  const toInsert: Array<{ siswaData: any; ppdbData: any }> = []
+  const toUpdate: Array<{ id: string; siswaData: any; ppdbData: any }> = []
   const errors: string[] = []
 
   const VALID_TEMPAT_TINGGAL = [
@@ -308,8 +350,6 @@ export async function importSiswaMassal(dataSiswa: any[]) {
     const kelas_id = kelasKey ? (kelasMap.get(kelasKey) ?? null) : null
 
     // --- Tempat tinggal (enum aplikasi) ---
-    // Kolom 'Pesantren' khusus template aplikasi, 'TEMPAT_TINGGAL' format lama
-    // 'Tempat Tinggal' dari PPDB disimpan terpisah di tempat_tinggal_ppdb
     const pesantrenRaw = s(row, 'Pesantren', 'PESANTREN', 'TEMPAT_TINGGAL') ?? ''
     const tempat_tinggal = VALID_TEMPAT_TINGGAL.includes(pesantrenRaw) ? pesantrenRaw : 'Non-Pesantren'
 
@@ -317,9 +357,9 @@ export async function importSiswaMassal(dataSiswa: any[]) {
     const jkRaw = s(row, 'JK', 'JENIS_KELAMIN', 'jenis_kelamin') ?? ''
     const jenis_kelamin = jkRaw.toUpperCase() === 'P' ? 'P' : 'L'
 
-    // --- Build payload lengkap PPDB ---
-    const payload: any = {
-      // Core (wajib ada)
+    // --- Build full payload (semua kolom dari Excel) ---
+    const fullPayload: any = {
+      // Core
       nisn: nisn || null,
       nama_lengkap,
       jenis_kelamin,
@@ -417,7 +457,7 @@ export async function importSiswaMassal(dataSiswa: any[]) {
       sekolah_pilihan_2: s(row, 'Sekolah Pilihan 2'),
       jurusan_pilihan_1: s(row, 'Jurusan Pilihan 1'),
       jurusan_pilihan_2: s(row, 'Jurusan Pilihan 2'),
-      minat_jurusan:    s(row, 'Jurusan Pilihan 1', 'MINAT_JURUSAN'),  // sync ke kolom lama
+      minat_jurusan:    s(row, 'Jurusan Pilihan 1', 'MINAT_JURUSAN'),  // sync kolom lama di siswa
 
       // Geolokasi
       latitude:         s(row, 'Latitude'),
@@ -425,10 +465,6 @@ export async function importSiswaMassal(dataSiswa: any[]) {
       radius:           s(row, 'Radius'),
       rentang_jarak:    s(row, 'Rentang Jarak'),
       waktu_tempuh:     s(row, 'Waktu Tempuh'),
-
-      // Pesantren
-      asrama:           s(row, 'Asrama'),
-      kamar:            s(row, 'Kamar'),
 
       // Penerimaan & Nilai
       jalur_masuk:      s(row, 'Jalur'),
@@ -450,50 +486,123 @@ export async function importSiswaMassal(dataSiswa: any[]) {
       keterangan:           s(row, 'Keterangan'),
     }
 
-    // Hapus semua key dengan nilai null agar tidak overwrite data existing yang sudah terisi
-    Object.keys(payload).forEach(k => {
-      if (payload[k] === null) delete payload[k]
+    // Hapus semua key null agar tidak overwrite data existing yang sudah terisi
+    Object.keys(fullPayload).forEach(k => {
+      if (fullPayload[k] === null) delete fullPayload[k]
     })
-    // Pastikan field wajib selalu ada
-    payload.nisn = nisn || null
-    payload.nama_lengkap = nama_lengkap
-    payload.jenis_kelamin = jenis_kelamin
-    payload.tempat_tinggal = tempat_tinggal
-    payload.kelas_id = kelas_id
-    payload.status = 'aktif'
+
+    // -----------------------------------------------------------
+    // FIX: Pisahkan payload ke dua tabel: siswa vs siswa_ppdb
+    // Sebelumnya seluruh payload (termasuk kolom PPDB) dikirim ke
+    // tabel siswa → SQLite error → silent fail → 0 inserted.
+    // -----------------------------------------------------------
+    const siswaPayload: any = {}
+    const ppdbPayload: any = {}
+
+    for (const [k, v] of Object.entries(fullPayload)) {
+      if (SISWA_COLS.has(k)) siswaPayload[k] = v
+      else if (PPDB_COLS.has(k)) ppdbPayload[k] = v
+      // field lain (asrama, kamar, dll.) yang belum ada di schema: diabaikan
+    }
+
+    // Pastikan field wajib siswa selalu ada (termasuk setelah filter null di atas)
+    siswaPayload.nama_lengkap  = nama_lengkap
+    siswaPayload.jenis_kelamin = jenis_kelamin
+    siswaPayload.tempat_tinggal = tempat_tinggal
+    siswaPayload.kelas_id      = kelas_id
+    siswaPayload.status        = 'aktif'
 
     const existBySisn = nisn ? existingByNisn.get(nisn) : null
     const existByNama = existingByNama.get(nama_lengkap.toLowerCase())
     const existing = existBySisn || existByNama
 
     if (existing) {
-      toUpdate.push({ id: existing.id, ...payload })
+      // UPDATE: siswa sudah ada — update saja, NISN tidak perlu diset ulang jika kosong
+      if (nisn) siswaPayload.nisn = nisn
+      toUpdate.push({ id: existing.id, siswaData: siswaPayload, ppdbData: ppdbPayload })
     } else {
-      toInsert.push(payload)
+      // INSERT: siswa baru — NISN wajib (NOT NULL UNIQUE constraint di DB)
+      if (!nisn) {
+        errors.push(`Dilewati (NISN kosong): ${nama_lengkap}`)
+        continue
+      }
+      siswaPayload.nisn = nisn
+      // Pre-generate ID agar bisa dipakai sebagai FK di siswa_ppdb
+      const newId = crypto.randomUUID().replace(/-/g, '')
+      siswaPayload.id = newId
+      toInsert.push({ siswaData: siswaPayload, ppdbData: ppdbPayload })
     }
   }
 
   let insertCount = 0
   let updateCount = 0
+  const ppdbUpserts: any[] = []
 
+  // ---- INSERT siswa baru ----
   if (toInsert.length > 0) {
-    const { successCount } = await dbBatchInsert(db, 'siswa', toInsert)
+    const siswaRows = toInsert.map(r => r.siswaData)
+    const { successCount, error: batchError } = await dbBatchInsert(db, 'siswa', siswaRows)
     insertCount = successCount
+    // FIX: Propagate error dari dbBatchInsert — sebelumnya error ini diabaikan
+    if (batchError) errors.push(`DB insert error: ${batchError}`)
+
+    // Kumpulkan ppdb rows untuk semua siswa baru (gunakan ID yang sudah di-generate)
+    toInsert.forEach(r => {
+      if (Object.keys(r.ppdbData).length > 0) {
+        ppdbUpserts.push({ siswa_id: r.siswaData.id, ...r.ppdbData })
+      }
+    })
   }
 
+  // ---- UPDATE siswa existing ----
   if (toUpdate.length > 0) {
-    const chunkSize = 50  // lebih kecil karena payload per-baris lebih besar
+    const chunkSize = 50
     for (let i = 0; i < toUpdate.length; i += chunkSize) {
       const chunk = toUpdate.slice(i, i + chunkSize)
-      const stmts = chunk.map((s2: any) => {
-        const { id, ...data } = s2
-        const keys = Object.keys(data)
+      const stmts = chunk.map((item: any) => {
+        const keys = Object.keys(item.siswaData)
         const sets = keys.map((k) => `${k} = ?`).join(', ')
-        const vals = keys.map((k) => serializeValue(data[k]))
-        return db.prepare(`UPDATE siswa SET ${sets}, updated_at = datetime('now') WHERE id = ?`).bind(...vals, id)
+        const vals = keys.map((k) => serializeValue(item.siswaData[k]))
+        return db.prepare(`UPDATE siswa SET ${sets}, updated_at = datetime('now') WHERE id = ?`).bind(...vals, item.id)
       })
       await db.batch(stmts)
       updateCount += chunk.length
+    }
+
+    toUpdate.forEach(r => {
+      if (Object.keys(r.ppdbData).length > 0) {
+        ppdbUpserts.push({ siswa_id: r.id, ...r.ppdbData })
+      }
+    })
+  }
+
+  // ---- UPSERT siswa_ppdb (data PPDB lengkap) ----
+  if (ppdbUpserts.length > 0) {
+    try {
+      // Kumpulkan semua keys unik dari seluruh baris ppdb
+      const allPpdbKeys = [...new Set(ppdbUpserts.flatMap(r => Object.keys(r)))]
+      const placeholders = allPpdbKeys.map(() => '?').join(', ')
+      const updateSets = allPpdbKeys
+        .filter(k => k !== 'siswa_id')
+        .map(k => `${k} = excluded.${k}`)
+        .join(', ')
+
+      const sql = `INSERT INTO siswa_ppdb (${allPpdbKeys.join(', ')}) VALUES (${placeholders})
+                   ON CONFLICT(siswa_id) DO UPDATE SET ${updateSets}, updated_at = datetime('now')`
+
+      const stmts = ppdbUpserts.map(row => {
+        const vals = allPpdbKeys.map(k => serializeValue(row[k] ?? null))
+        return db.prepare(sql).bind(...vals)
+      })
+
+      const chunkSize = 100
+      for (let i = 0; i < stmts.length; i += chunkSize) {
+        await db.batch(stmts.slice(i, i + chunkSize))
+      }
+    } catch (e: any) {
+      // Tabel siswa_ppdb mungkin belum ada (migration belum dijalankan)
+      // Insert siswa tetap dihitung sukses, ppdb detail di-skip
+      errors.push(`Data PPDB detail tidak tersimpan: ${e.message}`)
     }
   }
 
