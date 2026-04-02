@@ -190,7 +190,7 @@ export async function dbBatchInsert(
     for (let i = 0; i < statements.length; i += chunkSize) {
       const chunk = statements.slice(i, i + chunkSize)
       const results = await db.batch(chunk)
-      successCount += results.filter(r => r.success).length
+      successCount += results.reduce((sum, r) => sum + (((r as any).meta?.changes as number) ?? 0), 0)
     }
     return { successCount, error: null }
   } catch (e: any) {
