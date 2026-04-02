@@ -17,6 +17,8 @@ import {
   BarChart3,
   Star,
   Crown,
+  ClipboardPen,
+  Activity,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -86,6 +88,18 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/kehadiran',
     icon: CalendarCheck,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'guru_piket', 'wali_kelas']
+  },
+  {
+    title: 'Agenda Guru',
+    href: '/dashboard/agenda',
+    icon: ClipboardPen,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas', 'guru_bk', 'guru_piket', 'guru_ppl']
+  },
+  {
+    title: 'Monitoring Agenda',
+    href: '/dashboard/monitoring-agenda',
+    icon: Activity,
+    roles: ['super_admin', 'admin_tu', 'kepsek']
   },
   {
     title: 'Perizinan Siswa',
