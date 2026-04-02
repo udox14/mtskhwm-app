@@ -19,6 +19,7 @@ import {
   Crown,
   ClipboardPen,
   Activity,
+  ClipboardList,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -84,10 +85,16 @@ export const MENU_ITEMS: MenuItem[] = [
     roles: ['super_admin', 'admin_tu', 'kepsek']
   },
   {
-    title: 'Kehadiran & Jurnal',
+    title: 'Absensi Siswa',
     href: '/dashboard/kehadiran',
     icon: CalendarCheck,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'guru_piket', 'wali_kelas']
+  },
+  {
+    title: 'Rekap Absensi',
+    href: '/dashboard/rekap-absensi',
+    icon: ClipboardList,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'wali_kelas']
   },
   {
     title: 'Agenda Guru',
