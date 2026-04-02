@@ -121,6 +121,8 @@ export function ImportModalSiswa() {
       'Keterangan': '',
       // Kolom khusus aplikasi (bukan bagian PPDB)
       'Pesantren': 'Non-Pesantren',
+      'Asrama': '',
+      'Kamar': '',
       'Tingkat Kelas': '7',
       'Kelompok Kelas': 'KEAGAMAAN',
       'Nomor Kelas': '1',

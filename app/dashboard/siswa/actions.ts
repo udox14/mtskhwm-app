@@ -426,6 +426,10 @@ export async function importSiswaMassal(dataSiswa: any[]) {
       rentang_jarak:    s(row, 'Rentang Jarak'),
       waktu_tempuh:     s(row, 'Waktu Tempuh'),
 
+      // Pesantren
+      asrama:           s(row, 'Asrama'),
+      kamar:            s(row, 'Kamar'),
+
       // Penerimaan & Nilai
       jalur_masuk:      s(row, 'Jalur'),
       nilai_rapor:      f(row, 'Nilai Rapor'),

@@ -181,6 +181,17 @@ export function EditSiswaModal({ isOpen, onClose, siswa, kelasList }: {
                     </SelectContent>
                   </Select>
                 </div>
+                {/* Asrama & Kamar — relevan untuk santri pesantren */}
+                <div className="grid grid-cols-2 gap-3 p-3 bg-orange-50/60 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 rounded-lg">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-orange-700 dark:text-orange-400">Asrama</Label>
+                    <Input name="asrama" defaultValue={siswa.asrama} placeholder="cth: Al-Falah" className="h-8 text-sm rounded-md bg-surface" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-orange-700 dark:text-orange-400">Kamar</Label>
+                    <Input name="kamar" defaultValue={siswa.kamar} placeholder="cth: 12B" className="h-8 text-sm rounded-md bg-surface" />
+                  </div>
+                </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Alamat Lengkap</Label>
                   <Input name="alamat_lengkap" defaultValue={siswa.alamat_lengkap} className="h-8 text-sm rounded-md bg-surface-2" />
