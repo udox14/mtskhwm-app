@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -35,10 +35,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
   dinas_luar: { label: 'Dinas Luar', color: 'bg-violet-100 text-violet-700 border-violet-200', icon: MapPin },
 }
 
-export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }: {
-  pegawai: Pegawai[]; presensiHariIni: Presensi[]; pengaturan: Pengaturan; tanggal: string
+export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, currentUserId }: {
+  pegawai: Pegawai[]; presensiHariIni: Presensi[]; pengaturan: Pengaturan; tanggal: string; currentUserId: string
 }) {
-  const [isPending, startTransition] = useTransition()
+  const [loadingId, setLoadingId] = useState<string | null>(null)
   const [editData, setEditData] = useState<{ presensi: Presensi; pegawai: Pegawai } | null>(null)
   const [editJamMasuk, setEditJamMasuk] = useState('')
   const [editJamPulang, setEditJamPulang] = useState('')
@@ -46,6 +46,7 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }
   const [statusValue, setStatusValue] = useState('sakit')
   const [statusCatatan, setStatusCatatan] = useState('')
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [modalPending, setModalPending] = useState(false)
 
   // Live clock
   useState(() => {
@@ -55,41 +56,41 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }
 
   const presensiMap = new Map(presensiHariIni.map(p => [p.user_id, p]))
 
-  const handleMasuk = (userId: string) => {
-    startTransition(async () => {
-      const res = await catatPresensiMasuk(userId, 'current_user', undefined)
-      if (res.error) alert(res.error)
-    })
+  const handleMasuk = async (userId: string) => {
+    setLoadingId(userId)
+    const res = await catatPresensiMasuk(userId, currentUserId, undefined)
+    if (res.error) alert(res.error)
+    setLoadingId(null)
   }
 
-  const handlePulang = (userId: string) => {
-    startTransition(async () => {
-      const res = await catatPresensiPulang(userId, 'current_user')
-      if (res.error) alert(res.error)
-    })
+  const handlePulang = async (userId: string) => {
+    setLoadingId(userId)
+    const res = await catatPresensiPulang(userId, currentUserId)
+    if (res.error) alert(res.error)
+    setLoadingId(null)
   }
 
-  const handleSetStatus = () => {
+  const handleSetStatus = async () => {
     if (!statusModal) return
-    startTransition(async () => {
-      const res = await setStatusPresensi(statusModal.id, statusValue, 'current_user', statusCatatan || undefined)
-      if (res.error) alert(res.error)
-      else setStatusModal(null)
-    })
+    setModalPending(true)
+    const res = await setStatusPresensi(statusModal.id, statusValue, currentUserId, statusCatatan || undefined)
+    if (res.error) alert(res.error)
+    else setStatusModal(null)
+    setModalPending(false)
   }
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!editData) return
-    startTransition(async () => {
-      const res = await editWaktuPresensi(
-        editData.presensi.id,
-        editJamMasuk || null,
-        editJamPulang || null,
-        'current_user'
-      )
-      if (res?.error) alert(res.error)
-      else setEditData(null)
-    })
+    setModalPending(true)
+    const res = await editWaktuPresensi(
+      editData.presensi.id,
+      editJamMasuk || null,
+      editJamPulang || null,
+      currentUserId
+    )
+    if (res?.error) alert(res.error)
+    else setEditData(null)
+    setModalPending(false)
   }
 
   const openEdit = (p: Presensi, pg: Pegawai) => {
@@ -134,8 +135,8 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }
               <Label className="text-xs font-semibold text-slate-600">Keterangan (opsional)</Label>
               <Input value={statusCatatan} onChange={e => setStatusCatatan(e.target.value)} className="h-9 text-sm rounded-lg" placeholder="Alasan..." />
             </div>
-            <Button onClick={handleSetStatus} disabled={isPending} className="w-full h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Simpan Status'}
+            <Button onClick={handleSetStatus} disabled={modalPending} className="w-full h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+              {modalPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Simpan Status'}
             </Button>
           </div>
         </DialogContent>
@@ -156,8 +157,8 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }
               <Label className="text-xs font-semibold text-slate-600">Jam Pulang</Label>
               <Input type="time" value={editJamPulang} onChange={e => setEditJamPulang(e.target.value)} className="h-9 text-sm rounded-lg" />
             </div>
-            <Button onClick={handleEditSave} disabled={isPending} className="w-full h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Simpan Perubahan'}
+            <Button onClick={handleEditSave} disabled={modalPending} className="w-full h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+              {modalPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Simpan Perubahan'}
             </Button>
           </div>
         </DialogContent>
@@ -280,26 +281,26 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal }
                   <div className="flex gap-1.5">
                     {!pr ? (
                       <>
-                        <Button size="sm" onClick={() => handleMasuk(pg.id)} disabled={isPending}
+                        <Button size="sm" onClick={() => handleMasuk(pg.id)} disabled={loadingId === pg.id}
                           className="flex-1 h-8 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
-                          {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogIn className="h-3 w-3" />} Masuk
+                          {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogIn className="h-3 w-3" />} Masuk
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue('sakit'); setStatusCatatan('') }} disabled={isPending}
+                        <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue('sakit'); setStatusCatatan('') }} disabled={loadingId === pg.id}
                           className="h-8 text-xs rounded-lg gap-1">
                           <AlertTriangle className="h-3 w-3" /> Status
                         </Button>
                       </>
                     ) : pr.status === 'hadir' && !pr.jam_pulang ? (
-                      <Button size="sm" onClick={() => handlePulang(pg.id)} disabled={isPending}
+                      <Button size="sm" onClick={() => handlePulang(pg.id)} disabled={loadingId === pg.id}
                         className="flex-1 h-8 text-xs rounded-lg bg-rose-500 hover:bg-rose-600 text-white gap-1">
-                        {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3 w-3" />} Pulang
+                        {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3 w-3" />} Pulang
                       </Button>
                     ) : pr.status === 'hadir' && pr.jam_pulang ? (
                       <div className="flex-1 flex items-center justify-center h-8 text-xs text-emerald-600 font-semibold gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue(pr.status); setStatusCatatan(pr.catatan || '') }} disabled={isPending}
+                      <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue(pr.status); setStatusCatatan(pr.catatan || '') }} disabled={loadingId === pg.id}
                         className="flex-1 h-8 text-xs rounded-lg gap-1">
                         <Pencil className="h-3 w-3" /> Ubah Status
                       </Button>

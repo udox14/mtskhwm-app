@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Presensi Pegawai - MTSKHWM App' }
 
-async function PresensiDataFetcher() {
+async function PresensiDataFetcher({ currentUserId }: { currentUserId: string }) {
   const db = await getDB()
   const today = new Date().toISOString().split('T')[0]
 
@@ -34,6 +34,7 @@ async function PresensiDataFetcher() {
       presensiHariIni={presensiResult.results || []}
       pengaturan={settingResult || { jam_masuk: '07:00', jam_pulang: '14:00', batas_telat_menit: 15, batas_pulang_cepat_menit: 15 }}
       tanggal={today}
+      currentUserId={currentUserId}
     />
   )
 }
@@ -55,7 +56,7 @@ export default async function PresensiPage() {
         iconColor="text-teal-500"
       />
       <Suspense fallback={<PageLoading text="Memuat data presensi..." />}>
-        <PresensiDataFetcher />
+        <PresensiDataFetcher currentUserId={user.id} />
       </Suspense>
     </div>
   )
