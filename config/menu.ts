@@ -20,6 +20,7 @@ import {
   ClipboardPen,
   Activity,
   ClipboardList,
+  FileText,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -143,6 +144,12 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/monitoring-presensi',
     icon: BarChart3,
     roles: ['super_admin', 'admin_tu', 'kepsek']
+  },
+  {
+    title: 'Surat Keluar',
+    href: '/dashboard/surat',
+    icon: FileText,
+    roles: ['super_admin', 'admin_tu', 'wakamad', 'kepsek']
   },
   {
     title: 'Pengaturan',

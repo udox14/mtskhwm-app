@@ -24,6 +24,7 @@ const MENU_GROUPS = [
   { label: 'Utama',     hrefs: ['/dashboard', '/dashboard/siswa', '/dashboard/kelas', '/dashboard/plotting'] },
   { label: 'Akademik',  hrefs: ['/dashboard/akademik', '/dashboard/akademik/nilai', '/dashboard/program-unggulan', '/dashboard/program-unggulan/kelola', '/dashboard/guru', '/dashboard/kehadiran', '/dashboard/rekap-absensi', '/dashboard/agenda', '/dashboard/presensi', '/dashboard/monitoring-presensi', '/dashboard/monitoring-agenda'] },
   { label: 'Kesiswaan', hrefs: ['/dashboard/izin', '/dashboard/kedisiplinan', '/dashboard/bk', '/dashboard/psikotes'] },
+  { label: 'Administrasi', hrefs: ['/dashboard/surat'] },
   { label: 'Sistem',    hrefs: ['/dashboard/settings'] },
 ]
 
