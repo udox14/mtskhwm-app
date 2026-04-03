@@ -18,8 +18,8 @@ import {
 } from './surat-templates'
 import {
   simpanSuratKeluar, hapusSuratKeluar, getSuratKeluar,
-  type JenisSurat, JENIS_SURAT_LABEL,
 } from '../actions'
+import { type JenisSurat, JENIS_SURAT_LABEL } from '../constants'
 
 // ============================================================
 // TYPES

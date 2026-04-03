@@ -3,34 +3,7 @@
 
 import { getDB } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
-
-// ============================================================
-// TYPES
-// ============================================================
-export type JenisSurat =
-  | 'penerimaan'
-  | 'sppd'
-  | 'izin_pesantren'
-  | 'ket_aktif'
-  | 'permohonan'
-  | 'surat_tugas'
-  | 'undangan_rapat'
-  | 'pindah'
-  | 'pernyataan'
-  | 'kelakuan_baik'
-
-export const JENIS_SURAT_LABEL: Record<JenisSurat, string> = {
-  penerimaan: 'Surat Keterangan Penerimaan',
-  sppd: 'SPPD',
-  izin_pesantren: 'Surat Izin ke Pesantren',
-  ket_aktif: 'Surat Keterangan Aktif',
-  permohonan: 'Surat Permohonan',
-  surat_tugas: 'Surat Tugas',
-  undangan_rapat: 'Surat Undangan Rapat',
-  pindah: 'Surat Keterangan Pindah',
-  pernyataan: 'Surat Pernyataan',
-  kelakuan_baik: 'Surat Kelakuan Baik',
-}
+import type { JenisSurat } from './constants'
 
 const BULAN_ROMAWI = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
@@ -95,7 +68,7 @@ export async function getNextNomorUrut(tahun: number): Promise<number> {
 // ============================================================
 // FORMAT NOMOR SURAT
 // ============================================================
-export function formatNomorSurat(nomorUrut: number, bulan: number, tahun: number): string {
+function formatNomorSurat(nomorUrut: number, bulan: number, tahun: number): string {
   const nomor = String(nomorUrut).padStart(3, '0')
   const bulanRomawi = BULAN_ROMAWI[bulan] || String(bulan)
   return `${nomor}/Mts.10.06.696/PP.00.5/${bulanRomawi}/${tahun}`
