@@ -53,15 +53,15 @@ function formatAlamatSiswa(s: any): string {
 }
 
 // ============================================================
-// KOP SURAT COMPONENT
+// KOP SURAT COMPONENT (full-width, edge to edge)
 // ============================================================
 function KopSurat() {
   return (
-    <div style={{ marginBottom: '4mm', textAlign: 'center' }}>
+    <div style={{ marginLeft: '-25mm', marginRight: '-20mm', marginBottom: '4mm', textAlign: 'center' }}>
       <img
         src="/kopsurat.png"
         alt="Kop Surat"
-        style={{ width: '100%', maxHeight: '30mm', objectFit: 'contain' }}
+        style={{ width: '100%', display: 'block' }}
       />
     </div>
   )
@@ -137,21 +137,23 @@ export function TemplatePenerimaan({ data }: { data: any }) {
 }
 
 // ============================================================
-// 2. SPPD
+// 2. SPPD (satu lembar, kop surat, tabel bawah 2x2)
 // ============================================================
 export function TemplateSPPD({ data }: { data: any }) {
-  const tdLabel: React.CSSProperties = { padding: '2mm 3mm', border: '0.5pt solid #000', verticalAlign: 'top', width: '5mm' }
-  const tdField: React.CSSProperties = { padding: '2mm 3mm', border: '0.5pt solid #000', verticalAlign: 'top', width: '42%' }
-  const tdVal: React.CSSProperties = { padding: '2mm 3mm', border: '0.5pt solid #000', verticalAlign: 'top' }
+  const tdLabel: React.CSSProperties = { padding: '1.5mm 2mm', border: '0.5pt solid #000', verticalAlign: 'top', width: '5mm', fontSize: '10pt' }
+  const tdField: React.CSSProperties = { padding: '1.5mm 2mm', border: '0.5pt solid #000', verticalAlign: 'top', width: '42%', fontSize: '10pt' }
+  const tdVal: React.CSSProperties = { padding: '1.5mm 2mm', border: '0.5pt solid #000', verticalAlign: 'top', fontSize: '10pt' }
+  const cellStyle: React.CSSProperties = { width: '50%', border: '0.5pt solid #000', padding: '2mm', verticalAlign: 'top', fontSize: '9pt' }
 
   return (
-    <div style={{ ...PAGE_STYLE, fontSize: '11pt', padding: '10mm 15mm 15mm 20mm' }}>
-      <div style={{ textAlign: 'center', marginBottom: '5mm' }}>
-        <p style={{ fontWeight: 'bold', fontSize: '12pt' }}>SURAT PERINTAH PERJALANAN DINAS (SPPD)</p>
-        <p>Nomor : {data.nomor_surat}</p>
+    <div style={{ ...PAGE_STYLE, fontSize: '10pt', padding: '12mm 20mm 12mm 25mm' }}>
+      <KopSurat />
+      <div style={{ textAlign: 'center', marginBottom: '3mm' }}>
+        <p style={{ fontWeight: 'bold', fontSize: '11pt' }}>SURAT PERINTAH PERJALANAN DINAS (SPPD)</p>
+        <p style={{ fontSize: '10pt' }}>Nomor : {data.nomor_surat}</p>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11pt', fontFamily: FONT }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT }}>
         <tbody>
           <tr>
             <td style={tdLabel}>1.</td>
@@ -166,16 +168,12 @@ export function TemplateSPPD({ data }: { data: any }) {
           <tr>
             <td style={tdLabel}>3.</td>
             <td style={tdField}>
-              <div>Pangkat dan golongan</div>
-              <div>Jabatan</div>
-              <div>Gaji pokok</div>
-              <div>Tingkat menurut peraturan perjalanan dinas</div>
+              <div>Pangkat dan golongan / Jabatan</div>
+              <div>Gaji pokok / Tingkat</div>
             </td>
             <td style={tdVal}>
-              <div>{data.pangkat || '-'}</div>
               <div>{data.jabatan_pegawai || '-'}</div>
-              <div>-</div>
-              <div>-</div>
+              <div>- / -</div>
             </td>
           </tr>
           <tr>
@@ -219,12 +217,7 @@ export function TemplateSPPD({ data }: { data: any }) {
           </tr>
           <tr>
             <td style={tdLabel}>9.</td>
-            <td style={tdField}>
-              <div>Pembebanan anggaran :</div>
-              <div>Bos Madrasah</div>
-              <div>Instansi</div>
-              <div>Fungsi/subfungsi</div>
-            </td>
+            <td style={tdField}>Pembebanan anggaran</td>
             <td style={tdVal}>-</td>
           </tr>
           <tr>
@@ -236,62 +229,59 @@ export function TemplateSPPD({ data }: { data: any }) {
       </table>
 
       {/* Signature section */}
-      <table style={{ width: '100%', marginTop: '5mm', fontSize: '11pt', fontFamily: FONT, borderCollapse: 'collapse' }}>
+      <table style={{ width: '100%', marginTop: '3mm', fontFamily: FONT, borderCollapse: 'collapse', fontSize: '10pt' }}>
         <tbody>
           <tr>
-            <td style={{ width: '50%', verticalAlign: 'top', paddingRight: '5mm' }}>
+            <td style={{ width: '50%', verticalAlign: 'top' }}>
               <p>Dikeluarkan di : Sukahideng</p>
               <p>Pada tanggal : {formatTanggalIndo(data.tanggal_berangkat)}</p>
             </td>
             <td style={{ width: '50%', verticalAlign: 'top', textAlign: 'center' }}>
               <p>Kepala MTs KH. A. Wahab Muhsin,</p>
-              <div style={{ height: '18mm' }} />
+              <div style={{ height: '14mm' }} />
               <p style={{ fontWeight: 'bold' }}>{data.penandatangan || 'Dudi Ahmad Syaehu, M.M.Pd.'}</p>
             </td>
           </tr>
         </tbody>
       </table>
 
-      {/* Lembar ke-2: Tiba / Berangkat */}
-      <div style={{ borderTop: '0.5pt solid #000', marginTop: '5mm', paddingTop: '3mm' }}>
-        <table style={{ width: '100%', fontSize: '10pt', fontFamily: FONT, borderCollapse: 'collapse' }}>
-          <tbody>
-            <tr>
-              <td style={{ width: '33%', border: '0.5pt solid #000', padding: '3mm', verticalAlign: 'top' }}>
-                <p>Tiba di: {data.tempat_tujuan || '..................'}</p>
-                <p>Pada tanggal: .................</p>
-                <p style={{ marginTop: '3mm' }}>Mengetahui,<br />pihak lembaga:</p>
-                <div style={{ height: '15mm' }} />
-                <p>........................................</p>
-                <p>NIP. ..................................</p>
-              </td>
-              <td style={{ width: '33%', border: '0.5pt solid #000', padding: '3mm', verticalAlign: 'top' }}>
-                <p>Berangkat dari: MTs KH. A. Wahab Muhsin</p>
-                <p>Pada tanggal: {formatTanggalIndo(data.tanggal_berangkat)}</p>
-                <p style={{ marginTop: '3mm' }}>Mengetahui,<br />Kepala MTs KH. A. Wahab Muhsin,</p>
-                <div style={{ height: '15mm' }} />
-                <p style={{ fontWeight: 'bold' }}>{data.penandatangan || 'Dudi Ahmad Syaehu, M.M.Pd.'}</p>
-              </td>
-              <td style={{ width: '34%', border: '0.5pt solid #000', padding: '3mm', verticalAlign: 'top', fontSize: '9pt' }}>
-                <p>Telah diperiksa dengan keterangan bahwa perjalanan tersebut di atas benar dilakukan atas perintahnya dan semata-mata untuk kepentingan jabatan dalam waktu yang sesingkat-singkatnya.</p>
-                <p style={{ marginTop: '3mm', textAlign: 'center' }}>Kepala MTs KH. A. Wahab Muhsin,</p>
-                <div style={{ height: '15mm' }} />
-                <p style={{ fontWeight: 'bold', textAlign: 'center' }}>{data.penandatangan || 'Dudi Ahmad Syaehu, M.M.Pd.'}</p>
-              </td>
-            </tr>
-            <tr>
-              <td style={{ border: '0.5pt solid #000', padding: '3mm', verticalAlign: 'top' }}>
-                <p>Tiba di: MTs KH. A. Wahab Muhsin</p>
-                <p>Pada tanggal: .................</p>
-                <p style={{ marginTop: '3mm' }}>Mengetahui,<br />Kepala MTs KH. A. Wahab Muhsin,</p>
-                <div style={{ height: '15mm' }} />
-                <p style={{ fontWeight: 'bold' }}>{data.penandatangan || 'Dudi Ahmad Syaehu, M.M.Pd.'}</p>
-              </td>
-              <td colSpan={2} />
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      {/* Tabel Tiba/Berangkat 2x2 */}
+      <table style={{ width: '100%', marginTop: '3mm', fontFamily: FONT, borderCollapse: 'collapse', fontSize: '9pt' }}>
+        <tbody>
+          <tr>
+            <td style={cellStyle}>
+              <p>Tiba di: {data.tempat_tujuan || '..................'}</p>
+              <p>Pada tanggal: .................</p>
+              <p style={{ marginTop: '2mm' }}>Mengetahui, pihak lembaga:</p>
+              <div style={{ height: '12mm' }} />
+              <p>........................................</p>
+              <p>NIP. ..................................</p>
+            </td>
+            <td style={cellStyle}>
+              <p>Berangkat dari: MTs KH. A. Wahab Muhsin</p>
+              <p>Pada tanggal: {formatTanggalIndo(data.tanggal_berangkat)}</p>
+              <p style={{ marginTop: '2mm' }}>Kepala MTs KH. A. Wahab Muhsin,</p>
+              <div style={{ height: '12mm' }} />
+              <p style={{ fontWeight: 'bold' }}>{data.penandatangan || 'Dudi Ahmad Syaehu, M.M.Pd.'}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style={cellStyle}>
+              <p>Tiba kembali di: MTs KH. A. Wahab Muhsin</p>
+              <p>Pada tanggal: .................</p>
+              <p style={{ marginTop: '2mm' }}>Kepala MTs KH. A. Wahab Muhsin,</p>
+              <div style={{ height: '12mm' }} />
+              <p style={{ fontWeight: 'bold' }}>{data.penandatangan || 'Dudi Ahmad Syaehu, M.M.Pd.'}</p>
+            </td>
+            <td style={{ ...cellStyle, fontSize: '8.5pt' }}>
+              <p>Telah diperiksa dengan keterangan bahwa perjalanan tersebut di atas benar dilakukan atas perintahnya dan semata-mata untuk kepentingan jabatan dalam waktu yang sesingkat-singkatnya.</p>
+              <p style={{ marginTop: '2mm', textAlign: 'center' }}>Kepala MTs KH. A. Wahab Muhsin,</p>
+              <div style={{ height: '12mm' }} />
+              <p style={{ fontWeight: 'bold', textAlign: 'center' }}>{data.penandatangan || 'Dudi Ahmad Syaehu, M.M.Pd.'}</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }

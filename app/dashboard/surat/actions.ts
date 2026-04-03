@@ -125,7 +125,7 @@ export async function getSuratKeluar(filters?: {
   tahun?: number
 }): Promise<any[]> {
   const db = await getDB()
-  let sql = `SELECT id, jenis_surat, nomor_urut, nomor_surat, tahun, perihal, nama_pencetak, created_at FROM surat_keluar WHERE 1=1`
+  let sql = `SELECT id, jenis_surat, nomor_urut, nomor_surat, tahun, perihal, data_surat, nama_pencetak, created_at FROM surat_keluar WHERE 1=1`
   const params: any[] = []
 
   if (filters?.jenis_surat) {
