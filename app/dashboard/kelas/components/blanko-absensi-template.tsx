@@ -49,80 +49,19 @@ export const BlankoAbsensiTemplate = React.forwardRef<HTMLDivElement, Props>(
       >
 
         {/* ════════════════════════════════════════════════════
-            KOP SURAT
-            Layout: [td logo=113pt] [td teks=auto, text-align:center]
-            Logo img: 81pt × 72pt
-            Logo tidak nempel ke tepi — td logo sudah termasuk gap ke teks (32pt)
+            KOP SURAT — gambar kopsurat.png full-width
         ════════════════════════════════════════════════════ */}
-        <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          marginBottom: '0',
-          tableLayout: 'fixed',
-        }}>
-          <colgroup>
-            {/* Kolom logo: 81pt logo + 32pt gap = 113pt */}
-            <col style={{ width: '113pt' }} />
-            {/* Kolom teks: sisa (~432pt untuk konten 195mm) */}
-            <col />
-          </colgroup>
-          <tbody>
-            <tr>
-              {/* Logo — rata kiri dalam td, vertikal tengah */}
-              <td style={{
-                verticalAlign: 'middle',
-                padding: 0,
-                border: 'none',
-                paddingLeft: '10pt',   /* logo mulai dari kiri content */
-              }}>
-                <img
-                  src="/logomts.png"
-                  alt="Logo Kemenag"
-                  style={{
-                    width: '81pt',
-                    height: '72pt',
-                    objectFit: 'contain',
-                    display: 'block',
-                  }}
-                />
-              </td>
-
-              {/* Teks kop — rata tengah */}
-              <td style={{
-                verticalAlign: 'middle',
-                textAlign: 'center',
-                padding: 0,
-                border: 'none',
-                lineHeight: 1.35,
-              }}>
-                <div style={{ fontFamily: FONT, fontSize: '14pt', fontWeight: 700 }}>
-                  KEMENTERIAN AGAMA REPUBLIK INDONESIA
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: '14pt', fontWeight: 700 }}>
-                  KANTOR KEMENTERIAN AGAMA KAB. TASIKMALAYA
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: '14pt', fontWeight: 700, margin: '1pt 0' }}>
-                  MADRASAH ALIYAH NEGERI 1 TASIKMALAYA
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: '10pt', fontWeight: 'normal' }}>
-                  Jl. Makam Pahlawan KHZ. Musthofa, Kp. Bageur, Desa Sukarapih, Kec. Sukarame, Kab. Tasikmalaya
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: '10pt', fontWeight: 'normal' }}>
-                  website : www.man1tasikmalaya.sch.id &nbsp;&nbsp; email : manegerisukamanah@gmail.com
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* Garis bawah kop: tebal atas + tipis bawah (persis seperti asli) */}
         <div style={{
-          borderTop: '2.5pt solid #000',
-          borderBottom: '1pt solid #000',
-          marginTop: '4pt',
+          marginLeft: '-9mm',
+          marginRight: '-9mm',
           marginBottom: '5pt',
-          paddingBottom: '1.5pt',
-        }} />
+        }}>
+          <img
+            src="/kopsurat.png"
+            alt="Kop Surat"
+            style={{ width: '100%', display: 'block' }}
+          />
+        </div>
 
         {/* ════════════════════════════════════════════════════
             JUDUL

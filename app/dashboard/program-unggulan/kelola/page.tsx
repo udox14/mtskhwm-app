@@ -6,23 +6,22 @@ import { Star } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 import { AdminClient } from './components/admin-client'
-import { getKelasUnggulanAdmin, getAllKelasForDropdown, getAllGuruForDropdown } from './actions'
+import { getKelasUnggulanAdmin, getAllKelasForDropdown } from './actions'
 
 export const metadata = { title: 'Kelola Program Unggulan - MTSKHWM App' }
 export const dynamic = 'force-dynamic'
 
-async function DataFetcher() {
-  const [kelasRes, allKelas, allGuru] = await Promise.all([
+async function DataFetcher({ currentUserId }: { currentUserId: string }) {
+  const [kelasRes, allKelas] = await Promise.all([
     getKelasUnggulanAdmin(),
     getAllKelasForDropdown(),
-    getAllGuruForDropdown()
   ])
 
   return (
     <AdminClient
       initialKelas={kelasRes.data || []}
       allKelas={allKelas}
-      allGuru={allGuru}
+      currentUserId={currentUserId}
     />
   )
 }
@@ -40,12 +39,12 @@ export default async function KelolaPage() {
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
       <PageHeader
         title="Kelola Program Unggulan"
-        description="Atur kelas unggulan, assign guru, kelola materi, dan pantau pengetesan"
+        description="Atur kelas unggulan, kelola materi mingguan, dan pantau pengetesan"
         icon={Star}
         iconColor="text-amber-500"
       />
       <Suspense fallback={<PageLoading text="Memuat panel kelola..." />}>
-        <DataFetcher />
+        <DataFetcher currentUserId={user.id} />
       </Suspense>
     </div>
   )

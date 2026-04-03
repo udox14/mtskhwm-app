@@ -23,9 +23,9 @@ async function KelasDataFetcher({ userRole }: { userRole: string }) {
       LEFT JOIN "user" u ON k.wali_kelas_id = u.id
       LEFT JOIN siswa s ON s.kelas_id = k.id
       GROUP BY k.id, k.tingkat, k.nomor_kelas, k.kelompok, k.kapasitas, k.wali_kelas_id, u.nama_lengkap
-      ORDER BY k.tingkat ASC, k.kelompok ASC, k.nomor_kelas ASC
+      ORDER BY k.tingkat ASC, CAST(k.nomor_kelas AS INTEGER) ASC, k.kelompok ASC
     `).all<any>(),
-    db.prepare(`SELECT id, nama_lengkap FROM "user" WHERE role IN ('guru','guru_bk','wakamad','kepsek') ORDER BY nama_lengkap ASC`).all<any>(),
+    db.prepare(`SELECT id, nama_lengkap FROM "user" WHERE role = 'wali_kelas' ORDER BY nama_lengkap ASC`).all<any>(),
     db.prepare(`SELECT daftar_jurusan FROM tahun_ajaran WHERE is_active = 1`).first<any>()
   ])
 

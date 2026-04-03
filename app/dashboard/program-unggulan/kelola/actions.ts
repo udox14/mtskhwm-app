@@ -1,7 +1,7 @@
 // Lokasi: app/dashboard/program-unggulan/kelola/actions.ts
 'use server'
 
-import { getDB, dbInsert, dbUpdate, dbDelete } from '@/utils/db'
+import { getDB, dbInsert, dbDelete } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
 
 const REVAL = '/dashboard/program-unggulan/kelola'
@@ -9,19 +9,10 @@ const REVAL = '/dashboard/program-unggulan/kelola'
 // ============================================================
 // TYPES
 // ============================================================
-type KelasUnggulanRow = {
-  id: string; kelas_id: string; tingkat: number; nomor_kelas: string; kelompok: string
-}
-type GuruKelasRow = {
-  id: string; guru_id: string; guru_nama: string; jam_mengajar: number; pu_kelas_id: string
-}
-type MateriRow = {
-  id: string; judul: string; konten: string; urutan: number; is_active: number
-  pu_kelas_id: string; kelas_label?: string
-}
+export type ProgramType = 'tahfidz' | 'bahasa_arab' | 'bahasa_inggris'
 
 // ============================================================
-// 1. KELAS UNGGULAN CRUD
+// 1. KELAS UNGGULAN CRUD (tetap)
 // ============================================================
 export async function getKelasUnggulanAdmin() {
   const db = await getDB()
@@ -29,12 +20,13 @@ export async function getKelasUnggulanAdmin() {
   if (!ta) return { data: [], taId: null, error: 'Tahun ajaran aktif belum diatur' }
 
   const result = await db.prepare(`
-    SELECT pk.id, pk.kelas_id, k.tingkat, k.nomor_kelas, k.kelompok
+    SELECT pk.id, pk.kelas_id, k.tingkat, k.nomor_kelas, k.kelompok,
+      (SELECT COUNT(*) FROM siswa s WHERE s.kelas_id = k.id AND s.status = 'aktif') as jumlah_siswa
     FROM pu_kelas_unggulan pk
     JOIN kelas k ON pk.kelas_id = k.id
     WHERE pk.tahun_ajaran_id = ?
-    ORDER BY k.tingkat, k.kelompok, k.nomor_kelas
-  `).bind(ta.id).all<KelasUnggulanRow>()
+    ORDER BY k.tingkat, CAST(k.nomor_kelas AS INTEGER), k.kelompok
+  `).bind(ta.id).all<any>()
 
   return { data: result.results || [], taId: ta.id, error: null }
 }
@@ -43,7 +35,6 @@ export async function tambahKelasUnggulan(kelasId: string) {
   const db = await getDB()
   const ta = await db.prepare('SELECT id FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ id: string }>()
   if (!ta) return { error: 'Tahun ajaran aktif belum diatur' }
-
   const result = await dbInsert(db, 'pu_kelas_unggulan', { kelas_id: kelasId, tahun_ajaran_id: ta.id })
   if (result.error) {
     if (result.error.includes('UNIQUE')) return { error: 'Kelas ini sudah ditambahkan' }
@@ -58,133 +49,266 @@ export async function hapusKelasUnggulan(id: string) {
   const result = await dbDelete(db, 'pu_kelas_unggulan', { id })
   if (result.error) return { error: result.error }
   revalidatePath(REVAL)
-  return { success: 'Kelas unggulan berhasil dihapus (beserta guru & materi terkait)' }
+  return { success: 'Kelas unggulan berhasil dihapus' }
 }
 
 // ============================================================
-// 2. GURU ASSIGNMENT CRUD
+// 2. AUTO-DETECT GURU dari penugasan_mengajar
 // ============================================================
-export async function getGuruKelasByPuKelas(puKelasId: string) {
-  const db = await getDB()
-  const result = await db.prepare(`
-    SELECT pg.id, pg.guru_id, u.nama_lengkap AS guru_nama, pg.jam_mengajar, pg.pu_kelas_id
-    FROM pu_guru_kelas pg
-    JOIN "user" u ON pg.guru_id = u.id
-    WHERE pg.pu_kelas_id = ?
-    ORDER BY u.nama_lengkap
-  `).bind(puKelasId).all<GuruKelasRow>()
-  return result.results || []
-}
-
-export async function tambahGuruKelas(puKelasId: string, guruId: string, jamMengajar: number) {
-  const db = await getDB()
-  const result = await dbInsert(db, 'pu_guru_kelas', {
-    guru_id: guruId, pu_kelas_id: puKelasId, jam_mengajar: jamMengajar
-  })
-  if (result.error) {
-    if (result.error.includes('UNIQUE')) return { error: 'Guru ini sudah di-assign ke kelas ini' }
-    return { error: result.error }
-  }
-  revalidatePath(REVAL)
-  return { success: 'Guru berhasil ditambahkan' }
-}
-
-export async function editJamMengajar(id: string, jamMengajar: number) {
-  const db = await getDB()
-  const result = await dbUpdate(db, 'pu_guru_kelas', { jam_mengajar: jamMengajar }, { id })
-  if (result.error) return { error: result.error }
-  revalidatePath(REVAL)
-  return { success: 'Jam mengajar berhasil diperbarui' }
-}
-
-export async function hapusGuruKelas(id: string) {
-  const db = await getDB()
-  const result = await dbDelete(db, 'pu_guru_kelas', { id })
-  if (result.error) return { error: result.error }
-  revalidatePath(REVAL)
-  return { success: 'Guru berhasil dihapus dari kelas unggulan' }
-}
-
-// Suggest guru dari penugasan_mengajar existing
-export async function suggestGuruFromPenugasan(kelasId: string) {
+export async function getGuruAutoByKelas(kelasId: string) {
   const db = await getDB()
   const ta = await db.prepare('SELECT id FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ id: string }>()
   if (!ta) return []
 
   const result = await db.prepare(`
-    SELECT DISTINCT pm.guru_id, u.nama_lengkap AS guru_nama,
-      COUNT(jm.id) AS total_jam
+    SELECT pm.guru_id, u.nama_lengkap as guru_nama,
+      COUNT(DISTINCT jm.id) as total_jam,
+      GROUP_CONCAT(DISTINCT mp.nama_mapel) as mapel_list
+    FROM penugasan_mengajar pm
+    JOIN "user" u ON pm.guru_id = u.id
+    LEFT JOIN jadwal_mengajar jm ON jm.penugasan_id = pm.id
+    LEFT JOIN mata_pelajaran mp ON pm.mapel_id = mp.id
+    WHERE pm.kelas_id = ? AND pm.tahun_ajaran_id = ?
+    GROUP BY pm.guru_id, u.nama_lengkap
+    ORDER BY u.nama_lengkap
+  `).bind(kelasId, ta.id).all<any>()
+  return result.results || []
+}
+
+// ============================================================
+// 3. MATERI MINGGUAN CRUD
+// ============================================================
+export async function getMateriMingguan(program?: ProgramType) {
+  const db = await getDB()
+  let sql = `
+    SELECT m.id, m.program, m.minggu_mulai, m.konten, m.created_at, m.updated_at,
+      GROUP_CONCAT(k.tingkat || '-' || k.nomor_kelas || ' ' || k.kelompok, ', ') as kelas_labels,
+      GROUP_CONCAT(mk.pu_kelas_id) as pu_kelas_ids
+    FROM pu_materi_mingguan m
+    LEFT JOIN pu_materi_mingguan_kelas mk ON mk.materi_id = m.id
+    LEFT JOIN pu_kelas_unggulan pk ON mk.pu_kelas_id = pk.id
+    LEFT JOIN kelas k ON pk.kelas_id = k.id
+    WHERE 1=1
+  `
+  const params: any[] = []
+  if (program) { sql += ' AND m.program = ?'; params.push(program) }
+  sql += ' GROUP BY m.id ORDER BY m.minggu_mulai DESC, m.program'
+
+  const result = await db.prepare(sql).bind(...params).all<any>()
+  return result.results || []
+}
+
+export async function simpanMateriMingguan(data: {
+  program: ProgramType
+  minggu_mulai: string
+  konten: any
+  pu_kelas_ids: string[]
+  created_by: string
+}): Promise<{ success?: string; error?: string }> {
+  const db = await getDB()
+  try {
+    const res = await db.prepare(`
+      INSERT INTO pu_materi_mingguan (id, program, minggu_mulai, konten, created_by)
+      VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?) RETURNING id
+    `).bind(data.program, data.minggu_mulai, JSON.stringify(data.konten), data.created_by).first<any>()
+
+    if (res?.id && data.pu_kelas_ids.length > 0) {
+      const stmts = data.pu_kelas_ids.map(pkId =>
+        db.prepare(`INSERT INTO pu_materi_mingguan_kelas (id, materi_id, pu_kelas_id) VALUES (lower(hex(randomblob(16))), ?, ?)`)
+          .bind(res.id, pkId)
+      )
+      await db.batch(stmts)
+    }
+
+    revalidatePath(REVAL)
+    return { success: 'Materi mingguan berhasil disimpan' }
+  } catch (e: any) {
+    return { error: e.message || 'Gagal menyimpan materi' }
+  }
+}
+
+export async function editMateriMingguan(id: string, data: {
+  minggu_mulai: string
+  konten: any
+  pu_kelas_ids: string[]
+}): Promise<{ success?: string; error?: string }> {
+  const db = await getDB()
+  try {
+    await db.prepare(`UPDATE pu_materi_mingguan SET minggu_mulai = ?, konten = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(data.minggu_mulai, JSON.stringify(data.konten), id).run()
+
+    // Replace kelas assignments
+    await db.prepare('DELETE FROM pu_materi_mingguan_kelas WHERE materi_id = ?').bind(id).run()
+    if (data.pu_kelas_ids.length > 0) {
+      const stmts = data.pu_kelas_ids.map(pkId =>
+        db.prepare(`INSERT INTO pu_materi_mingguan_kelas (id, materi_id, pu_kelas_id) VALUES (lower(hex(randomblob(16))), ?, ?)`)
+          .bind(id, pkId)
+      )
+      await db.batch(stmts)
+    }
+
+    revalidatePath(REVAL)
+    return { success: 'Materi berhasil diperbarui' }
+  } catch (e: any) {
+    return { error: e.message || 'Gagal memperbarui materi' }
+  }
+}
+
+export async function hapusMateriMingguan(id: string) {
+  const db = await getDB()
+  try {
+    await db.prepare('DELETE FROM pu_materi_mingguan WHERE id = ?').bind(id).run()
+    revalidatePath(REVAL)
+    return { success: 'Materi berhasil dihapus' }
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
+// ============================================================
+// 4. JADWAL SAMPLING MINGGUAN
+//    Kapasitas harian = SUM of JAM_TO_SISWA[jam] tiap guru di kelas tsb
+//    Semua siswa harus kebagian minimal 1× seminggu.
+//    Jika siswa sedikit, beberapa bisa 2× untuk memenuhi kuota guru.
+// ============================================================
+const JAM_TO_SISWA: Record<number, number> = { 1: 1, 2: 3, 3: 4, 4: 5 }
+
+export async function getDailyCapacity(kelasId: string): Promise<{ capacity: number; guruDetail: any[] }> {
+  const db = await getDB()
+  const ta = await db.prepare('SELECT id FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ id: string }>()
+  if (!ta) return { capacity: 0, guruDetail: [] }
+
+  const result = await db.prepare(`
+    SELECT pm.guru_id, u.nama_lengkap as guru_nama,
+      COUNT(DISTINCT jm.id) as total_jam
     FROM penugasan_mengajar pm
     JOIN "user" u ON pm.guru_id = u.id
     LEFT JOIN jadwal_mengajar jm ON jm.penugasan_id = pm.id
     WHERE pm.kelas_id = ? AND pm.tahun_ajaran_id = ?
     GROUP BY pm.guru_id, u.nama_lengkap
     ORDER BY u.nama_lengkap
-  `).bind(kelasId, ta.id).all<{ guru_id: string; guru_nama: string; total_jam: number }>()
-  return result.results || []
-}
+  `).bind(kelasId, ta.id).all<any>()
 
-// ============================================================
-// 3. MATERI TES CRUD
-// ============================================================
-export async function getMateriAdmin(puKelasId?: string) {
-  const db = await getDB()
-  const ta = await db.prepare('SELECT id FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ id: string }>()
-  if (!ta) return []
-
-  let sql = `
-    SELECT m.id, m.judul, m.konten, m.urutan, m.is_active, m.pu_kelas_id,
-      k.tingkat || '-' || k.nomor_kelas || ' ' || k.kelompok AS kelas_label
-    FROM pu_materi m
-    JOIN pu_kelas_unggulan pk ON m.pu_kelas_id = pk.id
-    JOIN kelas k ON pk.kelas_id = k.id
-    WHERE pk.tahun_ajaran_id = ?
-  `
-  const params: unknown[] = [ta.id]
-  if (puKelasId) { sql += ' AND m.pu_kelas_id = ?'; params.push(puKelasId) }
-  sql += ' ORDER BY m.pu_kelas_id, m.urutan, m.created_at'
-
-  const result = await db.prepare(sql).bind(...params).all<MateriRow>()
-  return result.results || []
-}
-
-export async function tambahMateri(puKelasId: string, judul: string, konten: string, urutan: number) {
-  const db = await getDB()
-  const result = await dbInsert(db, 'pu_materi', {
-    pu_kelas_id: puKelasId, judul, konten, urutan, is_active: 1
+  const guruDetail = (result.results || []).map((g: any) => {
+    const jam = Math.min(Math.max(g.total_jam || 1, 1), 4)
+    return { ...g, jam, kuota: JAM_TO_SISWA[jam] || 1 }
   })
-  if (result.error) return { error: result.error }
-  revalidatePath(REVAL)
-  return { success: 'Materi berhasil ditambahkan' }
+  const capacity = guruDetail.reduce((sum: number, g: any) => sum + g.kuota, 0)
+  return { capacity: Math.max(capacity, 1), guruDetail }
 }
 
-export async function editMateri(id: string, judul: string, konten: string, urutan: number, isActive: boolean) {
+export async function generateJadwalSampling(puKelasId: string, mingguMulai: string): Promise<{ success?: string; error?: string; jadwal?: any[]; capacity?: number }> {
   const db = await getDB()
-  const result = await dbUpdate(db, 'pu_materi', {
-    judul, konten, urutan, is_active: isActive ? 1 : 0, updated_at: new Date().toISOString()
-  }, { id })
-  if (result.error) return { error: result.error }
-  revalidatePath(REVAL)
-  return { success: 'Materi berhasil diperbarui' }
+  try {
+    const pk = await db.prepare('SELECT kelas_id FROM pu_kelas_unggulan WHERE id = ?').bind(puKelasId).first<any>()
+    if (!pk) return { error: 'Kelas unggulan tidak ditemukan' }
+
+    // Check existing
+    const existing = await db.prepare(
+      'SELECT id FROM pu_jadwal_sampling WHERE pu_kelas_id = ? AND minggu_mulai = ? LIMIT 1'
+    ).bind(puKelasId, mingguMulai).first<any>()
+    if (existing) return await getJadwalSampling(puKelasId, mingguMulai)
+
+    // All active students
+    const siswaRes = await db.prepare(`
+      SELECT id as siswa_id, nama_lengkap FROM siswa WHERE kelas_id = ? AND status = 'aktif' ORDER BY nama_lengkap
+    `).bind(pk.kelas_id).all<any>()
+    const students = siswaRes.results || []
+    if (students.length === 0) return { error: 'Tidak ada siswa aktif di kelas ini' }
+
+    // Daily capacity from guru quotas
+    const { capacity } = await getDailyCapacity(pk.kelas_id)
+    const totalWeeklySlots = capacity * 6
+
+    // Shuffle students
+    const shuffled = [...students].sort(() => Math.random() - 0.5)
+
+    // Distribute: fill each day with `capacity` students, wrap-around if needed
+    const assignments: { siswa_id: string; hari: number }[] = []
+    let idx = 0
+    for (let day = 1; day <= 6; day++) {
+      for (let slot = 0; slot < capacity; slot++) {
+        assignments.push({ siswa_id: shuffled[idx % shuffled.length].siswa_id, hari: day })
+        idx++
+      }
+    }
+
+    // Insert
+    const stmts = assignments.map(a =>
+      db.prepare(`INSERT INTO pu_jadwal_sampling (id, pu_kelas_id, siswa_id, minggu_mulai, hari) VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?)`)
+        .bind(puKelasId, a.siswa_id, mingguMulai, a.hari)
+    )
+    for (let i = 0; i < stmts.length; i += 50) {
+      await db.batch(stmts.slice(i, i + 50))
+    }
+
+    revalidatePath(REVAL)
+    return await getJadwalSampling(puKelasId, mingguMulai)
+  } catch (e: any) {
+    return { error: e.message || 'Gagal generate jadwal' }
+  }
 }
 
-export async function hapusMateri(id: string) {
+export async function getJadwalSampling(puKelasId: string, mingguMulai: string) {
   const db = await getDB()
-  const result = await dbDelete(db, 'pu_materi', { id })
-  if (result.error) return { error: result.error }
-  revalidatePath(REVAL)
-  return { success: 'Materi berhasil dihapus' }
+  const result = await db.prepare(`
+    SELECT js.id, js.siswa_id, js.hari, s.nama_lengkap
+    FROM pu_jadwal_sampling js
+    JOIN siswa s ON js.siswa_id = s.id
+    WHERE js.pu_kelas_id = ? AND js.minggu_mulai = ?
+    ORDER BY js.hari, s.nama_lengkap
+  `).bind(puKelasId, mingguMulai).all<any>()
+
+  const pk = await db.prepare('SELECT kelas_id FROM pu_kelas_unggulan WHERE id = ?').bind(puKelasId).first<any>()
+  let capacity = 0
+  if (pk) { const c = await getDailyCapacity(pk.kelas_id); capacity = c.capacity }
+
+  return { success: 'OK', jadwal: result.results || [], capacity }
+}
+
+export async function pindahHariSampling(jadwalId: string, hariBaru: number): Promise<{ success?: string; error?: string }> {
+  const db = await getDB()
+  try {
+    await db.prepare('UPDATE pu_jadwal_sampling SET hari = ? WHERE id = ?').bind(hariBaru, jadwalId).run()
+    revalidatePath(REVAL)
+    return { success: 'Jadwal berhasil diubah' }
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
+export async function resetJadwalSampling(puKelasId: string, mingguMulai: string): Promise<{ success?: string; error?: string }> {
+  const db = await getDB()
+  try {
+    await db.prepare('DELETE FROM pu_jadwal_sampling WHERE pu_kelas_id = ? AND minggu_mulai = ?')
+      .bind(puKelasId, mingguMulai).run()
+    revalidatePath(REVAL)
+    return { success: 'Jadwal berhasil direset. Generate ulang untuk acak baru.' }
+  } catch (e: any) {
+    return { error: e.message }
+  }
 }
 
 // ============================================================
-// 4. MONITORING — Data lengkap pengetesan
+// 5. DROPDOWN DATA (tetap)
+// ============================================================
+export async function getAllKelasForDropdown() {
+  const db = await getDB()
+  const result = await db.prepare(`
+    SELECT id, tingkat, nomor_kelas, kelompok
+    FROM kelas ORDER BY tingkat, CAST(nomor_kelas AS INTEGER), kelompok
+  `).all<any>()
+  return result.results || []
+}
+
+// ============================================================
+// 6. MONITORING & LAPORAN (tetap dari existing)
 // ============================================================
 export async function getMonitoringData(puKelasId?: string, tanggalDari?: string, tanggalSampai?: string) {
   const db = await getDB()
   const ta = await db.prepare('SELECT id FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ id: string }>()
   if (!ta) return { guruActivity: [], siswaRekap: [] }
 
-  // — Aktivitas guru (siapa ngetes siapa, kapan)
   let guruSql = `
     SELECT ht.id, ht.tanggal, ht.status, ht.nilai, ht.round_number,
       u.nama_lengkap AS guru_nama, u.id AS guru_id,
@@ -203,10 +327,8 @@ export async function getMonitoringData(puKelasId?: string, tanggalDari?: string
   if (tanggalDari) { guruSql += ' AND ht.tanggal >= ?'; guruParams.push(tanggalDari) }
   if (tanggalSampai) { guruSql += ' AND ht.tanggal <= ?'; guruParams.push(tanggalSampai) }
   guruSql += ' ORDER BY ht.tanggal DESC, u.nama_lengkap'
-
   const guruResult = await db.prepare(guruSql).bind(...guruParams).all<any>()
 
-  // — Rekap siswa (berapa kali dites, nilainya apa)
   let siswaSql = `
     SELECT s.id AS siswa_id, s.nama_lengkap AS siswa_nama, s.foto_url,
       k.tingkat || '-' || k.nomor_kelas || ' ' || k.kelompok AS kelas_label,
@@ -224,102 +346,32 @@ export async function getMonitoringData(puKelasId?: string, tanggalDari?: string
   `
   const siswaParams: unknown[] = [ta.id]
   if (puKelasId) { siswaSql += ' AND pk.id = ?'; siswaParams.push(puKelasId) }
-  siswaSql += ' GROUP BY s.id, s.nama_lengkap, s.foto_url, kelas_label, ht.pu_kelas_id'
-  siswaSql += ' ORDER BY kelas_label, s.nama_lengkap'
-
+  siswaSql += ' GROUP BY s.id ORDER BY kelas_label, s.nama_lengkap'
   const siswaResult = await db.prepare(siswaSql).bind(...siswaParams).all<any>()
 
-  return {
-    guruActivity: guruResult.results || [],
-    siswaRekap: siswaResult.results || []
-  }
+  return { guruActivity: guruResult.results || [], siswaRekap: siswaResult.results || [] }
 }
 
-// ============================================================
-// 5. DATA UNTUK DROPDOWN
-// ============================================================
-export async function getAllKelasForDropdown() {
-  const db = await getDB()
-  const result = await db.prepare(`
-    SELECT id, tingkat, nomor_kelas, kelompok
-    FROM kelas ORDER BY tingkat, kelompok, nomor_kelas
-  `).all<{ id: string; tingkat: number; nomor_kelas: string; kelompok: string }>()
-  return result.results || []
-}
-
-export async function getAllGuruForDropdown() {
-  const db = await getDB()
-  const result = await db.prepare(`
-    SELECT id, nama_lengkap FROM "user"
-    WHERE role IN ('guru','wali_kelas','wakamad','guru_piket','guru_ppl')
-    ORDER BY nama_lengkap
-  `).all<{ id: string; nama_lengkap: string }>()
-  return result.results || []
-}
-
-// ============================================================
-// 6. UPLOAD MEDIA (gambar/audio) untuk materi
-// ============================================================
-export async function uploadMateriMedia(formData: FormData) {
-  const file = formData.get('file') as File
-  if (!file) return { error: 'File tidak ditemukan' }
-
-  const maxSize = 5 * 1024 * 1024 // 5MB
-  if (file.size > maxSize) return { error: 'Ukuran file maksimal 5MB' }
-
-  const allowedTypes = [
-    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-    'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'
-  ]
-  if (!allowedTypes.includes(file.type)) return { error: 'Format file tidak didukung' }
-
-  try {
-    const { getCloudflareContext } = await import('@opennextjs/cloudflare')
-    const { env } = await getCloudflareContext({ async: true })
-    const r2 = env.R2 as R2Bucket
-
-    const ext = file.name.split('.').pop() || 'bin'
-    const key = `program-unggulan/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    const buffer = await file.arrayBuffer()
-    await r2.put(key, buffer, { httpMetadata: { contentType: file.type } })
-
-    const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`
-    return { url: publicUrl, type: file.type.startsWith('audio/') ? 'audio' : 'image' }
-  } catch (e: any) {
-    return { error: `Upload gagal: ${e.message}` }
-  }
-}
-
-// ============================================================
-// 7. DATA UNTUK LAPORAN PDF/EXCEL
-// ============================================================
 export async function getLaporanData(puKelasId?: string, tanggalDari?: string, tanggalSampai?: string) {
-  // Reuse monitoring data + tambahan info
   const monitoring = await getMonitoringData(puKelasId, tanggalDari, tanggalSampai)
-
   const db = await getDB()
-  const ta = await db.prepare('SELECT nama, semester FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ nama: string; semester: number }>()
+  const ta = await db.prepare('SELECT nama, semester FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<any>()
 
-  // Guru summary (total sesi tes)
   const guruMap = new Map<string, { nama: string; total_sesi: number; total_siswa: number; tanggal_set: Set<string> }>()
   for (const row of monitoring.guruActivity) {
-    if (!guruMap.has(row.guru_id)) {
-      guruMap.set(row.guru_id, { nama: row.guru_nama, total_sesi: 0, total_siswa: 0, tanggal_set: new Set() })
-    }
+    if (!guruMap.has(row.guru_id)) guruMap.set(row.guru_id, { nama: row.guru_nama, total_sesi: 0, total_siswa: 0, tanggal_set: new Set() })
     const g = guruMap.get(row.guru_id)!
     if (row.status === 'sudah') g.total_siswa++
     g.tanggal_set.add(row.tanggal)
   }
-  for (const g of guruMap.values()) { g.total_sesi = g.tanggal_set.size }
-
-  const guruSummary = Array.from(guruMap.entries()).map(([id, v]) => ({
-    guru_id: id, guru_nama: v.nama, total_sesi: v.total_sesi, total_siswa_dites: v.total_siswa
-  })).sort((a, b) => a.guru_nama.localeCompare(b.guru_nama))
+  for (const g of guruMap.values()) g.total_sesi = g.tanggal_set.size
 
   return {
     tahunAjaran: ta ? `${ta.nama} - Semester ${ta.semester}` : '-',
     guruActivity: monitoring.guruActivity,
     siswaRekap: monitoring.siswaRekap,
-    guruSummary
+    guruSummary: Array.from(guruMap.entries()).map(([id, v]) => ({
+      guru_id: id, guru_nama: v.nama, total_sesi: v.total_sesi, total_siswa_dites: v.total_siswa
+    })).sort((a, b) => a.guru_nama.localeCompare(b.guru_nama))
   }
 }
