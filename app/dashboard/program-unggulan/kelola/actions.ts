@@ -216,24 +216,53 @@ export async function generateJadwalSampling(puKelasId: string, mingguMulai: str
     const students = siswaRes.results || []
     if (students.length === 0) return { error: 'Tidak ada siswa aktif di kelas ini' }
 
-    // Daily capacity from guru quotas
+    // Daily capacity = total kuota semua guru per hari
     const { capacity } = await getDailyCapacity(pk.kelas_id)
-    const totalWeeklySlots = capacity * 6
+    const n = students.length
 
-    // Shuffle students
+    // Shuffle students untuk distribusi acak
     const shuffled = [...students].sort(() => Math.random() - 0.5)
 
-    // Distribute: fill each day with `capacity` students, wrap-around if needed
+    // -------------------------------------------------------
+    // Goal: setiap hari (1–6) selalu terisi tepat `capacity`
+    // slot siswa agar setiap guru selalu ada siswa yang bisa
+    // dites. Siswa BOLEH muncul di beberapa hari berbeda
+    // -------------------------------------------------------
     const assignments: { siswa_id: string; hari: number }[] = []
-    let idx = 0
+
     for (let day = 1; day <= 6; day++) {
-      for (let slot = 0; slot < capacity; slot++) {
-        assignments.push({ siswa_id: shuffled[idx % shuffled.length].siswa_id, hari: day })
-        idx++
+      const daySet = new Set<string>()
+      const offset = (day - 1) * capacity
+      let added = 0
+      let tries = 0
+
+      while (added < capacity && tries < n) {
+        const student = shuffled[(offset + tries) % n]
+        if (!daySet.has(student.siswa_id)) {
+          assignments.push({ siswa_id: student.siswa_id, hari: day })
+          daySet.add(student.siswa_id)
+          added++
+        }
+        tries++
+      }
+
+      // Fallback: jika capacity > n (lebih banyak slot dari siswa),
+      // lanjut scan dari awal untuk mengisi sisa slot
+      if (added < capacity) {
+        for (let i = 0; i < n && added < capacity; i++) {
+          const student = shuffled[i]
+          if (!daySet.has(student.siswa_id)) {
+            assignments.push({ siswa_id: student.siswa_id, hari: day })
+            daySet.add(student.siswa_id)
+            added++
+          }
+        }
       }
     }
 
-    // Insert
+    if (assignments.length === 0) return { error: 'Tidak dapat membuat jadwal: kapasitas tidak tersedia' }
+
+    // Insert batch
     const stmts = assignments.map(a =>
       db.prepare(`INSERT INTO pu_jadwal_sampling (id, pu_kelas_id, siswa_id, minggu_mulai, hari) VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?)`)
         .bind(puKelasId, a.siswa_id, mingguMulai, a.hari)
