@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Camera, AlertCircle, CheckCircle2, Search } from 'lucide-react'
 import { simpanPelanggaran, searchSiswa } from '../actions'
+import { todayWIB } from '@/lib/time'
 
 const initialState = { error: null as string | null, success: null as string | null }
 
@@ -53,7 +54,7 @@ export function FormModal({ isOpen, onClose, editData, masterList }: {
   masterList: { id: string; nama_pelanggaran: string; poin: number }[]
 }) {
   const [state, formAction] = useActionState(simpanPelanggaran, initialState)
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayWIB()
 
   const [searchSiswaQuery, setSearchSiswaQuery] = useState('')
   const [selectedSiswaId, setSelectedSiswaId] = useState('')

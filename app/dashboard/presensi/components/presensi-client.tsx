@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { catatPresensiMasuk, catatPresensiPulang, setStatusPresensi, editWaktuPresensi } from '../actions'
 import { cn } from '@/lib/utils'
+import { nowWIB } from '@/lib/time'
 
 type Pegawai = {
   id: string; nama_lengkap: string; email: string;
@@ -45,12 +46,12 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
   const [statusModal, setStatusModal] = useState<Pegawai | null>(null)
   const [statusValue, setStatusValue] = useState('sakit')
   const [statusCatatan, setStatusCatatan] = useState('')
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [currentTime, setCurrentTime] = useState(nowWIB())
   const [modalPending, setModalPending] = useState(false)
 
   // Live clock
   useState(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 30000)
+    const interval = setInterval(() => setCurrentTime(nowWIB()), 30000)
     return () => clearInterval(interval)
   })
 
@@ -177,7 +178,7 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
           <div className="flex items-center gap-1.5">
             <Timer className="h-3.5 w-3.5 text-slate-400" />
             <span className="text-sm font-mono font-semibold text-slate-700 dark:text-slate-200">
-              {String(currentTime.getHours()).padStart(2, '0')}:{String(currentTime.getMinutes()).padStart(2, '0')}
+              {String(currentTime.getUTCHours()).padStart(2, '0')}:{String(currentTime.getUTCMinutes()).padStart(2, '0')}
             </span>
           </div>
         </div>

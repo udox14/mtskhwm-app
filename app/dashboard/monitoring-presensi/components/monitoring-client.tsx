@@ -18,6 +18,7 @@ import {
   simpanPengaturanPresensi, simpanPengaturanTunjangan, hitungTunjanganBulanan
 } from '../actions'
 import { cn } from '@/lib/utils'
+import { nowWIB } from '@/lib/time'
 
 type Pegawai = { id: string; nama_lengkap: string; domisili_pegawai: string | null; jabatan_nama: string }
 type PresensiRow = {
@@ -95,9 +96,9 @@ export function MonitoringClient({
   }, [rekapMode, rekapDari, rekapSampai, rekapUserId])
 
   // ---- TAB: TUNJANGAN ----
-  const now = new Date()
-  const [tunjBulan, setTunjBulan] = useState(now.getMonth() + 1)
-  const [tunjTahun, setTunjTahun] = useState(now.getFullYear())
+  const _wib = nowWIB()
+  const [tunjBulan, setTunjBulan] = useState(_wib.getUTCMonth() + 1)
+  const [tunjTahun, setTunjTahun] = useState(_wib.getUTCFullYear())
   const [tunjData, setTunjData] = useState<any>(null)
 
   const loadTunjangan = useCallback(() => {
@@ -647,7 +648,7 @@ export function MonitoringClient({
 
           <div className="mt-6 flex justify-end">
             <div className="text-center" style={{ fontSize: '10px' }}>
-              <p>Tasikmalaya, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p>Tasikmalaya, {new Date(Date.now() + 7*60*60*1000).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</p>
               <p className="mt-1">Kepala Madrasah,</p>
               <div className="h-16"></div>
               <p className="border-b border-black pb-0.5">(_________________________)</p>

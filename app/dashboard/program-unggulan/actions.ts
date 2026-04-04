@@ -3,6 +3,7 @@
 
 import { getDB } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
+import { todayWIB } from '@/lib/time'
 
 // ============================================================
 // TYPES
@@ -61,7 +62,7 @@ export async function getKelasUnggulanGuru(guruId: string) {
 // ============================================================
 export async function getSiswaTesList(puKelasId: string, guruId: string, jamMengajar: number) {
   const db = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayWIB()
   const jumlahSiswa = JAM_TO_SISWA[jamMengajar] ?? 3
 
   // Cek apakah sudah ada assignment untuk guru ini hari ini di kelas ini

@@ -3,6 +3,7 @@
 
 import { getDB, dbSelectOne } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
+import { todayWIB, nowWIB, currentTimeWIB } from '@/lib/time'
 
 // ============================================================
 // GET PENGATURAN PRESENSI
@@ -33,7 +34,7 @@ export async function getPegawaiStruktural() {
 // ============================================================
 export async function getPresensiHariIni() {
   const db = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayWIB()
   const result = await db.prepare(`
     SELECT p.*, u.nama_lengkap, u.domisili_pegawai, j.nama as jabatan_nama
     FROM presensi_pegawai p
@@ -50,9 +51,8 @@ export async function getPresensiHariIni() {
 // ============================================================
 export async function catatPresensiMasuk(userId: string, diinputOleh: string, catatan?: string) {
   const db = await getDB()
-  const today = new Date().toISOString().split('T')[0]
-  const now = new Date()
-  const jamMasuk = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const today = todayWIB()
+  const { hours, minutes, hhmm: jamMasuk } = currentTimeWIB()
 
   // Check existing
   const existing = await db.prepare('SELECT id, jam_masuk FROM presensi_pegawai WHERE user_id = ? AND tanggal = ?')
@@ -67,7 +67,7 @@ export async function catatPresensiMasuk(userId: string, diinputOleh: string, ca
   // Calculate telat
   const [bH, bM] = batasJam.split(':').map(Number)
   const batasMinutes = bH * 60 + bM + batasTelat
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = hours * 60 + minutes
   const isTelat = nowMinutes > batasMinutes ? 1 : 0
 
   if (existing) {
@@ -92,9 +92,8 @@ export async function catatPresensiMasuk(userId: string, diinputOleh: string, ca
 // ============================================================
 export async function catatPresensiPulang(userId: string, diinputOleh: string) {
   const db = await getDB()
-  const today = new Date().toISOString().split('T')[0]
-  const now = new Date()
-  const jamPulang = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const today = todayWIB()
+  const { hours, minutes, hhmm: jamPulang } = currentTimeWIB()
 
   const existing = await db.prepare('SELECT id, jam_pulang FROM presensi_pegawai WHERE user_id = ? AND tanggal = ?')
     .bind(userId, today).first<any>()
@@ -108,7 +107,7 @@ export async function catatPresensiPulang(userId: string, diinputOleh: string) {
 
   const [pH, pM] = batasJamPulang.split(':').map(Number)
   const batasPulangMinutes = pH * 60 + pM - batasCepat
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = hours * 60 + minutes
   const isPulangCepat = nowMinutes < batasPulangMinutes ? 1 : 0
 
   await db.prepare(`
@@ -131,7 +130,7 @@ export async function editWaktuPresensi(presensiId: string, jamMasuk: string | n
 
   const setting = await db.prepare('SELECT * FROM pengaturan_presensi WHERE id = ?').bind('global').first<any>()
 
-  const updates: Record<string, any> = { updated_at: new Date().toISOString(), diinput_oleh: diinputOleh }
+  const updates: Record<string, any> = { updated_at: nowWIB().toISOString(), diinput_oleh: diinputOleh }
 
   if (jamMasuk !== null) {
     updates.jam_masuk = jamMasuk
@@ -165,7 +164,7 @@ export async function editWaktuPresensi(presensiId: string, jamMasuk: string | n
 // ============================================================
 export async function setStatusPresensi(userId: string, status: string, diinputOleh: string, catatan?: string): Promise<{ success?: boolean; error?: string }> {
   const db = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayWIB()
 
   try {
     const existing = await db.prepare('SELECT id FROM presensi_pegawai WHERE user_id = ? AND tanggal = ?')

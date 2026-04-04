@@ -16,6 +16,7 @@ import {
   getAbsensiPerSiswa, getAbsensiPerKelas, getDetailKelasHarian,
   getAbsensiPerJam, getDataCetakAbsensi,
 } from '../actions'
+import { todayWIB, nowWIB } from '@/lib/time'
 
 // ============================================================
 // TYPES & CONSTS
@@ -31,7 +32,7 @@ const ST: Record<string, { bg: string; text: string; label: string; dot: string 
   IZIN:           { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Izin', dot: 'bg-blue-500' },
 }
 
-function today() { return new Date().toISOString().split('T')[0] }
+function today() { return todayWIB() }
 function fmtTgl(t: string) { return new Date(t + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) }
 function fmtTglFull(t: string) { return new Date(t + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }
 
@@ -174,7 +175,7 @@ function TabKelas() {
 // ============================================================
 function TabSiswa({ filterOptions }: { filterOptions: FilterOpt }) {
   const [siswaId, setSiswaId] = useState('')
-  const [tglMulai, setTglMulai] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0] })
+  const [tglMulai, setTglMulai] = useState(() => { const d = nowWIB(); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().split('T')[0] })
   const [tglSelesai, setTglSelesai] = useState(today())
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -336,7 +337,7 @@ function TabJam() {
 // TAB: CETAK
 // ============================================================
 function TabCetak({ filterOptions }: { filterOptions: FilterOpt }) {
-  const [tglMulai, setTglMulai] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0] })
+  const [tglMulai, setTglMulai] = useState(() => { const d = nowWIB(); d.setUTCDate(1); return d.toISOString().split('T')[0] })
   const [tglSelesai, setTglSelesai] = useState(today())
   const [kelasId, setKelasId] = useState('')
   const [statusFilter, setStatusFilter] = useState('semua')
@@ -455,7 +456,7 @@ function TabCetak({ filterOptions }: { filterOptions: FilterOpt }) {
                 ))}
               </tbody>
             </table>
-            <p style={{ fontSize: 10, color: '#999', marginTop: 8 }}>Total: {data.length} record &middot; Dicetak: {new Date().toLocaleString('id-ID')}</p>
+            <p style={{ fontSize: 10, color: '#999', marginTop: 8 }}>Total: {data.length} record &middot; Dicetak: {new Date(Date.now() + 7*60*60*1000).toLocaleString('id-ID', { timeZone: 'UTC' })}</p>
           </div>
         </div>
       )}

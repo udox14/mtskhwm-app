@@ -18,6 +18,7 @@ import {
   getMonitoringHarian, getRekapKehadiranGuru,
   editAgendaStatus, getDataCetakLaporan,
 } from '../actions'
+import { todayWIB, nowWIB } from '@/lib/time'
 
 // ============================================================
 // TYPES
@@ -43,7 +44,7 @@ function formatTanggal(tgl: string) {
   return new Date(tgl + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function todayStr() { return new Date().toISOString().split('T')[0] }
+function todayStr() { return todayWIB() }
 
 // ============================================================
 // MAIN COMPONENT
@@ -346,7 +347,7 @@ function TabHarian({ filterOptions }: { filterOptions: MonitoringClientProps['fi
 // ============================================================
 function TabRekap({ filterOptions }: { filterOptions: MonitoringClientProps['filterOptions'] }) {
   const [tglMulai, setTglMulai] = useState(() => {
-    const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]
+    const d = nowWIB(); d.setUTCDate(1); return d.toISOString().split('T')[0]
   })
   const [tglSelesai, setTglSelesai] = useState(todayStr())
   const [sortBy, setSortBy] = useState<'nama' | 'patuh' | 'alfa'>('patuh')
@@ -477,7 +478,7 @@ function TabRekap({ filterOptions }: { filterOptions: MonitoringClientProps['fil
 // ============================================================
 function TabCetak({ filterOptions }: { filterOptions: MonitoringClientProps['filterOptions'] }) {
   const [tglMulai, setTglMulai] = useState(() => {
-    const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]
+    const d = nowWIB(); d.setUTCDate(1); return d.toISOString().split('T')[0]
   })
   const [tglSelesai, setTglSelesai] = useState(todayStr())
   const [guruId, setGuruId] = useState('')

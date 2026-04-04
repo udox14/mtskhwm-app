@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import Link from 'next/link'
+import { todayWIB, nowWIB } from '@/lib/time'
 import {
   Users, UserCog, Library, ShieldAlert,
   TrendingUp, CalendarCheck, Clock, ArrowRight,
@@ -25,7 +26,7 @@ export default async function DashboardPage() {
     db.prepare('SELECT nama, semester FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ nama: string; semester: number }>(),
   ])
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayWIB()
 
   // Batch 2: stat counts + live counters + pelanggaran — semuanya parallel
   // Hemat reads: 3 COUNT digabung 1 query scalar, live counter 1 query
@@ -53,7 +54,8 @@ export default async function DashboardPage() {
     `).all<any>().then(r => r.results ?? []),
   ])
 
-  const hour = new Date().getHours()
+  const wib = nowWIB()
+  const hour = wib.getUTCHours()
   const sapaan = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam'
   const namaLengkap = freshUser?.nama_lengkap || user.name || 'Pengguna'
   const namaDepan = namaLengkap.split(' ')[0]
@@ -66,7 +68,7 @@ export default async function DashboardPage() {
     guru_piket: 'Guru Piket', resepsionis: 'Resepsionis', guru_ppl: 'Guru PPL', wali_kelas: 'Wali Kelas',
   }
 
-  const todayLabel = new Date().toLocaleDateString('id-ID', {
+  const todayLabel = new Date(today + 'T00:00:00').toLocaleDateString('id-ID', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 

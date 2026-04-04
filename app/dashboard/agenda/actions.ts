@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/utils/auth/server'
 import { revalidatePath } from 'next/cache'
 import { uploadToR2 } from '@/utils/r2'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
+import { nowWIB, currentTimeWIB } from '@/lib/time'
 
 // ============================================================
 // TYPES
@@ -37,7 +38,9 @@ function getPolaHariIni(polaJamRaw: string, hari: number): SlotJam[] {
 }
 
 function getHariNumber(date: Date): number {
-  const day = date.getDay() // 0=Minggu, 1=Senin...6=Sabtu
+  // Untuk nowWIB() objects: gunakan getUTCDay() karena sudah digeser +7 jam
+  // Untuk date biasa dengan string 'T00:00:00': gunakan getDay()
+  const day = date.getUTCDay() // 0=Minggu, 1=Senin...6=Sabtu
   return day === 0 ? 7 : day // convert ke 1=Senin..7=Minggu
 }
 
@@ -57,7 +60,7 @@ export async function getJadwalGuruHariIni(): Promise<{
 
   const db = await getDB()
 
-  const now = new Date()
+  const now = nowWIB()
   const tanggal = now.toISOString().split('T')[0]
   const hari = getHariNumber(now)
 
@@ -163,8 +166,7 @@ export async function submitAgenda(formData: FormData): Promise<{ error?: string
   if (existing) return { error: 'Agenda untuk jadwal ini sudah diisi hari ini.' }
 
   // Validasi: hanya bisa input di jam pelajarannya (dari mulai sampai selesai blok)
-  const now = new Date()
-  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const { hours: curH_, minutes: curM_, hhmm: currentTime } = currentTimeWIB()
 
   // Guru hanya bisa input mulai dari jam mulai sampai jam selesai bloknya
   // Toleransi: bisa mulai 5 menit sebelum jam mulai
@@ -205,7 +207,7 @@ export async function submitAgenda(formData: FormData): Promise<{ error?: string
     materi,
     foto_url: fotoUrl,
     status,
-    waktu_input: now.toISOString(),
+    waktu_input: nowWIB().toISOString(),
     diubah_oleh: user.id,
   }
 

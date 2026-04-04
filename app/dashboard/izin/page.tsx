@@ -7,12 +7,13 @@ import { IzinClient } from './components/izin-client'
 import { DoorOpen } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
+import { todayWIB } from '@/lib/time'
 
 export const metadata = { title: 'Perizinan Siswa - MTSKHWM App' }
 
 async function IzinDataFetcher({ currentUserRole }: { currentUserRole: string }) {
   const db = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayWIB()
 
   const [keluarResult, kelasResult] = await Promise.all([
     db.prepare(`

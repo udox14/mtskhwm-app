@@ -7,12 +7,13 @@ import { PresensiClient } from './components/presensi-client'
 import { ClipboardCheck } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
+import { todayWIB } from '@/lib/time'
 
 export const metadata = { title: 'Presensi Pegawai - MTSKHWM App' }
 
 async function PresensiDataFetcher({ currentUserId }: { currentUserId: string }) {
   const db = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayWIB()
 
   const [pegawaiResult, presensiResult, settingResult] = await Promise.all([
     db.prepare(`

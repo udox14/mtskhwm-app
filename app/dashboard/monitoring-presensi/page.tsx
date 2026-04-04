@@ -7,12 +7,13 @@ import { MonitoringClient } from './components/monitoring-client'
 import { BarChart3 } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
+import { todayWIB } from '@/lib/time'
 
 export const metadata = { title: 'Monitoring Presensi - MTSKHWM App' }
 
 async function MonitoringDataFetcher() {
   const db = await getDB()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayWIB()
 
   const [pegawaiResult, presensiHariIniResult, pengaturanPresensi, pengaturanTunjangan] = await Promise.all([
     db.prepare(`

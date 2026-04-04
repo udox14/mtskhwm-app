@@ -23,6 +23,7 @@ import {
 } from '../actions'
 import type { BidangBK, TipePenanganan, SesiPenanganan } from '../actions'
 import { cn } from '@/lib/utils'
+import { todayWIB } from '@/lib/time'
 
 // ── Types ──────────────────────────────────────────────────────────────
 type Topik = { id: string; bidang: BidangBK; nama: string }
@@ -73,7 +74,7 @@ function AvatarSiswa({ siswa, size = 'md' }: { siswa: Pick<SiswaResult, 'foto_ur
 function SesiLokalPanel({ sesiList, onChange }: { sesiList: SesiLokal[]; onChange: (list: SesiLokal[]) => void }) {
   const [isAdding, setIsAdding] = useState(false)
   const [tipe, setTipe] = useState<TipePenanganan>('KONSELING')
-  const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0])
+  const [tanggal, setTanggal] = useState(todayWIB())
   const [catatan, setCatatan] = useState('')
 
   const handleTambah = () => {
@@ -161,7 +162,7 @@ function SesiPenangananPanel({ rekamanId, sesiList, canEdit, onChanged }: {
 }) {
   const [isAdding, setIsAdding] = useState(false)
   const [tipe, setTipe] = useState<TipePenanganan>('KONSELING')
-  const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0])
+  const [tanggal, setTanggal] = useState(todayWIB())
   const [catatan, setCatatan] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
