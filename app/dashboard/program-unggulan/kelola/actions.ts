@@ -167,37 +167,62 @@ export async function hapusMateriMingguan(id: string) {
 
 // ============================================================
 // 4. JADWAL SAMPLING MINGGUAN
-//    Kapasitas harian = SUM of JAM_TO_SISWA[jam] tiap guru di kelas tsb
-//    Semua siswa harus kebagian minimal 1× seminggu.
-//    Jika siswa sedikit, beberapa bisa 2× untuk memenuhi kuota guru.
+//    Slot per hari dihitung dari data jadwal_mengajar nyata.
+//    Antrean siswa bersifat continuous wrap-around selama seminggu.
 // ============================================================
 const JAM_TO_SISWA: Record<number, number> = { 1: 1, 2: 3, 3: 4, 4: 5 }
 
-export async function getDailyCapacity(kelasId: string): Promise<{ capacity: number; guruDetail: any[] }> {
+// Hitung slot per hari berdasarkan jadwal_mengajar nyata
+export async function getWeeklySlots(kelasId: string): Promise<{
+  slots: Record<number, number>
+  guruPerHari: Record<number, { guru_id: string; guru_nama: string; mapel: string; jam: number; kuota: number }[]>
+  total: number
+}> {
   const db = await getDB()
   const ta = await db.prepare('SELECT id FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ id: string }>()
-  if (!ta) return { capacity: 0, guruDetail: [] }
+  const slots: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+  const guruPerHari: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }
+  if (!ta) return { slots, guruPerHari, total: 0 }
 
+  // Query: jam per guru per hari di kelas ini
   const result = await db.prepare(`
-    SELECT pm.guru_id, u.nama_lengkap as guru_nama,
-      COUNT(DISTINCT jm.id) as total_jam
-    FROM penugasan_mengajar pm
+    SELECT pm.guru_id, u.nama_lengkap AS guru_nama,
+      mp.nama_mapel AS mapel,
+      jm.hari,
+      COUNT(jm.jam_ke) AS jam_di_hari
+    FROM jadwal_mengajar jm
+    JOIN penugasan_mengajar pm ON jm.penugasan_id = pm.id
     JOIN "user" u ON pm.guru_id = u.id
-    LEFT JOIN jadwal_mengajar jm ON jm.penugasan_id = pm.id
+    JOIN mata_pelajaran mp ON pm.mapel_id = mp.id
     WHERE pm.kelas_id = ? AND pm.tahun_ajaran_id = ?
-    GROUP BY pm.guru_id, u.nama_lengkap
-    ORDER BY u.nama_lengkap
+    GROUP BY pm.guru_id, jm.hari, mp.nama_mapel
+    ORDER BY jm.hari, u.nama_lengkap
   `).bind(kelasId, ta.id).all<any>()
 
-  const guruDetail = (result.results || []).map((g: any) => {
-    const jam = Math.min(Math.max(g.total_jam || 1, 1), 4)
-    return { ...g, jam, kuota: JAM_TO_SISWA[jam] || 1 }
-  })
-  const capacity = guruDetail.reduce((sum: number, g: any) => sum + g.kuota, 0)
-  return { capacity: Math.max(capacity, 1), guruDetail }
+  for (const row of (result.results || [])) {
+    const hari = row.hari as number
+    if (hari < 1 || hari > 6) continue
+    const jam = Math.min(Math.max(row.jam_di_hari || 1, 1), 4)
+    const kuota = JAM_TO_SISWA[jam] || 1
+    guruPerHari[hari].push({
+      guru_id: row.guru_id,
+      guru_nama: row.guru_nama,
+      mapel: row.mapel,
+      jam,
+      kuota,
+    })
+    slots[hari] += kuota
+  }
+
+  const total = Object.values(slots).reduce((s, v) => s + v, 0)
+  return { slots, guruPerHari, total }
 }
 
-export async function generateJadwalSampling(puKelasId: string, mingguMulai: string): Promise<{ success?: string; error?: string; jadwal?: any[]; capacity?: number }> {
+// Generate jadwal sampling untuk satu kelas — continuous queue
+export async function generateJadwalSampling(puKelasId: string, mingguMulai: string): Promise<{
+  success?: string; error?: string; jadwal?: any[]
+  slotsPerHari?: Record<number, number>; totalSlot?: number
+}> {
   const db = await getDB()
   try {
     const pk = await db.prepare('SELECT kelas_id FROM pu_kelas_unggulan WHERE id = ?').bind(puKelasId).first<any>()
@@ -216,53 +241,50 @@ export async function generateJadwalSampling(puKelasId: string, mingguMulai: str
     const students = siswaRes.results || []
     if (students.length === 0) return { error: 'Tidak ada siswa aktif di kelas ini' }
 
-    // Daily capacity = total kuota semua guru per hari
-    const { capacity } = await getDailyCapacity(pk.kelas_id)
+    // Weekly slots from real jadwal_mengajar
+    const { slots, total: totalSlot } = await getWeeklySlots(pk.kelas_id)
+    if (totalSlot === 0) return { error: 'Belum ada jadwal mengajar untuk kelas ini. Atur di Pusat Akademik terlebih dahulu.' }
+
     const n = students.length
 
     // Shuffle students untuk distribusi acak
     const shuffled = [...students].sort(() => Math.random() - 0.5)
 
     // -------------------------------------------------------
-    // Goal: setiap hari (1–6) selalu terisi tepat `capacity`
-    // slot siswa agar setiap guru selalu ada siswa yang bisa
-    // dites. Siswa BOLEH muncul di beberapa hari berbeda
+    // Continuous queue: pointer bergerak maju terus lintas hari.
+    // Setiap hari diisi sesuai slots[hari] dari jadwal nyata.
+    // Siswa boleh muncul di beberapa hari (wrap-around).
+    // Dalam satu hari, satu siswa hanya muncul sekali.
     // -------------------------------------------------------
     const assignments: { siswa_id: string; hari: number }[] = []
+    let pointer = 0 // continuous pointer across all days
 
     for (let day = 1; day <= 6; day++) {
-      const daySet = new Set<string>()
-      const offset = (day - 1) * capacity
-      let added = 0
-      let tries = 0
+      const daySlotCount = slots[day]
+      if (daySlotCount === 0) continue
 
-      while (added < capacity && tries < n) {
-        const student = shuffled[(offset + tries) % n]
+      const daySet = new Set<string>()
+      let added = 0
+
+      // Ambil dari queue secara berurutan
+      while (added < daySlotCount) {
+        const student = shuffled[pointer % n]
         if (!daySet.has(student.siswa_id)) {
           assignments.push({ siswa_id: student.siswa_id, hari: day })
           daySet.add(student.siswa_id)
           added++
         }
-        tries++
-      }
+        pointer++
 
-      // Fallback: jika capacity > n (lebih banyak slot dari siswa),
-      // lanjut scan dari awal untuk mengisi sisa slot
-      if (added < capacity) {
-        for (let i = 0; i < n && added < capacity; i++) {
-          const student = shuffled[i]
-          if (!daySet.has(student.siswa_id)) {
-            assignments.push({ siswa_id: student.siswa_id, hari: day })
-            daySet.add(student.siswa_id)
-            added++
-          }
-        }
+        // Safety: jika sudah coba semua siswa tapi masih kurang
+        // (terjadi jika daySlotCount > n), break
+        if (daySet.size >= n) break
       }
     }
 
-    if (assignments.length === 0) return { error: 'Tidak dapat membuat jadwal: kapasitas tidak tersedia' }
+    if (assignments.length === 0) return { error: 'Tidak dapat membuat jadwal' }
 
-    // Insert batch
+    // Insert batch (max 50 per batch for D1)
     const stmts = assignments.map(a =>
       db.prepare(`INSERT INTO pu_jadwal_sampling (id, pu_kelas_id, siswa_id, minggu_mulai, hari) VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?)`)
         .bind(puKelasId, a.siswa_id, mingguMulai, a.hari)
@@ -278,6 +300,46 @@ export async function generateJadwalSampling(puKelasId: string, mingguMulai: str
   }
 }
 
+// Generate jadwal sampling untuk SEMUA kelas sekaligus
+export async function generateJadwalSemuaKelas(mingguMulai: string): Promise<{
+  success?: string; error?: string; results?: { kelas: string; status: string }[]
+}> {
+  const db = await getDB()
+  const ta = await db.prepare('SELECT id FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ id: string }>()
+  if (!ta) return { error: 'Tahun ajaran aktif belum diatur' }
+
+  const kelasRes = await db.prepare(`
+    SELECT pk.id, k.tingkat, k.nomor_kelas, k.kelompok
+    FROM pu_kelas_unggulan pk
+    JOIN kelas k ON pk.kelas_id = k.id
+    WHERE pk.tahun_ajaran_id = ?
+    ORDER BY k.tingkat, CAST(k.nomor_kelas AS INTEGER), k.kelompok
+  `).bind(ta.id).all<any>()
+
+  const kelasList = kelasRes.results || []
+  if (kelasList.length === 0) return { error: 'Belum ada kelas unggulan' }
+
+  const results: { kelas: string; status: string }[] = []
+
+  for (const k of kelasList) {
+    const label = `${k.tingkat}-${k.nomor_kelas} ${k.kelompok}`
+    try {
+      const res = await generateJadwalSampling(k.id, mingguMulai)
+      if (res.error) {
+        results.push({ kelas: label, status: `⚠️ ${res.error}` })
+      } else {
+        const count = res.jadwal?.length || 0
+        results.push({ kelas: label, status: `✅ ${count} jadwal` })
+      }
+    } catch (e: any) {
+      results.push({ kelas: label, status: `❌ ${e.message}` })
+    }
+  }
+
+  revalidatePath(REVAL)
+  return { success: 'Generate selesai', results }
+}
+
 export async function getJadwalSampling(puKelasId: string, mingguMulai: string) {
   const db = await getDB()
   const result = await db.prepare(`
@@ -289,10 +351,15 @@ export async function getJadwalSampling(puKelasId: string, mingguMulai: string) 
   `).bind(puKelasId, mingguMulai).all<any>()
 
   const pk = await db.prepare('SELECT kelas_id FROM pu_kelas_unggulan WHERE id = ?').bind(puKelasId).first<any>()
-  let capacity = 0
-  if (pk) { const c = await getDailyCapacity(pk.kelas_id); capacity = c.capacity }
+  let slotsPerHari: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+  let totalSlot = 0
+  if (pk) {
+    const ws = await getWeeklySlots(pk.kelas_id)
+    slotsPerHari = ws.slots
+    totalSlot = ws.total
+  }
 
-  return { success: 'OK', jadwal: result.results || [], capacity }
+  return { success: 'OK', jadwal: result.results || [], slotsPerHari, totalSlot }
 }
 
 export async function pindahHariSampling(jadwalId: string, hariBaru: number): Promise<{ success?: string; error?: string }> {

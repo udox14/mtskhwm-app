@@ -14,14 +14,14 @@ import {
   Star, Users, BookOpenCheck, BarChart3, FileText, Plus, Trash2,
   Loader2, AlertCircle, CheckCircle2, School, ChevronDown, ChevronUp,
   Search, Calendar, Download, Printer, BookOpen, Languages, PenLine,
-  GraduationCap, Clock, ArrowRightLeft, RefreshCw, X
+  GraduationCap, Clock, ArrowRightLeft, RefreshCw, X, Eye, Zap
 } from 'lucide-react'
 import {
   getKelasUnggulanAdmin, tambahKelasUnggulan, hapusKelasUnggulan,
-  getGuruAutoByKelas,
+  getGuruAutoByKelas, getWeeklySlots,
   getMateriMingguan, simpanMateriMingguan, editMateriMingguan, hapusMateriMingguan,
   generateJadwalSampling, getJadwalSampling, pindahHariSampling, resetJadwalSampling,
-  getDailyCapacity,
+  generateJadwalSemuaKelas,
   getMonitoringData, getLaporanData,
   getAllKelasForDropdown,
   type ProgramType,
@@ -83,7 +83,7 @@ export function AdminClient({ initialKelas, allKelas, currentUserId }: Props) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// TAB 1: KELAS & GURU (auto from penugasan_mengajar)
+// TAB 1: KELAS & GURU
 // ══════════════════════════════════════════════════════════════
 function TabKelasGuru({ kelasList, allKelas, onRefresh }: {
   kelasList: KelasUnggulan[]; allKelas: KelasOption[]; onRefresh: () => void
@@ -92,6 +92,12 @@ function TabKelasGuru({ kelasList, allKelas, onRefresh }: {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [guruModal, setGuruModal] = useState<KelasUnggulan | null>(null)
+
+  // Bulk generate state
+  const [bulkWeek, setBulkWeek] = useState(getMondayOfWeek())
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkResults, setBulkResults] = useState<{ kelas: string; status: string }[] | null>(null)
 
   const availableKelas = allKelas.filter(k => !kelasList.some(uk => uk.kelas_id === k.id))
 
@@ -111,6 +117,15 @@ function TabKelasGuru({ kelasList, allKelas, onRefresh }: {
     if ('error' in res && res.error) setMsg({ type: 'err', text: res.error })
     else { setMsg({ type: 'ok', text: res.success || '' }); onRefresh() }
     setSaving(false)
+  }
+
+  const handleBulkGenerate = async () => {
+    if (!confirm(`Generate jadwal sampling untuk SEMUA kelas minggu ${bulkWeek}?`)) return
+    setBulkLoading(true); setBulkResults(null)
+    const res = await generateJadwalSemuaKelas(bulkWeek)
+    if (res.error) setMsg({ type: 'err', text: res.error })
+    else setBulkResults(res.results || [])
+    setBulkLoading(false)
   }
 
   return (
@@ -133,9 +148,39 @@ function TabKelasGuru({ kelasList, allKelas, onRefresh }: {
         <MsgBanner msg={msg} />
       </div>
 
+      {/* BULK GENERATE SEMUA KELAS */}
+      {kelasList.length > 0 && (
+        <div className="p-4 rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-3">
+          <h3 className="font-semibold text-sm flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+            <Zap className="w-4 h-4" /> Generate Jadwal Semua Kelas Sekaligus
+          </h3>
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="text-[10px] text-slate-500 dark:text-slate-400">Minggu (Senin)</label>
+              <Input type="date" className="h-8 w-40 text-xs" value={bulkWeek}
+                onChange={e => setBulkWeek(e.target.value)} />
+            </div>
+            <Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleBulkGenerate} disabled={bulkLoading}>
+              {bulkLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Zap className="w-3 h-3 mr-1" />}
+              Generate Semua ({kelasList.length} kelas)
+            </Button>
+          </div>
+          {bulkResults && (
+            <div className="space-y-1 mt-2">
+              {bulkResults.map((r, i) => (
+                <div key={i} className="text-xs flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200 w-28 shrink-0">{r.kelas}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{r.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300 flex gap-2">
         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-        <span>Guru otomatis terdeteksi dari data <strong>Penugasan Mengajar</strong> di Pusat Akademik. Tidak perlu assign manual.</span>
+        <span>Guru & slot per hari ditentukan otomatis dari data <strong>Jadwal Mengajar</strong> di Pusat Akademik.</span>
       </div>
 
       {kelasList.length === 0 ? (
@@ -145,50 +190,146 @@ function TabKelasGuru({ kelasList, allKelas, onRefresh }: {
           {kelasList.map(k => (
             <KelasCardAuto key={k.id} kelas={k} isExpanded={expanded === k.id}
               onToggle={() => setExpanded(expanded === k.id ? null : k.id)}
-              onDelete={() => handleHapusKelas(k.id)} />
+              onDelete={() => handleHapusKelas(k.id)}
+              onShowGuru={() => setGuruModal(k)} />
           ))}
         </div>
+      )}
+
+      {/* MODAL DETAIL GURU */}
+      {guruModal && (
+        <ModalGuruDetail kelas={guruModal} onClose={() => setGuruModal(null)} />
       )}
     </div>
   )
 }
 
-function KelasCardAuto({ kelas, isExpanded, onToggle, onDelete }: {
-  kelas: KelasUnggulan; isExpanded: boolean; onToggle: () => void; onDelete: () => void
-}) {
+// ── Modal Guru Detail ─────────────────────────────────────
+function ModalGuruDetail({ kelas, onClose }: { kelas: KelasUnggulan; onClose: () => void }) {
+  const [loading, setLoading] = useState(true)
   const [guruList, setGuruList] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [weeklyData, setWeeklyData] = useState<any>(null)
 
+  useEffect(() => {
+    Promise.all([
+      getGuruAutoByKelas(kelas.kelas_id),
+      getWeeklySlots(kelas.kelas_id),
+    ]).then(([guru, ws]) => {
+      setGuruList(guru)
+      setWeeklyData(ws)
+      setLoading(false)
+    })
+  }, [kelas.kelas_id])
+
+  return (
+    <Dialog open onOpenChange={o => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-slate-200 dark:border-slate-700">
+          <DialogTitle className="text-sm font-bold flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-emerald-600" />
+            Guru Kelas {kelas.tingkat}-{kelas.nomor_kelas} {kelas.kelompok}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="px-5 py-4 space-y-4 max-h-[75vh] overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-slate-400 text-xs"><Loader2 className="w-4 h-4 animate-spin" /> Memuat data guru...</div>
+          ) : (
+            <>
+              {guruList.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">Tidak ada penugasan mengajar untuk kelas ini di TA aktif.</p>
+              ) : (
+                <div className="space-y-2">
+                  {guruList.map((g: any) => (
+                    <div key={g.guru_id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                      <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-xs font-bold shrink-0">
+                        {g.guru_nama?.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{g.guru_nama}</p>
+                        <p className="text-[11px] text-slate-400 truncate">{g.mapel_list || '-'}</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 shrink-0 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" />{g.total_jam || 0} jam
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Slot per hari */}
+              {weeklyData && weeklyData.total > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <Calendar className="w-3 h-3" /> Slot Sampling Per Hari
+                  </p>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                    {[1, 2, 3, 4, 5, 6].map(day => (
+                      <div key={day} className="rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-center">
+                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{HARI_NAMES[day]}</p>
+                        <p className="text-lg font-bold text-emerald-600">{weeklyData.slots[day]}</p>
+                        <p className="text-[9px] text-slate-400">siswa</p>
+                        {weeklyData.guruPerHari[day]?.length > 0 && (
+                          <div className="mt-1 space-y-0.5">
+                            {weeklyData.guruPerHari[day].map((g: any, i: number) => (
+                              <p key={i} className="text-[8px] text-slate-400 truncate" title={`${g.guru_nama} (${g.mapel}) ${g.jam}j→${g.kuota}siswa`}>
+                                {g.guru_nama?.split(' ')[0]} {g.jam}j
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-400 text-center">
+                    Total: <span className="font-bold text-slate-600 dark:text-slate-300">{weeklyData.total} slot/minggu</span>
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+          <Button variant="outline" size="sm" onClick={onClose}>Tutup</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Kelas Card (simplified) ───────────────────────────────
+function KelasCardAuto({ kelas, isExpanded, onToggle, onDelete, onShowGuru }: {
+  kelas: KelasUnggulan; isExpanded: boolean; onToggle: () => void; onDelete: () => void; onShowGuru: () => void
+}) {
   // Sampling state
   const [samplingWeek, setSamplingWeek] = useState(getMondayOfWeek())
   const [jadwal, setJadwal] = useState<any[]>([])
-  const [dailyCap, setDailyCap] = useState(0)
+  const [slotsPerHari, setSlotsPerHari] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 })
+  const [totalSlot, setTotalSlot] = useState(0)
   const [samplingLoading, setSamplingLoading] = useState(false)
   const [samplingLoaded, setSamplingLoaded] = useState(false)
   const [samplingMsg, setSamplingMsg] = useState('')
-
-  useEffect(() => {
-    if (isExpanded && !loaded) {
-      setLoading(true)
-      getGuruAutoByKelas(kelas.kelas_id).then(data => {
-        setGuruList(data); setLoaded(true); setLoading(false)
-      })
-    }
-  }, [isExpanded, loaded, kelas.kelas_id])
 
   const handleGenerate = async () => {
     setSamplingLoading(true); setSamplingMsg('')
     const res = await generateJadwalSampling(kelas.id, samplingWeek)
     if (res.error) setSamplingMsg(res.error)
-    else { setJadwal(res.jadwal || []); setDailyCap(res.capacity || 0); setSamplingLoaded(true) }
+    else {
+      setJadwal(res.jadwal || [])
+      setSlotsPerHari(res.slotsPerHari || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 })
+      setTotalSlot(res.totalSlot || 0)
+      setSamplingLoaded(true)
+    }
     setSamplingLoading(false)
   }
 
   const handleLoad = async () => {
     setSamplingLoading(true); setSamplingMsg('')
     const res = await getJadwalSampling(kelas.id, samplingWeek)
-    setJadwal(res.jadwal || []); setDailyCap(res.capacity || 0)
+    setJadwal(res.jadwal || [])
+    setSlotsPerHari(res.slotsPerHari || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 })
+    setTotalSlot(res.totalSlot || 0)
     setSamplingLoaded(true); setSamplingLoading(false)
   }
 
@@ -202,7 +343,6 @@ function KelasCardAuto({ kelas, isExpanded, onToggle, onDelete }: {
 
   const handlePindahHari = async (jadwalId: string, hariBaru: number) => {
     await pindahHariSampling(jadwalId, hariBaru)
-    // Refresh
     const res = await getJadwalSampling(kelas.id, samplingWeek)
     setJadwal(res.jadwal || [])
   }
@@ -229,6 +369,10 @@ function KelasCardAuto({ kelas, isExpanded, onToggle, onDelete }: {
           </p>
           <p className="text-[11px] text-slate-400">{kelas.jumlah_siswa || 0} siswa</p>
         </div>
+        <button onClick={e => { e.stopPropagation(); onShowGuru() }}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" title="Lihat detail guru">
+          <Eye className="w-3.5 h-3.5" />
+        </button>
         <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -237,37 +381,8 @@ function KelasCardAuto({ kelas, isExpanded, onToggle, onDelete }: {
 
       {isExpanded && (
         <div className="border-t border-slate-100 dark:border-slate-800">
-          {/* GURU SECTION */}
-          <div className="px-4 py-3">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-              <GraduationCap className="w-3 h-3" /> Guru yang mengajar di kelas ini
-            </p>
-            {loading ? (
-              <div className="flex items-center gap-2 py-4 text-slate-400 text-xs"><Loader2 className="w-4 h-4 animate-spin" /> Memuat...</div>
-            ) : guruList.length === 0 ? (
-              <p className="text-xs text-slate-400 py-3">Tidak ada penugasan mengajar untuk kelas ini di TA aktif.</p>
-            ) : (
-              <div className="space-y-1">
-                {guruList.map((g: any) => (
-                  <div key={g.guru_id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                    <div className="h-7 w-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shrink-0">
-                      {g.guru_nama?.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{g.guru_nama}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{g.mapel_list || '-'}</p>
-                    </div>
-                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 shrink-0 flex items-center gap-1">
-                      <Clock className="w-2.5 h-2.5" />{g.total_jam || 0} jam
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* JADWAL SAMPLING SECTION */}
-          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="px-4 py-3">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
               <Calendar className="w-3 h-3" /> Jadwal Sampling Mingguan
             </p>
@@ -296,15 +411,19 @@ function KelasCardAuto({ kelas, isExpanded, onToggle, onDelete }: {
 
             {samplingMsg && <p className="text-xs text-amber-600 mb-2">{samplingMsg}</p>}
 
-            {dailyCap > 0 && (
-              <p className="text-[10px] text-slate-400 mb-2">
-                Kapasitas harian: <span className="font-bold text-slate-600">{dailyCap} siswa/hari</span> (dari kuota guru) ·
-                Total mingguan: <span className="font-bold text-slate-600">{dailyCap * 6} slot</span> ·
-                Siswa: <span className="font-bold text-slate-600">{kelas.jumlah_siswa || '?'}</span>
-                {(kelas.jumlah_siswa || 0) < dailyCap * 6 && (
-                  <span className="text-amber-600 ml-1">(beberapa siswa akan kebagian 2×)</span>
+            {totalSlot > 0 && (
+              <div className="text-[10px] text-slate-400 mb-2 flex flex-wrap gap-x-3 gap-y-0.5">
+                <span>Total: <span className="font-bold text-slate-600 dark:text-slate-300">{totalSlot} slot/minggu</span></span>
+                <span className="hidden sm:inline">·</span>
+                {[1, 2, 3, 4, 5, 6].map(d => (
+                  <span key={d}>{HARI_NAMES[d].slice(0, 3)}: <span className="font-bold text-slate-600 dark:text-slate-300">{slotsPerHari[d]}</span></span>
+                ))}
+                <span className="hidden sm:inline">·</span>
+                <span>Siswa: <span className="font-bold text-slate-600 dark:text-slate-300">{kelas.jumlah_siswa || '?'}</span></span>
+                {(kelas.jumlah_siswa || 0) < totalSlot && (
+                  <span className="text-amber-600">(antrean wrap-around)</span>
                 )}
-              </p>
+              </div>
             )}
 
             {samplingLoaded && jadwal.length > 0 && (
@@ -313,7 +432,9 @@ function KelasCardAuto({ kelas, isExpanded, onToggle, onDelete }: {
                   <div key={day} className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="px-2 py-1.5 bg-slate-50 dark:bg-slate-800 text-center">
                       <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{HARI_NAMES[day]}</p>
-                      <p className="text-[9px] text-slate-400">{jadwalByHari[day].length} siswa</p>
+                      <p className="text-[9px] text-slate-400">
+                        {jadwalByHari[day].length}/{slotsPerHari[day]} slot
+                      </p>
                     </div>
                     <div className="p-1.5 space-y-0.5 max-h-48 overflow-y-auto">
                       {jadwalByHari[day].map((j: any) => {
