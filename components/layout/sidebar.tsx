@@ -25,7 +25,7 @@ const MENU_GROUPS = [
   { label: 'Akademik',  hrefs: ['/dashboard/akademik', '/dashboard/akademik/nilai', '/dashboard/program-unggulan', '/dashboard/program-unggulan/kelola', '/dashboard/guru', '/dashboard/kehadiran', '/dashboard/rekap-absensi', '/dashboard/agenda', '/dashboard/presensi', '/dashboard/monitoring-presensi', '/dashboard/monitoring-agenda'] },
   { label: 'Kesiswaan', hrefs: ['/dashboard/izin', '/dashboard/kedisiplinan', '/dashboard/bk', '/dashboard/psikotes'] },
   { label: 'Administrasi', hrefs: ['/dashboard/surat'] },
-  { label: 'Sistem',    hrefs: ['/dashboard/settings'] },
+  { label: 'Sistem',    hrefs: ['/dashboard/settings', '/dashboard/settings/fitur'] },
 ]
 
 function getActiveMenu(pathname: string, menuItems: typeof MENU_ITEMS) {
@@ -40,7 +40,19 @@ function getActiveMenu(pathname: string, menuItems: typeof MENU_ITEMS) {
   return null
 }
 
-export function Sidebar({ userRole = 'guru', userName = 'Pengguna' }: { userRole?: string; userName?: string }) {
+interface SidebarProps {
+  userRoles?: string[]
+  primaryRole?: string
+  userName?: string
+  allowedFeatures?: string[]
+}
+
+export function Sidebar({
+  userRoles = ['guru'],
+  primaryRole = 'guru',
+  userName = 'Pengguna',
+  allowedFeatures = [],
+}: SidebarProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -66,7 +78,10 @@ export function Sidebar({ userRole = 'guru', userName = 'Pengguna' }: { userRole
 
   const accent = ACCENT_COLORS.find(c => c.id === accentId) ?? ACCENT_COLORS[0]
   const activeHref = getActiveMenu(pathname, MENU_ITEMS)
-  const allowedMenus = MENU_ITEMS.filter(item => item.roles.includes(userRole))
+
+  // Filter menu berdasarkan allowedFeatures dari DB
+  const allowedSet = new Set(allowedFeatures)
+  const allowedMenus = MENU_ITEMS.filter(item => allowedSet.has(item.id))
 
   const changeAccent = (id: AccentKey) => { setAccentId(id); localStorage.setItem('mtskhwm_accent', id) }
 
@@ -98,6 +113,10 @@ export function Sidebar({ userRole = 'guru', userName = 'Pengguna' }: { userRole
   }
 
   if (!mounted) return null
+
+  // Format role display
+  const roleDisplay = primaryRole.replace(/_/g, ' ')
+  const extraRoleCount = userRoles.length > 1 ? userRoles.length - 1 : 0
 
   const NavContent = ({ mobile = false }: { mobile?: boolean }) => {
     const collapsed = !mobile && isCollapsed
@@ -227,7 +246,14 @@ export function Sidebar({ userRole = 'guru', userName = 'Pengguna' }: { userRole
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-200 truncate leading-tight">{userName}</p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate leading-tight capitalize">{userRole.replace(/_/g, ' ')}</p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate leading-tight capitalize">{roleDisplay}</span>
+                  {extraRoleCount > 0 && (
+                    <span className="text-[9px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1 py-px rounded leading-tight">
+                      +{extraRoleCount}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </Link>

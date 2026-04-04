@@ -2,6 +2,8 @@
 import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { redirect } from 'next/navigation'
+import { getDB } from '@/utils/db'
+import { checkFeatureAccess } from '@/lib/features'
 import { Star } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
@@ -30,8 +32,9 @@ export default async function KelolaPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const role = (user as any).role ?? 'guru'
-  if (!['super_admin', 'admin_tu', 'kepsek', 'wakamad'].includes(role)) {
+  const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'program-unggulan-kelola')
+  if (!allowed) {
     redirect('/dashboard/program-unggulan')
   }
 

@@ -4,6 +4,7 @@ import { getSession } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { getUserAllowedFeatures, getUserRoles, getPrimaryRole } from '@/lib/features'
 
 export const metadata = {
   title: 'Dashboard - MTSKHWM App',
@@ -22,22 +23,33 @@ export default async function DashboardLayout({
 
   const user = session.user
 
-  // Query DB langsung untuk data terbaru (nama, avatar, role)
   const db = await getDB()
-  const freshUser = await db.prepare(
-    'SELECT nama_lengkap, role, avatar_url FROM "user" WHERE id = ?'
-  ).bind(user.id).first<any>()
 
-  const userRole = freshUser?.role || (user as any).role || 'guru'
+  // Query semua data user sekaligus (parallel)
+  const [freshUser, userRoles, allowedFeatures] = await Promise.all([
+    db.prepare(
+      'SELECT nama_lengkap, role, avatar_url FROM "user" WHERE id = ?'
+    ).bind(user.id).first<any>(),
+    getUserRoles(db, user.id),
+    getUserAllowedFeatures(db, user.id),
+  ])
+
+  const primaryRole = freshUser?.role || (user as any).role || 'guru'
   const userName = freshUser?.nama_lengkap || (user as any).nama_lengkap || user.name || 'User MTSKHWM'
   const avatarUrl = freshUser?.avatar_url || null
 
   return (
     <div className="flex h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
-      <Sidebar userRole={userRole} userName={userName} />
+      <Sidebar
+        userRoles={userRoles}
+        primaryRole={primaryRole}
+        userName={userName}
+        allowedFeatures={allowedFeatures}
+      />
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <Header
-          userRole={userRole}
+          userRoles={userRoles}
+          primaryRole={primaryRole}
           userName={userName}
           userEmail={user.email || ''}
           avatarUrl={avatarUrl}

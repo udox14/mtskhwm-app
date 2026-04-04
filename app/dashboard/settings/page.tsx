@@ -2,6 +2,7 @@
 import { getCurrentUser } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import { redirect } from 'next/navigation'
+import { checkFeatureAccess } from '@/lib/features'
 import { Settings } from 'lucide-react'
 import { SettingsClient } from './components/settings-client'
 import { PageHeader } from '@/components/layout/page-header'
@@ -37,10 +38,10 @@ export default async function SettingsPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const role = (user as any).role ?? ''
-  if (!['super_admin', 'kepsek', 'admin_tu'].includes(role)) redirect('/dashboard')
-
   const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'settings')
+  if (!allowed) redirect('/dashboard')
+
   const taResult = await db.prepare(
     'SELECT id, nama, semester, is_active, daftar_jurusan, jam_pelajaran FROM tahun_ajaran ORDER BY nama DESC, semester DESC'
   ).all<any>()

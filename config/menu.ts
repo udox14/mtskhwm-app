@@ -21,140 +21,191 @@ import {
   Activity,
   ClipboardList,
   FileText,
+  SlidersHorizontal,
 } from 'lucide-react'
 
 export type MenuItem = {
+  id: string        // feature_id unik — dipakai di DB role_features
   title: string
   href: string
   icon: any
-  roles: string[]
+  roles: string[]   // default roles (fallback jika DB kosong)
 }
 
 export const MENU_ITEMS: MenuItem[] = [
   {
+    id: 'dashboard',
     title: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'guru_bk', 'guru_piket', 'wali_kelas', 'resepsionis', 'guru_ppl']
   },
   {
+    id: 'siswa',
     title: 'Data Siswa',
     href: '/dashboard/siswa',
     icon: Users,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'guru_bk', 'wali_kelas']
   },
   {
+    id: 'kelas',
     title: 'Manajemen Kelas',
     href: '/dashboard/kelas',
     icon: Library,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
   },
   {
+    id: 'plotting',
     title: 'Plotting & Kenaikan',
     href: '/dashboard/plotting',
     icon: Shuffle,
     roles: ['super_admin', 'admin_tu', 'kepsek']
   },
   {
+    id: 'akademik',
     title: 'Pusat Akademik',
     href: '/dashboard/akademik',
     icon: BookOpen,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
   },
   {
+    id: 'akademik-nilai',
     title: 'Rekap Nilai',
     href: '/dashboard/akademik/nilai',
     icon: FileSpreadsheet,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
   },
   {
+    id: 'program-unggulan',
     title: 'Program Unggulan',
     href: '/dashboard/program-unggulan',
     icon: Star,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas']
   },
   {
+    id: 'program-unggulan-kelola',
     title: 'Kelola Unggulan',
     href: '/dashboard/program-unggulan/kelola',
     icon: Crown,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
   },
   {
+    id: 'guru',
     title: 'Guru & Pegawai',
     href: '/dashboard/guru',
     icon: GraduationCap,
     roles: ['super_admin', 'admin_tu', 'kepsek']
   },
   {
+    id: 'kehadiran',
     title: 'Absensi Siswa',
     href: '/dashboard/kehadiran',
     icon: CalendarCheck,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'guru_piket', 'wali_kelas']
   },
   {
+    id: 'rekap-absensi',
     title: 'Rekap Absensi',
     href: '/dashboard/rekap-absensi',
     icon: ClipboardList,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'wali_kelas']
   },
   {
+    id: 'agenda',
     title: 'Agenda Guru',
     href: '/dashboard/agenda',
     icon: ClipboardPen,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas', 'guru_bk', 'guru_piket', 'guru_ppl']
   },
   {
+    id: 'monitoring-agenda',
     title: 'Monitoring Agenda',
     href: '/dashboard/monitoring-agenda',
     icon: Activity,
     roles: ['super_admin', 'admin_tu', 'kepsek']
   },
   {
+    id: 'izin',
     title: 'Perizinan Siswa',
     href: '/dashboard/izin',
     icon: DoorOpen,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru_bk', 'guru_piket', 'resepsionis']
   },
   {
+    id: 'kedisiplinan',
     title: 'Kedisiplinan',
     href: '/dashboard/kedisiplinan',
     icon: AlertTriangle,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru_bk', 'guru_piket', 'resepsionis', 'guru_ppl', 'wali_kelas']
   },
   {
+    id: 'bk',
     title: 'Bimbingan Konseling',
     href: '/dashboard/bk',
     icon: HeartHandshake,
     roles: ['super_admin', 'kepsek', 'wakamad', 'guru_bk']
   },
   {
+    id: 'psikotes',
     title: 'Psikotes & Minat',
     href: '/dashboard/psikotes',
     icon: Brain,
     roles: ['super_admin', 'kepsek', 'wakamad', 'guru_bk', 'guru']
   },
   {
+    id: 'presensi',
     title: 'Presensi Pegawai',
     href: '/dashboard/presensi',
     icon: ClipboardCheck,
     roles: ['super_admin', 'admin_tu', 'resepsionis']
   },
   {
+    id: 'monitoring-presensi',
     title: 'Monitoring Presensi',
     href: '/dashboard/monitoring-presensi',
     icon: BarChart3,
     roles: ['super_admin', 'admin_tu', 'kepsek']
   },
   {
+    id: 'surat',
     title: 'Surat Keluar',
     href: '/dashboard/surat',
     icon: FileText,
     roles: ['super_admin', 'admin_tu', 'wakamad', 'kepsek']
   },
   {
+    id: 'settings',
     title: 'Pengaturan',
     href: '/dashboard/settings',
     icon: Settings,
     roles: ['super_admin', 'kepsek', 'admin_tu']
+  },
+  {
+    id: 'settings-fitur',
+    title: 'Manajemen Fitur',
+    href: '/dashboard/settings/fitur',
+    icon: SlidersHorizontal,
+    roles: ['super_admin']
   }
 ]
+
+// Registry semua role yang tersedia di sistem
+export const ALL_ROLES = [
+  { value: 'super_admin', label: 'Super Admin' },
+  { value: 'admin_tu', label: 'Admin Tata Usaha' },
+  { value: 'kepsek', label: 'Kepala Madrasah' },
+  { value: 'wakamad', label: 'Wakil Kepala Madrasah' },
+  { value: 'guru', label: 'Guru Mata Pelajaran' },
+  { value: 'guru_bk', label: 'Guru BK' },
+  { value: 'guru_piket', label: 'Guru Piket' },
+  { value: 'wali_kelas', label: 'Wali Kelas' },
+  { value: 'resepsionis', label: 'Resepsionis' },
+  { value: 'guru_ppl', label: 'Guru PPL' },
+] as const
+
+export type RoleValue = typeof ALL_ROLES[number]['value']
+
+// Helper untuk mendapatkan label role
+export function getRoleLabel(role: string): string {
+  return ALL_ROLES.find(r => r.value === role)?.label || role.replace(/_/g, ' ')
+}

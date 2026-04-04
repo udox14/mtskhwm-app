@@ -15,34 +15,41 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Search, UserPlus, Trash2, ShieldAlert, Loader2, Mail, FileSpreadsheet,
   Download, KeyRound, Pencil, AlertCircle, Users, CheckCircle2,
-  Building2, MapPin, PlusCircle, X
+  Building2, MapPin, PlusCircle, X, Shield, SlidersHorizontal, Check
 } from 'lucide-react'
 import {
-  tambahPegawai, ubahRolePegawai, hapusPegawai, importPegawaiMassal,
-  editPegawai, resetPasswordPegawai,
+  tambahPegawai, hapusPegawai, importPegawaiMassal,
+  editPegawai, resetPasswordPegawai, setUserRoles,
   assignJabatanStruktural, setDomisiliPegawai,
   tambahJabatanStruktural, hapusJabatanStruktural, editJabatanStruktural
 } from '../actions'
+import {
+  getUserFeatureOverridesAction, setUserFeatureOverride
+} from '@/app/dashboard/settings/fitur/actions'
+import { MENU_ITEMS, ALL_ROLES, getRoleLabel } from '@/config/menu'
 import { cn } from '@/lib/utils'
 
 type JabatanType = { id: string, nama: string, urutan: number }
 type ProfilType = {
-  id: string, nama_lengkap: string, role: string, email: string,
+  id: string, nama_lengkap: string, role: string, roles: string[], email: string,
   jabatan_struktural_id: string | null, jabatan_struktural_nama: string | null,
   domisili_pegawai: string | null
 }
 
-const ROLES = [
-  { value: 'guru', label: 'Guru Mata Pelajaran' },
-  { value: 'guru_bk', label: 'Guru BK' },
-  { value: 'guru_piket', label: 'Guru Piket' },
-  { value: 'wakamad', label: 'Wakil Kepala Madrasah' },
-  { value: 'kepsek', label: 'Kepala Madrasah' },
-  { value: 'admin_tu', label: 'Admin Tata Usaha' },
-  { value: 'wali_kelas', label: 'Wali Kelas' },
-  { value: 'resepsionis', label: 'Resepsionis' },
-  { value: 'guru_ppl', label: 'Guru PPL' },
-]
+const ROLES = ALL_ROLES.map(r => ({ value: r.value, label: r.label }))
+
+const ROLE_COLORS: Record<string, string> = {
+  super_admin: 'bg-rose-100 text-rose-700 border-rose-200',
+  admin_tu: 'bg-violet-100 text-violet-700 border-violet-200',
+  kepsek: 'bg-amber-100 text-amber-700 border-amber-200',
+  wakamad: 'bg-blue-100 text-blue-700 border-blue-200',
+  guru: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  guru_bk: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  guru_piket: 'bg-teal-100 text-teal-700 border-teal-200',
+  wali_kelas: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  resepsionis: 'bg-pink-100 text-pink-700 border-pink-200',
+  guru_ppl: 'bg-lime-100 text-lime-700 border-lime-200',
+}
 
 const initialState: any = { error: null, success: null }
 
@@ -85,6 +92,14 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
   const [editingJabatan, setEditingJabatan] = useState<JabatanType | null>(null)
   const [editJabatanNama, setEditJabatanNama] = useState('')
   const [activeTab, setActiveTab] = useState('pegawai')
+  // Multi-role modal
+  const [roleModalUser, setRoleModalUser] = useState<ProfilType | null>(null)
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [selectedPrimary, setSelectedPrimary] = useState('')
+  // Override modal
+  const [overrideModalUser, setOverrideModalUser] = useState<ProfilType | null>(null)
+  const [overrides, setOverrides] = useState<{ grants: string[]; revokes: string[] }>({ grants: [], revokes: [] })
+  const [overrideLoading, setOverrideLoading] = useState(false)
 
   useEffect(() => { setCurrentPage(1) }, [searchTerm, filterRole, filterJabatan, itemsPerPage])
   useEffect(() => {
@@ -93,7 +108,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
 
   const filteredData = initialData.filter(p => {
     const matchSearch = p.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase()) || p.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchRole = filterRole === 'ALL' || p.role === filterRole
+    const matchRole = filterRole === 'ALL' || p.roles.includes(filterRole) || p.role === filterRole
     const matchJabatan = filterJabatan === 'ALL'
       ? true
       : filterJabatan === 'NONE'
@@ -104,14 +119,6 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-  const handleUbahRole = async (id: string, newRole: string) => {
-    if (!confirm('Yakin ubah hak akses pegawai ini?')) return
-    setIsPending(true)
-    const res = await ubahRolePegawai(id, newRole)
-    if (res?.error) alert(res.error)
-    setIsPending(false)
-  }
 
   const handleHapus = async (id: string, nama: string) => {
     if (!confirm(`PERMANEN!\nYakin hapus semua data dan akses login ${nama}?`)) return
@@ -138,6 +145,66 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     if (res?.error) alert(res.error)
     else { alert(res.success); setEditingPegawai(null) }
     setIsPending(false)
+  }
+
+  // Multi-role handlers
+  const openRoleModal = (p: ProfilType) => {
+    setRoleModalUser(p)
+    setSelectedRoles([...p.roles])
+    setSelectedPrimary(p.role)
+  }
+
+  const handleSaveRoles = async () => {
+    if (!roleModalUser) return
+    if (selectedRoles.length === 0) return alert('Pilih minimal 1 role.')
+    setIsPending(true)
+    const primary = selectedRoles.includes(selectedPrimary) ? selectedPrimary : selectedRoles[0]
+    const res = await setUserRoles(roleModalUser.id, selectedRoles, primary)
+    if (res?.error) alert(res.error)
+    else { setRoleModalUser(null) }
+    setIsPending(false)
+  }
+
+  const toggleRole = (role: string) => {
+    setSelectedRoles(prev =>
+      prev.includes(role)
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    )
+  }
+
+  // Override handlers
+  const openOverrideModal = async (p: ProfilType) => {
+    setOverrideModalUser(p)
+    setOverrideLoading(true)
+    try {
+      const result = await getUserFeatureOverridesAction(p.id)
+      setOverrides(result)
+    } catch {
+      setOverrides({ grants: [], revokes: [] })
+    }
+    setOverrideLoading(false)
+  }
+
+  const handleToggleOverride = async (featureId: string) => {
+    if (!overrideModalUser) return
+    // Cycle: none → grant → revoke → none
+    const isGrant = overrides.grants.includes(featureId)
+    const isRevoke = overrides.revokes.includes(featureId)
+
+    let action: 'grant' | 'revoke' | 'remove'
+    if (!isGrant && !isRevoke) action = 'grant'
+    else if (isGrant) action = 'revoke'
+    else action = 'remove'
+
+    setOverrideLoading(true)
+    const res = await setUserFeatureOverride(overrideModalUser.id, featureId, action)
+    if (res?.error) alert(res.error)
+
+    // Refresh
+    const result = await getUserFeatureOverridesAction(overrideModalUser.id)
+    setOverrides(result)
+    setOverrideLoading(false)
   }
 
   const handleAssignJabatan = async (userId: string, jabatanId: string) => {
@@ -214,8 +281,24 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
     reader.readAsBinaryString(file)
   }
 
-  // ---- Count pegawai punya jabatan struktural ----
+  // Count pegawai punya jabatan struktural
   const pegawaiStruktural = initialData.filter(p => p.jabatan_struktural_id)
+
+  // ─── Role Badges Component ──────────────
+  const RoleBadges = ({ roles, primaryRole }: { roles: string[]; primaryRole: string }) => (
+    <div className="flex flex-wrap gap-1">
+      {roles.map(role => (
+        <span key={role} className={cn(
+          'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold border',
+          ROLE_COLORS[role] || 'bg-slate-100 text-slate-600 border-slate-200',
+          role === primaryRole && 'ring-1 ring-offset-0.5 ring-slate-400'
+        )}>
+          {role === primaryRole && <span className="text-[7px]">★</span>}
+          {getRoleLabel(role)}
+        </span>
+      ))}
+    </div>
+  )
 
   return (
     <>
@@ -242,6 +325,143 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
         </DialogContent>
       </Dialog>
 
+      {/* MODAL MULTI-ROLE */}
+      <Dialog open={!!roleModalUser} onOpenChange={open => !open && setRoleModalUser(null)}>
+        <DialogContent className="sm:max-w-md rounded-xl">
+          <DialogHeader className="border-b pb-3">
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <Shield className="h-4 w-4 text-violet-500" /> Atur Role — {roleModalUser?.nama_lengkap}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <p className="text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2 border border-surface">
+              Centang role yang berlaku. User bisa memiliki banyak role sekaligus. Role dengan ★ adalah role utama yang ditampilkan di profil.
+            </p>
+            <div className="space-y-1.5">
+              {ROLES.map(r => {
+                const isSelected = selectedRoles.includes(r.value)
+                const isPrimary = selectedPrimary === r.value
+                return (
+                  <div key={r.value} className={cn(
+                    'flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all',
+                    isSelected ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800' : 'bg-surface border-surface hover:bg-surface-2'
+                  )}>
+                    <button
+                      type="button"
+                      onClick={() => toggleRole(r.value)}
+                      className={cn(
+                        'h-4 w-4 rounded shrink-0 flex items-center justify-center transition-colors',
+                        isSelected ? 'bg-emerald-500 text-white' : 'border-2 border-slate-300 dark:border-slate-600'
+                      )}
+                    >
+                      {isSelected && <Check className="h-2.5 w-2.5" />}
+                    </button>
+                    <span className={cn('text-xs font-medium flex-1', isSelected ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400')}>
+                      {r.label}
+                    </span>
+                    {isSelected && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPrimary(r.value)}
+                        className={cn(
+                          'text-[9px] font-bold px-1.5 py-0.5 rounded transition-colors',
+                          isPrimary
+                            ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-amber-50 hover:text-amber-600'
+                        )}
+                        title="Set sebagai role utama"
+                      >
+                        {isPrimary ? '★ Utama' : 'Set utama'}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <Button
+              onClick={handleSaveRoles}
+              disabled={isPending || selectedRoles.length === 0}
+              className="w-full h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+            >
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : `Simpan ${selectedRoles.length} Role`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL OVERRIDE FITUR */}
+      <Dialog open={!!overrideModalUser} onOpenChange={open => !open && setOverrideModalUser(null)}>
+        <DialogContent className="sm:max-w-lg rounded-xl max-h-[80vh]">
+          <DialogHeader className="border-b pb-3">
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-violet-500" /> Override Fitur — {overrideModalUser?.nama_lengkap}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 pt-1">
+            <p className="text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2 border border-surface">
+              Klik berulang untuk mengubah status: <span className="font-semibold text-emerald-600">✓ Grant</span> (tambah akses) → <span className="font-semibold text-rose-600">✗ Revoke</span> (cabut akses) → <span className="text-slate-400">Normal</span> (ikut role).
+            </p>
+            <ScrollArea className="h-[50vh]">
+              <div className="space-y-1 pr-3">
+                {overrideLoading ? (
+                  <div className="flex items-center justify-center py-8 text-slate-400">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" /> Memuat...
+                  </div>
+                ) : MENU_ITEMS.map(feature => {
+                  const Icon = feature.icon
+                  const isGrant = overrides.grants.includes(feature.id)
+                  const isRevoke = overrides.revokes.includes(feature.id)
+                  return (
+                    <button
+                      key={feature.id}
+                      onClick={() => handleToggleOverride(feature.id)}
+                      disabled={overrideLoading}
+                      className={cn(
+                        'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all text-left',
+                        isGrant ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800'
+                          : isRevoke ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800'
+                            : 'bg-surface border-surface hover:bg-surface-2'
+                      )}
+                    >
+                      <div className={cn(
+                        'p-1 rounded shrink-0',
+                        isGrant ? 'bg-emerald-100' : isRevoke ? 'bg-rose-100' : 'bg-slate-100 dark:bg-slate-800'
+                      )}>
+                        <Icon className={cn(
+                          'h-3 w-3',
+                          isGrant ? 'text-emerald-600' : isRevoke ? 'text-rose-500' : 'text-slate-400'
+                        )} />
+                      </div>
+                      <span className={cn(
+                        'text-xs font-medium flex-1 truncate',
+                        isGrant ? 'text-emerald-700' : isRevoke ? 'text-rose-600 line-through' : 'text-slate-600 dark:text-slate-300'
+                      )}>
+                        {feature.title}
+                      </span>
+                      {isGrant && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          + Grant
+                        </span>
+                      )}
+                      {isRevoke && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-600 border border-rose-200">
+                          − Revoke
+                        </span>
+                      )}
+                      {!isGrant && !isRevoke && (
+                        <span className="text-[9px] text-slate-400 px-1.5 py-0.5">
+                          Normal
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* MODAL KELOLA JABATAN STRUKTURAL */}
       <Dialog open={isJabatanOpen} onOpenChange={setIsJabatanOpen}>
         <DialogContent className="sm:max-w-md rounded-xl">
@@ -251,7 +471,6 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
-            {/* Tambah jabatan baru */}
             <div className="flex gap-2">
               <Input
                 placeholder="Nama jabatan baru..."
@@ -264,8 +483,6 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                 <PlusCircle className="h-3.5 w-3.5 mr-1" /> Tambah
               </Button>
             </div>
-
-            {/* Daftar jabatan */}
             <div className="space-y-1.5">
               {masterJabatan.length === 0 ? (
                 <p className="text-xs text-slate-400 text-center py-4">Belum ada jabatan struktural.</p>
@@ -305,7 +522,6 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
       </Dialog>
 
       <div className="space-y-3">
-        {/* TABS: Pegawai / Jabatan Struktural Info */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-surface border border-surface">
             <TabsTrigger value="pegawai" className="text-xs gap-1.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
@@ -317,14 +533,12 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
           </TabsList>
 
           <TabsContent value="struktural" className="mt-3 space-y-3">
-            {/* Info card struktural */}
             <div className="flex items-center justify-between bg-surface border border-surface rounded-lg p-3">
               <p className="text-xs text-slate-500">Pegawai dengan jabatan struktural wajib presensi harian via resepsionis.</p>
               <Button size="sm" variant="outline" onClick={() => setIsJabatanOpen(true)} className="h-7 text-xs gap-1 rounded-md">
                 <Building2 className="h-3 w-3" /> Kelola Jabatan
               </Button>
             </div>
-            {/* Grid card struktural */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {pegawaiStruktural.length === 0 ? (
                 <div className="col-span-full bg-surface py-10 rounded-lg border border-surface text-center">
@@ -347,16 +561,12 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-violet-100 text-violet-700 border border-violet-200">
                       <Building2 className="h-2.5 w-2.5" />{p.jabatan_struktural_nama}
                     </span>
+                    <RoleBadges roles={p.roles} primaryRole={p.role} />
                     {p.domisili_pegawai && (
                       <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border",
                         p.domisili_pegawai === 'dalam' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-amber-100 text-amber-700 border-amber-200'
                       )}>
                         <MapPin className="h-2.5 w-2.5" />{p.domisili_pegawai === 'dalam' ? 'Dalam' : 'Luar'}
-                      </span>
-                    )}
-                    {!p.domisili_pegawai && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-500 border border-rose-200">
-                        <MapPin className="h-2.5 w-2.5" />Domisili belum diset
                       </span>
                     )}
                   </div>
@@ -473,7 +683,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                 </div>
               ) : paginatedData.map(p => (
                 <div key={p.id} className="bg-surface border border-surface rounded-lg p-3">
-                  <div className="flex items-center gap-3 mb-2.5">
+                  <div className="flex items-center gap-3 mb-2">
                     <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br shrink-0 flex items-center justify-center text-sm font-bold", getAvatarColor(p.nama_lengkap))}>
                       {p.nama_lengkap.charAt(0).toUpperCase()}
                     </div>
@@ -482,11 +692,10 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                       <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate flex items-center gap-0.5 mt-0.5"><Mail className="h-2.5 w-2.5" />{p.email}</p>
                     </div>
                   </div>
-                  {/* Role */}
-                  <Select value={p.role} onValueChange={val => handleUbahRole(p.id, val)} disabled={isPending}>
-                    <SelectTrigger className="h-7 text-xs rounded border-surface bg-surface-2 font-medium w-full mb-2"><SelectValue /></SelectTrigger>
-                    <SelectContent>{ROLES.map(r => <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>)}</SelectContent>
-                  </Select>
+                  {/* Role badges */}
+                  <div className="mb-2">
+                    <RoleBadges roles={p.roles} primaryRole={p.role} />
+                  </div>
                   {/* Jabatan + Domisili */}
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <Select value={p.jabatan_struktural_id || 'NONE'} onValueChange={val => handleAssignJabatan(p.id, val)} disabled={isPending}>
@@ -506,6 +715,12 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                     </Select>
                   </div>
                   <div className="flex gap-1.5 justify-end">
+                    <button onClick={() => openRoleModal(p)} disabled={isPending} className="p-1.5 rounded text-violet-600 hover:bg-violet-50" title="Atur Role">
+                      <Shield className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => openOverrideModal(p)} disabled={isPending} className="p-1.5 rounded text-blue-600 hover:bg-blue-50" title="Override Fitur">
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                    </button>
                     <button onClick={() => handleResetPassword(p.id, p.nama_lengkap)} disabled={isPending} className="p-1.5 rounded text-amber-600 hover:bg-amber-50" title="Reset Password">
                       <KeyRound className="h-3.5 w-3.5" />
                     </button>
@@ -526,10 +741,10 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                 <TableHeader>
                   <TableRow className="bg-surface-2 hover:bg-surface-2">
                     <TableHead className="h-9 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400">Profil Pegawai</TableHead>
-                    <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 w-44">Role / Hak Akses</TableHead>
-                    <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 w-44">Jabatan Struktural</TableHead>
-                    <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 w-28">Domisili</TableHead>
-                    <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 text-right px-4 w-28">Kelola</TableHead>
+                    <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 w-52">Role</TableHead>
+                    <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 w-40">Jabatan Struktural</TableHead>
+                    <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 w-24">Domisili</TableHead>
+                    <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 text-right px-4 w-36">Kelola</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -556,14 +771,18 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                         </div>
                       </TableCell>
                       <TableCell className="py-2.5">
-                        <Select value={p.role} onValueChange={val => handleUbahRole(p.id, val)} disabled={isPending}>
-                          <SelectTrigger className="h-7 w-40 text-xs rounded border-surface bg-surface-2 font-medium"><SelectValue /></SelectTrigger>
-                          <SelectContent>{ROLES.map(r => <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>)}</SelectContent>
-                        </Select>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex-1 min-w-0">
+                            <RoleBadges roles={p.roles} primaryRole={p.role} />
+                          </div>
+                          <button onClick={() => openRoleModal(p)} className="p-1 rounded text-violet-500 hover:bg-violet-50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Atur Role">
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </div>
                       </TableCell>
                       <TableCell className="py-2.5">
                         <Select value={p.jabatan_struktural_id || 'NONE'} onValueChange={val => handleAssignJabatan(p.id, val)} disabled={isPending}>
-                          <SelectTrigger className={cn("h-7 w-40 text-xs rounded border-surface font-medium",
+                          <SelectTrigger className={cn("h-7 w-36 text-xs rounded border-surface font-medium",
                             p.jabatan_struktural_id ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-surface-2'
                           )}><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -588,6 +807,9 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                       </TableCell>
                       <TableCell className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openOverrideModal(p)} disabled={isPending} className="p-1.5 rounded text-blue-600 hover:bg-blue-50" title="Override Fitur">
+                            <SlidersHorizontal className="h-3.5 w-3.5" />
+                          </button>
                           <button onClick={() => handleResetPassword(p.id, p.nama_lengkap)} disabled={isPending} className="p-1.5 rounded text-amber-600 hover:bg-amber-50" title="Reset Password">
                             <KeyRound className="h-3.5 w-3.5" />
                           </button>

@@ -30,8 +30,12 @@ export async function tambahPegawai(prevState: any, formData: FormData) {
     }) as any
     if (!res?.user?.id) throw new Error('Gagal membuat akun.')
     const db = await getDB()
+    // Update role utama di tabel user
     await db.prepare(`UPDATE "user" SET role = ?, nama_lengkap = ?, updatedAt = datetime('now') WHERE id = ?`)
       .bind(role, nama_lengkap, res.user.id).run()
+    // Insert ke user_roles
+    await db.prepare('INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)')
+      .bind(res.user.id, role).run()
   } catch (e: any) {
     const msg = e?.message || ''
     return { error: msg.includes('already') || msg.includes('exists') ? 'Email sudah terdaftar!' : msg, success: null }
@@ -72,16 +76,54 @@ export async function resetPasswordPegawai(id: string) {
 }
 
 // ============================================================
-// UBAH ROLE PEGAWAI
+// SET USER ROLES (multi-role)
+// ============================================================
+export async function setUserRoles(userId: string, roles: string[], primaryRole: string) {
+  if (roles.length === 0) return { error: 'User harus memiliki minimal 1 role.' }
+  if (!roles.includes(primaryRole)) return { error: 'Role utama harus termasuk dalam daftar role.' }
+
+  const db = await getDB()
+
+  const stmts: D1PreparedStatement[] = [
+    // Update primary role
+    db.prepare('UPDATE "user" SET role = ?, updatedAt = datetime(\'now\') WHERE id = ?').bind(primaryRole, userId),
+    // Clear existing roles
+    db.prepare('DELETE FROM user_roles WHERE user_id = ?').bind(userId),
+    // Insert new roles
+    ...roles.map(role =>
+      db.prepare('INSERT INTO user_roles (user_id, role) VALUES (?, ?)').bind(userId, role)
+    )
+  ]
+
+  try {
+    await db.batch(stmts)
+  } catch (e: any) {
+    return { error: 'Gagal menyimpan role: ' + (e?.message || '') }
+  }
+
+  revalidatePath('/dashboard/guru')
+  revalidatePath('/dashboard')
+  return { success: 'Role berhasil diperbarui.' }
+}
+
+// ============================================================
+// UBAH ROLE PEGAWAI (legacy single-role — tetap berfungsi)
 // ============================================================
 export async function ubahRolePegawai(id: string, newRole: string) {
   const db = await getDB()
-  const result = await dbUpdate(
-    db, '"user"',
-    { role: newRole, updatedAt: new Date().toISOString() },
-    { id }
-  )
-  if (result.error) return { error: result.error }
+
+  const stmts: D1PreparedStatement[] = [
+    db.prepare('UPDATE "user" SET role = ?, updatedAt = datetime(\'now\') WHERE id = ?').bind(newRole, id),
+    db.prepare('DELETE FROM user_roles WHERE user_id = ?').bind(id),
+    db.prepare('INSERT INTO user_roles (user_id, role) VALUES (?, ?)').bind(id, newRole),
+  ]
+
+  try {
+    await db.batch(stmts)
+  } catch (e: any) {
+    return { error: e.message }
+  }
+
   revalidatePath('/dashboard/guru')
   return { success: 'Jabatan/Role berhasil diperbarui.' }
 }
@@ -92,6 +134,8 @@ export async function ubahRolePegawai(id: string, newRole: string) {
 export async function hapusPegawai(id: string) {
   const db = await getDB()
   try {
+    await db.prepare('DELETE FROM user_feature_overrides WHERE user_id = ?').bind(id).run()
+    await db.prepare('DELETE FROM user_roles WHERE user_id = ?').bind(id).run()
     await db.prepare('DELETE FROM session WHERE userId = ?').bind(id).run()
     await db.prepare('DELETE FROM account WHERE userId = ?').bind(id).run()
     await db.prepare('DELETE FROM "user" WHERE id = ?').bind(id).run()
@@ -168,7 +212,7 @@ export async function importPegawaiMassal(dataExcel: any[]) {
 
     const emailList = chunk.map(() => '?').join(',')
     const newUsers = await db.prepare(
-      `SELECT id, email FROM "user" WHERE email IN (${emailList})`
+      `SELECT id, email, role FROM "user" WHERE email IN (${emailList})`
     ).bind(...chunk.map(u => u.email)).all<any>()
 
     if (newUsers.results && newUsers.results.length > 0) {
@@ -180,6 +224,14 @@ export async function importPegawaiMassal(dataExcel: any[]) {
       await db.prepare(
         `INSERT OR IGNORE INTO account (id, accountId, providerId, userId, password, createdAt, updatedAt) VALUES ${accPlaceholders}`
       ).bind(...accValues).run()
+
+      // Insert ke user_roles juga
+      const roleStmts = newUsers.results.map((u: any) =>
+        db.prepare('INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)').bind(u.id, u.role)
+      )
+      if (roleStmts.length > 0) {
+        await db.batch(roleStmts)
+      }
 
       successCount += newUsers.results.length
     }

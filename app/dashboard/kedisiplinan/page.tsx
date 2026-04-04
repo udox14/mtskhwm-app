@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import { redirect } from 'next/navigation'
+import { checkFeatureAccess, getPrimaryRole } from '@/lib/features'
 import { ShieldAlert, CalendarDays } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { KedisiplinanClient } from './components/kedisiplinan-client'
@@ -47,10 +48,12 @@ export default async function KedisiplinanPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const role = (user as any).role ?? 'guru'
-  const currentUser = { id: user.id, role, nama: (user as any).nama_lengkap ?? user.name ?? '' }
-
   const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'kedisiplinan')
+  if (!allowed) redirect('/dashboard')
+
+  const role = await getPrimaryRole(db, user.id)
+  const currentUser = { id: user.id, role, nama: (user as any).nama_lengkap ?? user.name ?? '' }
   const taAktif = await db.prepare('SELECT id, nama FROM tahun_ajaran WHERE is_active = 1').first<any>()
   if (!taAktif) return <div className="p-8 text-center text-rose-500 font-bold bg-rose-50 rounded-xl m-8">Tahun Ajaran aktif belum diatur oleh Admin. Hubungi Tata Usaha.</div>
 

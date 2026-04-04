@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import { redirect } from 'next/navigation'
+import { getUserRoles, checkFeatureAccess } from '@/lib/features'
 import { SiswaClient } from './components/siswa-client'
 import { Users } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
@@ -77,12 +78,15 @@ export default async function SiswaPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const role = (user as any).role ?? 'guru'
-  const isAdmin = ['super_admin', 'admin_tu', 'kepsek', 'wakamad'].includes(role)
+  const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'siswa')
+  if (!allowed) redirect('/dashboard')
+
+  const userRoles = await getUserRoles(db, user.id)
+  const isAdmin = userRoles.some(r => ['super_admin', 'admin_tu', 'kepsek', 'wakamad'].includes(r))
   let allowedKelasIds = new Set<string>()
 
   if (!isAdmin) {
-    const db = await getDB()
     const [penugasan, wali] = await Promise.all([
       db.prepare('SELECT DISTINCT kelas_id FROM penugasan_mengajar WHERE guru_id = ?').bind(user.id).all<{ kelas_id: string }>(),
       db.prepare('SELECT id FROM kelas WHERE wali_kelas_id = ?').bind(user.id).all<{ id: string }>()

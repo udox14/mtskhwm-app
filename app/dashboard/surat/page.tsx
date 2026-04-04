@@ -2,6 +2,8 @@
 import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { redirect } from 'next/navigation'
+import { getDB } from '@/utils/db'
+import { checkFeatureAccess } from '@/lib/features'
 import { FileText } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
@@ -10,8 +12,6 @@ import { SuratClient } from './components/surat-client'
 
 export const metadata = { title: 'Surat Keluar - MTSKHWM App' }
 export const dynamic = 'force-dynamic'
-
-const ALLOWED_ROLES = ['super_admin', 'admin_tu', 'wakamad', 'kepsek']
 
 async function SuratDataFetcher({ userId, userName }: { userId: string; userName: string }) {
   const [masterData, logSurat] = await Promise.all([
@@ -32,8 +32,9 @@ export default async function SuratPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const role = (user as any).role ?? 'guru'
-  if (!ALLOWED_ROLES.includes(role)) redirect('/dashboard')
+  const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'surat')
+  if (!allowed) redirect('/dashboard')
 
   const userName = (user as any).nama_lengkap || user.name || 'User'
 

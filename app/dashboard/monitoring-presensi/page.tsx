@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import { redirect } from 'next/navigation'
+import { checkFeatureAccess } from '@/lib/features'
 import { MonitoringClient } from './components/monitoring-client'
 import { BarChart3 } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
@@ -62,8 +63,9 @@ export default async function MonitoringPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const role = (user as any).role ?? ''
-  if (!['super_admin', 'admin_tu', 'kepsek'].includes(role)) redirect('/dashboard')
+  const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'monitoring-presensi')
+  if (!allowed) redirect('/dashboard')
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">

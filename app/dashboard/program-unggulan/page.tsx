@@ -2,6 +2,8 @@
 import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { redirect } from 'next/navigation'
+import { getDB } from '@/utils/db'
+import { checkFeatureAccess, getUserRoles } from '@/lib/features'
 import { Star } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
@@ -27,11 +29,15 @@ export default async function ProgramUnggulanPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const role = (user as any).role ?? 'guru'
+  const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'program-unggulan')
+  if (!allowed) redirect('/dashboard')
+
   const namaLengkap = (user as any).nama_lengkap ?? user.name ?? ''
+  const userRoles = await getUserRoles(db, user.id)
 
   // Admin diarahkan ke panel kelola
-  if (['super_admin', 'admin_tu', 'kepsek'].includes(role)) {
+  if (userRoles.some(r => ['super_admin', 'admin_tu', 'kepsek'].includes(r))) {
     // Admin bisa juga akses halaman tes, tapi redirect default ke kelola
     // Uncomment baris di bawah jika ingin redirect otomatis:
     // redirect('/dashboard/program-unggulan/kelola')

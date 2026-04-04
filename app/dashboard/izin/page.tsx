@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { getDB, parseJsonCol } from '@/utils/db'
 import { redirect } from 'next/navigation'
+import { checkFeatureAccess, getPrimaryRole } from '@/lib/features'
 import { IzinClient } from './components/izin-client'
 import { DoorOpen } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
@@ -57,7 +58,11 @@ export default async function IzinPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const role = (user as any).role ?? ''
+  const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'izin')
+  if (!allowed) redirect('/dashboard')
+
+  const role = await getPrimaryRole(db, user.id)
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
