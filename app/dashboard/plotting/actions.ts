@@ -3,6 +3,7 @@
 
 import { getDB, dbUpdate } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
+import { formatNamaKelas } from '@/lib/utils'
 
 // ============================================================
 // 1. AMBIL TAHUN AJARAN AKTIF
@@ -62,7 +63,7 @@ export async function getKelasByTingkat(tingkat: number) {
   // Tambah field 'nama' yang dipakai oleh tab-penjurusan dan tab-pengacakan
   return (rows.results ?? []).map((k: any) => ({
     ...k,
-    nama: `${k.tingkat}-${k.nomor_kelas}${k.kelompok !== 'UMUM' ? ' ' + k.kelompok : ''}`,
+    nama: formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok),
   }))
 }
 
@@ -92,7 +93,7 @@ export async function getSiswaByTingkat(tingkat: number) {
     kelas_id: s.kelas_id,
     minat_jurusan: s.minat_jurusan,
     // kelas_lama dan kelompok dibutuhkan oleh SiswaType di tab-penjurusan, tab-pengacakan, tab-kelulusan
-    kelas_lama: s.tingkat ? `${s.tingkat}-${s.nomor_kelas}` : '',
+    kelas_lama: s.tingkat ? formatNamaKelas(s.tingkat, s.nomor_kelas, s.kelompok) : '',
     kelompok: s.kelompok ?? 'UMUM',
     kelas: {
       tingkat: s.tingkat,

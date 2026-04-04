@@ -3,6 +3,7 @@
 
 import { getDB, dbInsert, dbDelete } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
+import { formatNamaKelas } from '@/lib/utils'
 
 const REVAL = '/dashboard/program-unggulan/kelola'
 
@@ -82,7 +83,7 @@ export async function getMateriMingguan(program?: ProgramType) {
   const db = await getDB()
   let sql = `
     SELECT m.id, m.program, m.minggu_mulai, m.konten, m.created_at, m.updated_at,
-      GROUP_CONCAT(k.tingkat || '-' || k.nomor_kelas || ' ' || k.kelompok, ', ') as kelas_labels,
+      GROUP_CONCAT(k.tingkat || '-' || k.nomor_kelas || CASE WHEN IFNULL(k.kelompok, '') NOT IN ('UMUM', '') THEN ' ' || k.kelompok ELSE '' END, ', ') as kelas_labels,
       GROUP_CONCAT(mk.pu_kelas_id) as pu_kelas_ids
     FROM pu_materi_mingguan m
     LEFT JOIN pu_materi_mingguan_kelas mk ON mk.materi_id = m.id
@@ -322,7 +323,7 @@ export async function generateJadwalSemuaKelas(mingguMulai: string): Promise<{
   const results: { kelas: string; status: string }[] = []
 
   for (const k of kelasList) {
-    const label = `${k.tingkat}-${k.nomor_kelas} ${k.kelompok}`
+    const label = formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)
     try {
       const res = await generateJadwalSampling(k.id, mingguMulai)
       if (res.error) {
@@ -409,7 +410,7 @@ export async function getMonitoringData(puKelasId?: string, tanggalDari?: string
     SELECT ht.id, ht.tanggal, ht.status, ht.nilai, ht.round_number,
       u.nama_lengkap AS guru_nama, u.id AS guru_id,
       s.nama_lengkap AS siswa_nama, s.id AS siswa_id,
-      k.tingkat || '-' || k.nomor_kelas || ' ' || k.kelompok AS kelas_label,
+      k.tingkat || '-' || k.nomor_kelas || CASE WHEN IFNULL(k.kelompok, '') NOT IN ('UMUM', '') THEN ' ' || k.kelompok ELSE '' END AS kelas_label,
       ht.pu_kelas_id
     FROM pu_hasil_tes ht
     JOIN "user" u ON ht.guru_id = u.id
@@ -427,7 +428,7 @@ export async function getMonitoringData(puKelasId?: string, tanggalDari?: string
 
   let siswaSql = `
     SELECT s.id AS siswa_id, s.nama_lengkap AS siswa_nama, s.foto_url,
-      k.tingkat || '-' || k.nomor_kelas || ' ' || k.kelompok AS kelas_label,
+      k.tingkat || '-' || k.nomor_kelas || CASE WHEN IFNULL(k.kelompok, '') NOT IN ('UMUM', '') THEN ' ' || k.kelompok ELSE '' END AS kelas_label,
       ht.pu_kelas_id,
       COUNT(CASE WHEN ht.status = 'sudah' THEN 1 END) AS total_tes,
       COUNT(CASE WHEN ht.nilai = 'Lancar' THEN 1 END) AS lancar,

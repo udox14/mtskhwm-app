@@ -11,6 +11,7 @@ import {
 import {
   getSiswaTesList, simpanNilaiTes, tandaiTidakHadir, resetStatusTes, getMateriTes
 } from '../actions'
+import { formatNamaKelas } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────────
 type KelasUnggulan = {
@@ -144,7 +145,7 @@ export function TesClient({ kelasList, currentUser }: Props) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      Kelas {k.tingkat}-{k.nomor_kelas} {k.kelompok}
+                    Kelas {formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {JAM_LABEL[k.jam_mengajar] || `${k.jam_mengajar} jam`}
@@ -176,7 +177,7 @@ export function TesClient({ kelasList, currentUser }: Props) {
         </button>
         <div className="flex-1 min-w-0">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-            {selectedKelas.tingkat}-{selectedKelas.nomor_kelas} {selectedKelas.kelompok}
+            {formatNamaKelas(selectedKelas.tingkat, selectedKelas.nomor_kelas, selectedKelas.kelompok)}
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {JAM_LABEL[selectedKelas.jam_mengajar]} • {completedCount}/{totalAssigned} selesai

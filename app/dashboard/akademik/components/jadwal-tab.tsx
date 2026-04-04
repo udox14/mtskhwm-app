@@ -13,7 +13,7 @@ import {
   importJadwalASC, getJadwalByKelas, getJadwalByGuru,
   hapusSlotJadwal, resetJadwalKelas
 } from '../actions'
-import { cn } from '@/lib/utils'
+import { cn, formatNamaKelas } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────
 type SlotJam = { id: number; nama: string; mulai: string; selesai: string }
@@ -75,7 +75,7 @@ function JadwalCell({
       <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
         {mode === 'kelas'
           ? byKelas.guru_nama.split(',')[0]
-          : `${byGuru.tingkat}-${byGuru.nomor_kelas} ${byGuru.kelas_kelompok}`}
+          : formatNamaKelas(byGuru.tingkat, byGuru.nomor_kelas, byGuru.kelas_kelompok)}
       </p>
       {hover && (
         <button
@@ -364,7 +364,7 @@ export function JadwalTab({
   const handleHapusJadwalKelas = async () => {
     if (!selectedKelas || !taAktif) return
     const kelas = kelasList.find(k => k.id === selectedKelas)
-    if (!confirm(`Reset semua jadwal kelas ${kelas?.tingkat}-${kelas?.nomor_kelas}?`)) return
+    if (!confirm(`Reset semua jadwal kelas ${kelas ? formatNamaKelas(kelas.tingkat, kelas.nomor_kelas, kelas.kelompok) : ''}?`)) return
     const res = await resetJadwalKelas(selectedKelas, taAktif.id)
     if (res.error) { alert(res.error); return }
     setJadwalKelas([])
@@ -468,8 +468,7 @@ export function JadwalTab({
                       <div className="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Kelas {t}</div>
                       {items.map(k => (
                         <SelectItem key={k.id} value={k.id} className="text-xs">
-                          {k.tingkat}-{k.nomor_kelas}
-                          <span className="text-slate-400 dark:text-slate-500 ml-1">{k.kelompok}</span>
+                          {formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}
                         </SelectItem>
                       ))}
                     </div>

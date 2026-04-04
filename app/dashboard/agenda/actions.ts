@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { uploadToR2 } from '@/utils/r2'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
 import { nowWIB, currentTimeWIB } from '@/lib/time'
+import { formatNamaKelas } from '@/lib/utils'
 
 // ============================================================
 // TYPES
@@ -119,7 +120,7 @@ export async function getJadwalGuruHariIni(): Promise<{
     blocks.push({
       penugasan_id: pid,
       mapel_nama: first.nama_mapel,
-      kelas_label: `${first.tingkat} ${first.kelompok} ${first.nomor_kelas}`,
+      kelas_label: formatNamaKelas(first.tingkat, first.nomor_kelas, first.kelompok),
       kelas_id: first.kelas_id,
       guru_id: first.guru_id,
       guru_nama: first.guru_nama,

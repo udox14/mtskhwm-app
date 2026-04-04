@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Loader2, AlertCircle, CheckCircle2, UserCog, MapPin, Users } from 'lucide-react'
 import { editSiswaLengkap } from '../actions'
+import { formatNamaKelas } from '@/lib/utils'
 
 const initialState = { error: null as string | null, success: null as string | null }
 
@@ -145,7 +146,7 @@ export function EditSiswaModal({ isOpen, onClose, siswa, kelasList }: {
                         <SelectItem value="none" className="text-xs text-slate-400">Tanpa Kelas</SelectItem>
                         {kelasList.map(k => (
                           <SelectItem key={k.id} value={k.id} className="text-xs">
-                            {k.tingkat}-{k.nomor_kelas} {k.kelompok}
+                            {formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -5,6 +5,7 @@ import { getDB } from '@/utils/db'
 import { getCurrentUser } from '@/utils/auth/server'
 import { revalidatePath } from 'next/cache'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
+import { formatNamaKelas } from '@/lib/utils'
 
 // ============================================================
 // TYPES
@@ -120,7 +121,7 @@ export async function getBlokMengajarHariIni(): Promise<{
 
     blocks.push({
       penugasan_id: pid, mapel_nama: f.nama_mapel,
-      kelas_id: f.kelas_id, kelas_label: `${f.tingkat} ${f.kelompok} ${f.nomor_kelas}`,
+      kelas_id: f.kelas_id, kelas_label: formatNamaKelas(f.tingkat, f.nomor_kelas, f.kelompok),
       jam_ke_mulai: jM, jam_ke_selesai: jS, jumlah_jam: jamList.length,
       slot_mulai: sM?.mulai ?? '-', slot_selesai: sS?.selesai ?? '-',
       sudah_absen: tidakHadir > 0, total_siswa: totalSiswa, tidak_hadir: tidakHadir,

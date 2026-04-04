@@ -27,7 +27,7 @@ import {
   type ProgramType,
 } from '../actions'
 import { SURAH_LIST } from '../quran-data'
-import { cn } from '@/lib/utils'
+import { cn, formatNamaKelas } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────
 type KelasUnggulan = { id: string; kelas_id: string; tingkat: number; nomor_kelas: string; kelompok: string; jumlah_siswa: number }
@@ -137,7 +137,7 @@ function TabKelasGuru({ kelasList, allKelas, onRefresh }: {
             <SelectTrigger className="flex-1"><SelectValue placeholder="Pilih kelas..." /></SelectTrigger>
             <SelectContent>
               {availableKelas.map(k => (
-                <SelectItem key={k.id} value={k.id}>{k.tingkat}-{k.nomor_kelas} {k.kelompok}</SelectItem>
+                <SelectItem key={k.id} value={k.id}>{formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -227,7 +227,7 @@ function ModalGuruDetail({ kelas, onClose }: { kelas: KelasUnggulan; onClose: ()
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-slate-200 dark:border-slate-700">
           <DialogTitle className="text-sm font-bold flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-emerald-600" />
-            Guru Kelas {kelas.tingkat}-{kelas.nomor_kelas} {kelas.kelompok}
+            Guru Kelas {formatNamaKelas(kelas.tingkat, kelas.nomor_kelas, kelas.kelompok)}
           </DialogTitle>
         </DialogHeader>
 
@@ -364,8 +364,7 @@ function KelasCardAuto({ kelas, isExpanded, onToggle, onDelete, onShowGuru }: {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-            Kelas {kelas.tingkat}-{kelas.nomor_kelas}
-            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-semibold">{kelas.kelompok}</span>
+            Kelas {formatNamaKelas(kelas.tingkat, kelas.nomor_kelas, kelas.kelompok)}
           </p>
           <p className="text-[11px] text-slate-400">{kelas.jumlah_siswa || 0} siswa</p>
         </div>
@@ -667,7 +666,7 @@ function ModalMateri({ program, kelasList, currentUserId, editData, onClose, onS
                   <label key={k.id} className="flex items-center gap-2 text-xs cursor-pointer">
                     <input type="checkbox" className="rounded" checked={selectedKelas.includes(k.id)}
                       onChange={() => setSelectedKelas(prev => prev.includes(k.id) ? prev.filter(x => x !== k.id) : [...prev, k.id])} />
-                    {k.tingkat}-{k.nomor_kelas} {k.kelompok}
+                    {formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}
                   </label>
                 ))}
               </div>
@@ -813,7 +812,7 @@ function TabMonitoring({ kelasList }: { kelasList: KelasUnggulan[] }) {
             <SelectTrigger className="w-44 h-9 text-sm"><SelectValue placeholder="Semua" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua</SelectItem>
-              {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.tingkat}-{k.nomor_kelas} {k.kelompok}</SelectItem>)}
+              {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -895,7 +894,7 @@ function TabLaporan({ kelasList }: { kelasList: KelasUnggulan[] }) {
             <SelectTrigger className="w-44 h-9 text-sm"><SelectValue placeholder="Semua" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua</SelectItem>
-              {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.tingkat}-{k.nomor_kelas} {k.kelompok}</SelectItem>)}
+              {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

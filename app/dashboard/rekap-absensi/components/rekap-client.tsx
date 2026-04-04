@@ -17,6 +17,7 @@ import {
   getAbsensiPerJam, getDataCetakAbsensi,
 } from '../actions'
 import { todayWIB, nowWIB } from '@/lib/time'
+import { formatNamaKelas } from '@/lib/utils'
 
 // ============================================================
 // TYPES & CONSTS
@@ -321,7 +322,7 @@ function TabJam() {
               <div key={`${r.siswa_id}-${i}`} className="flex items-center gap-2 p-2 rounded-lg border bg-slate-50 dark:bg-slate-800">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-slate-800 dark:text-slate-100 truncate">{r.nama_lengkap}</p>
-                  <p className="text-[10px] text-slate-500">{r.tingkat} {r.kelompok} {r.nomor_kelas} — {r.nama_mapel}</p>
+                  <p className="text-[10px] text-slate-500">{formatNamaKelas(r.tingkat, r.nomor_kelas, r.kelompok)} — {r.nama_mapel}</p>
                 </div>
                 <StatusBadge status={r.status} />
               </div>
@@ -447,7 +448,7 @@ function TabCetak({ filterOptions }: { filterOptions: FilterOpt }) {
                     <td style={{ border: '1px solid #ddd', padding: '4px 6px' }}>{r.tanggal}</td>
                     <td style={{ border: '1px solid #ddd', padding: '4px 6px' }}>{r.nama_lengkap}</td>
                     <td style={{ border: '1px solid #ddd', padding: '4px 6px' }}>{r.nisn}</td>
-                    <td style={{ border: '1px solid #ddd', padding: '4px 6px' }}>{r.tingkat} {r.kelompok} {r.nomor_kelas}</td>
+                    <td style={{ border: '1px solid #ddd', padding: '4px 6px' }}>{formatNamaKelas(r.tingkat, r.nomor_kelas, r.kelompok)}</td>
                     <td style={{ border: '1px solid #ddd', padding: '4px 6px' }}>{r.nama_mapel}</td>
                     <td style={{ border: '1px solid #ddd', padding: '4px 6px' }}>{r.jam_ke_mulai === r.jam_ke_selesai ? r.jam_ke_mulai : `${r.jam_ke_mulai}-${r.jam_ke_selesai}`}</td>
                     <td style={{ border: '1px solid #ddd', padding: '4px 6px' }} className={`s-${r.status?.toLowerCase()}`}>{ST[r.status]?.label || r.status}</td>

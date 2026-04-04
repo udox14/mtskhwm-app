@@ -14,7 +14,7 @@ import { EditModal } from './edit-modal'
 import { hapusKelas, batchUpdateKelas } from '../actions'
 import { AssignBKModal } from './assign-bk-modal'
 import { CetakAbsensiModal } from './cetak-absensi-modal'
-import { cn } from '@/lib/utils'
+import { cn, formatNamaKelas } from '@/lib/utils'
 
 type KelasData = {
   id: string; tingkat: number; nomor_kelas: string; kelompok: string
@@ -94,13 +94,13 @@ export function KelasClient({ initialData, daftarGuru, daftarJurusan = [], userR
 
   const filteredData = initialData.filter(k => {
     const matchTingkat = filterTingkat === 'Semua' || k.tingkat.toString() === filterTingkat
-    const matchSearch = `${k.tingkat} ${k.kelompok} ${k.nomor_kelas}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchSearch = formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok).toLowerCase().includes(searchTerm.toLowerCase()) ||
       k.wali_kelas_nama.toLowerCase().includes(searchTerm.toLowerCase())
     return matchTingkat && matchSearch
   })
 
   const sortedData = [...filteredData].sort((a, b) =>
-    `${a.tingkat} ${a.kelompok} ${a.nomor_kelas}`.localeCompare(`${b.tingkat} ${b.kelompok} ${b.nomor_kelas}`, undefined, { numeric: true, sensitivity: 'base' })
+    formatNamaKelas(a.tingkat, a.nomor_kelas, a.kelompok).localeCompare(formatNamaKelas(b.tingkat, b.nomor_kelas, b.kelompok), undefined, { numeric: true, sensitivity: 'base' })
   )
 
   const handleHapus = async (id: string, namaKelas: string, jumlahSiswa: number) => {
@@ -188,7 +188,7 @@ export function KelasClient({ initialData, daftarGuru, daftarJurusan = [], userR
               {/* Header row */}
               <div className="flex items-center justify-between cursor-pointer" onClick={() => router.push(`/dashboard/kelas/${k.id}`)}>
                 <div>
-                  <span className="text-lg font-bold text-slate-800 dark:text-slate-100">{k.tingkat}-{k.nomor_kelas}</span>
+                  <span className="text-lg font-bold text-slate-800 dark:text-slate-100">{formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}</span>
                   {!isJurusanValid && (
                     <span className="ml-2 text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
                       <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5" />Usang
@@ -231,7 +231,7 @@ export function KelasClient({ initialData, daftarGuru, daftarJurusan = [], userR
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={() => handleHapus(k.id, `${k.tingkat}-${k.nomor_kelas}`, k.jumlah_siswa)}
+                  onClick={() => handleHapus(k.id, formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok), k.jumlah_siswa)}
                   disabled={k.jumlah_siswa > 0}
                   className={cn("p-1.5 rounded transition-colors", k.jumlah_siswa > 0 ? 'text-slate-300 dark:text-slate-600' : 'text-rose-500 hover:bg-rose-50')}
                 >
@@ -273,7 +273,7 @@ export function KelasClient({ initialData, daftarGuru, daftarJurusan = [], userR
                 )}>
                   <TableCell className="px-4 py-2.5 cursor-pointer" onClick={() => router.push(`/dashboard/kelas/${k.id}`)}>
                     <span className="text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-700 transition-colors">
-                      {k.tingkat}-{k.nomor_kelas}
+                      {formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}
                     </span>
                     {!isJurusanValid && <AlertTriangle className="h-3 w-3 text-rose-500 inline ml-1" />}
                   </TableCell>
@@ -309,7 +309,7 @@ export function KelasClient({ initialData, daftarGuru, daftarJurusan = [], userR
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={e => { e.stopPropagation(); handleHapus(k.id, `${k.tingkat}-${k.nomor_kelas}`, k.jumlah_siswa) }}
+                        onClick={e => { e.stopPropagation(); handleHapus(k.id, formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok), k.jumlah_siswa) }}
                         disabled={k.jumlah_siswa > 0}
                         className={cn("p-1.5 rounded", k.jumlah_siswa > 0 ? 'text-slate-300 dark:text-slate-600' : 'text-rose-500 hover:bg-rose-50')}
                       >

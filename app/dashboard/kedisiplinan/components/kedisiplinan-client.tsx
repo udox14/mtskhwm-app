@@ -13,7 +13,7 @@ import { Search, PlusCircle, Trash2, Pencil, Image as ImageIcon, AlertTriangle, 
 import { FormModal } from './form-modal'
 import { MasterModal } from './master-modal'
 import { hapusPelanggaran, hapusMasterPelanggaran, importMasterPelanggaranMassal } from '../actions'
-import { cn } from '@/lib/utils'
+import { cn, formatNamaKelas } from '@/lib/utils'
 
 export function KedisiplinanClient({
   currentUser, kasusList, masterList
@@ -189,7 +189,7 @@ export function KedisiplinanClient({
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight truncate">{k.siswa.nama_lengkap}</p>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                           <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-surface-3 px-1.5 py-0.5 rounded border border-surface">
-                            {k.siswa.kelas?.tingkat}-{k.siswa.kelas?.nomor_kelas}
+                            {k.siswa.kelas ? formatNamaKelas(k.siswa.kelas.tingkat, k.siswa.kelas.nomor_kelas, k.siswa.kelas.kelompok) : ''}
                           </span>
                           <span className="text-[10px] text-slate-400 dark:text-slate-500">
                             {new Date(k.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
@@ -282,7 +282,7 @@ export function KedisiplinanClient({
                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-rose-700 transition-colors leading-tight">{k.siswa.nama_lengkap}</p>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-surface-3 px-1.5 py-0.5 rounded border border-surface font-medium">
-                                {k.siswa.kelas?.tingkat}-{k.siswa.kelas?.nomor_kelas} {k.siswa.kelas?.kelompok !== 'UMUM' ? k.siswa.kelas?.kelompok : ''}
+                                {k.siswa.kelas ? formatNamaKelas(k.siswa.kelas.tingkat, k.siswa.kelas.nomor_kelas, k.siswa.kelas.kelompok) : ''}
                               </span>
                               {totalPoin >= 50 && (
                                 <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 flex items-center gap-0.5 animate-pulse">

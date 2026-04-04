@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { BookOpen, FileSpreadsheet, Trash2, Loader2, Download, AlertCircle, Pencil, CalendarDays, RefreshCw, Search, Eye, Layers, User, Save, Users, RotateCcw } from 'lucide-react'
 import { tambahMapel, editMapel, hapusMapel, importPenugasanASC, hapusPenugasan, importMapelMassal, resetPenugasanSemesterIni, getPenugasanBergilir, setGuruAktifMingguIni, tambahGuruPiket, hapusGuruPiket } from './actions'
 import { JadwalTab } from './components/jadwal-tab'
-import { cn } from '@/lib/utils'
+import { cn, formatNamaKelas } from '@/lib/utils'
 
 type MapelType = { id: string; nama_mapel: string; kode_mapel?: string; kode_asc?: string; kelompok: string; tingkat: string; kategori: string }
 type PenugasanType = {
@@ -186,8 +186,7 @@ function BergilirTab({ taAktif, guruList, isSuperAdmin }: {
                     <div className="flex items-center gap-2">
                       <div className="h-7 w-7 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs border border-amber-200">{item.tingkat}</div>
                       <div>
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Kelas {item.tingkat}-{item.nomor_kelas}</span>
-                        {item.kelas_kelompok !== 'UMUM' && <span className="text-[10px] text-slate-400 ml-1.5">{item.kelas_kelompok}</span>}
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatNamaKelas(item.tingkat, item.nomor_kelas, item.kelas_kelompok)}</span>
                       </div>
                     </div>
                     {isSuperAdmin && (
@@ -354,7 +353,7 @@ export function AkademikClient({
       if (!groups.has(key)) groups.set(key, { guru_nama: p.guru.nama_lengkap, mapel_nama: p.mapel.nama_mapel, mapel_kelompok: p.mapel.kelompok, key, list: [] })
       groups.get(key).list.push(p)
     })
-    groups.forEach(g => g.list.sort((a: any, b: any) => `${a.kelas.tingkat}-${a.kelas.nomor_kelas}`.localeCompare(`${b.kelas.tingkat}-${b.kelas.nomor_kelas}`, undefined, { numeric: true })))
+    groups.forEach(g => g.list.sort((a: any, b: any) => formatNamaKelas(a.kelas.tingkat, a.kelas.nomor_kelas, a.kelas.kelompok).localeCompare(formatNamaKelas(b.kelas.tingkat, b.kelas.nomor_kelas, b.kelas.kelompok), undefined, { numeric: true })))
     return Array.from(groups.values())
   }, [penugasanData])
 
@@ -382,7 +381,7 @@ export function AkademikClient({
     })
     return Array.from(groups.values()).map(g => {
       const guruArr = Array.from(g.guru_list.values())
-      guruArr.forEach((gg: any) => gg.kelas_list.sort((a: any, b: any) => `${a.kelas.tingkat}-${a.kelas.nomor_kelas}`.localeCompare(`${b.kelas.tingkat}-${b.kelas.nomor_kelas}`, undefined, { numeric: true })))
+      guruArr.forEach((gg: any) => gg.kelas_list.sort((a: any, b: any) => formatNamaKelas(a.kelas.tingkat, a.kelas.nomor_kelas, a.kelas.kelompok).localeCompare(formatNamaKelas(b.kelas.tingkat, b.kelas.nomor_kelas, b.kelas.kelompok), undefined, { numeric: true })))
       guruArr.sort((a: any, b: any) => a.guru_nama.localeCompare(b.guru_nama))
       return { ...g, guru_list: guruArr }
     }).sort((a, b) => a.mapel_nama_utama.localeCompare(b.mapel_nama_utama))
@@ -572,12 +571,11 @@ export function AkademikClient({
                         <div className="flex items-center gap-2.5">
                           <div className="h-7 w-7 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs border border-indigo-200">{p.kelas.tingkat}</div>
                           <div>
-                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Kelas {p.kelas.tingkat}-{p.kelas.nomor_kelas}</span>
-                            {p.kelas.kelompok !== 'UMUM' && <span className="text-[10px] text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500 ml-1.5">{p.kelas.kelompok}</span>}
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatNamaKelas(p.kelas.tingkat, p.kelas.nomor_kelas, p.kelas.kelompok)}</span>
                           </div>
                         </div>
                         <button
-                          onClick={async () => { if (confirm(`Hapus jadwal di Kelas ${p.kelas.tingkat}-${p.kelas.nomor_kelas}?`)) { setIsMapelPending(true); await hapusPenugasan(p.id); setIsMapelPending(false) } }}
+                          onClick={async () => { if (confirm(`Hapus jadwal di Kelas ${formatNamaKelas(p.kelas.tingkat, p.kelas.nomor_kelas, p.kelas.kelompok)}?`)) { setIsMapelPending(true); await hapusPenugasan(p.id); setIsMapelPending(false) } }}
                           className="p-1 text-slate-300 dark:text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
                         ><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
@@ -630,9 +628,9 @@ export function AkademikClient({
                         <div className="p-2 grid grid-cols-3 gap-1.5">
                           {gi.kelas_list.map((p: any) => (
                             <div key={p.id} className="flex justify-between items-center bg-surface-2 px-2 py-1.5 rounded border border-surface-2 group hover:border-emerald-200 transition-colors">
-                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{p.kelas.tingkat}-{p.kelas.nomor_kelas}</span>
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{formatNamaKelas(p.kelas.tingkat, p.kelas.nomor_kelas, p.kelas.kelompok)}</span>
                               <button
-                                onClick={async () => { if (confirm(`Hapus jadwal di Kelas ${p.kelas.tingkat}-${p.kelas.nomor_kelas}?`)) { setIsMapelPending(true); await hapusPenugasan(p.id); setIsMapelPending(false) } }}
+                                onClick={async () => { if (confirm(`Hapus jadwal di Kelas ${formatNamaKelas(p.kelas.tingkat, p.kelas.nomor_kelas, p.kelas.kelompok)}?`)) { setIsMapelPending(true); await hapusPenugasan(p.id); setIsMapelPending(false) } }}
                                 className="text-slate-300 dark:text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
                               ><Trash2 className="h-3 w-3" /></button>
                             </div>

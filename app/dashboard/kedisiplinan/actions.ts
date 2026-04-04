@@ -4,6 +4,7 @@
 import { getDB, dbInsert, dbUpdate, dbDelete } from '@/utils/db'
 import { uploadBuktiFoto, deleteFromR2, validateImageFile } from '@/utils/r2'
 import { getCurrentUser } from '@/utils/auth/server'
+import { formatNamaKelas } from '@/lib/utils'
 import { revalidatePath } from 'next/cache'
 
 // ============================================================
@@ -33,7 +34,7 @@ export async function searchSiswa(query: string) {
     nama_lengkap: s.nama_lengkap,
     nisn: s.nisn,
     kelas: s.tingkat
-      ? `${s.tingkat}-${s.nomor_kelas} ${s.kelompok !== 'UMUM' ? s.kelompok : ''}`.trim()
+      ? formatNamaKelas(s.tingkat, s.nomor_kelas, s.kelompok)
       : 'Tanpa Kelas',
   }))
 }

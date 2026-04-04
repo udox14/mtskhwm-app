@@ -13,6 +13,7 @@ import { TambahModal } from './tambah-modal'
 import { ImportModalSiswa } from './import-modal'
 import { hapusSiswa, uploadFotoSiswaAction, getDetailSiswaLengkap } from '../actions'
 import { EditSiswaModal } from './edit-modal'
+import { formatNamaKelas } from '@/lib/utils'
 
 const compressImage = async (file: File): Promise<File> => {
   return new Promise((resolve, reject) => {
@@ -220,7 +221,7 @@ export function SiswaClient({ initialData, kelasList, currentUser }: { initialDa
                   <SelectItem value="null">Tanpa Kelas</SelectItem>
                   {kelasList.map(k => (
                     <SelectItem key={k.id} value={k.id}>
-                      {k.tingkat}-{k.nomor_kelas} {k.kelompok !== 'UMUM' ? k.kelompok : ''}
+                      {formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -267,7 +268,7 @@ export function SiswaClient({ initialData, kelasList, currentUser }: { initialDa
                   </div>
                   <div className="p-1.5 text-center cursor-pointer hover:bg-surface-2 flex-1" onClick={() => navigateToDetail(s.id)}>
                     <p className="text-[10px] font-semibold text-slate-800 dark:text-slate-100 leading-tight line-clamp-2">{s.nama_lengkap}</p>
-                    <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">{s.kelas ? `${s.kelas.tingkat}-${s.kelas.nomor_kelas}` : '-'}</p>
+                    <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">{s.kelas ? formatNamaKelas(s.kelas.tingkat, s.kelas.nomor_kelas, s.kelas.kelompok) : '-'}</p>
                   </div>
                 </div>
               ))}
@@ -308,8 +309,7 @@ export function SiswaClient({ initialData, kelasList, currentUser }: { initialDa
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase ${getStatusBadge(s.status)}`}>{s.status}</span>
                           {s.kelas && (
                             <span className="text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500 font-semibold">
-                              {s.kelas.tingkat}-{s.kelas.nomor_kelas}
-                              {s.kelas.kelompok !== 'UMUM' ? ` ${s.kelas.kelompok}` : ''}
+                              {formatNamaKelas(s.kelas.tingkat, s.kelas.nomor_kelas, s.kelas.kelompok)}
                             </span>
                           )}
                         </div>
@@ -388,7 +388,7 @@ export function SiswaClient({ initialData, kelasList, currentUser }: { initialDa
                           <TableCell className="py-2.5">
                             {s.kelas ? (
                               <span className="text-xs font-medium text-slate-600 dark:text-slate-400 dark:text-slate-500 bg-surface-3 px-2 py-0.5 rounded border border-surface">
-                                {s.kelas.tingkat}-{s.kelas.nomor_kelas} {s.kelas.kelompok !== 'UMUM' ? s.kelas.kelompok : ''}
+                                {formatNamaKelas(s.kelas.tingkat, s.kelas.nomor_kelas, s.kelas.kelompok)}
                               </span>
                             ) : (
                               <span className="text-xs text-slate-400 dark:text-slate-500 italic">Belum diploting</span>

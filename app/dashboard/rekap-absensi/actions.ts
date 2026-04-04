@@ -3,6 +3,7 @@
 
 import { getDB } from '@/utils/db'
 import { getCurrentUser } from '@/utils/auth/server'
+import { formatNamaKelas } from '@/lib/utils'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
 
 // ============================================================
@@ -25,10 +26,10 @@ export async function getRekapFilterOptions() {
       FROM siswa s LEFT JOIN kelas k ON s.kelas_id = k.id WHERE s.status = 'aktif' ORDER BY s.nama_lengkap`).all<any>(),
   ])
   return {
-    kelas: (kelasRes.results || []).map((k: any) => ({ id: k.id, tingkat: k.tingkat, label: `${k.tingkat} ${k.kelompok} ${k.nomor_kelas}` })),
+    kelas: (kelasRes.results || []).map((k: any) => ({ id: k.id, tingkat: k.tingkat, label: formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok) })),
     siswa: (siswaRes.results || []).map((s: any) => ({
       id: s.id, nama: s.nama_lengkap, nisn: s.nisn,
-      kelas_label: s.tingkat ? `${s.tingkat} ${s.kelompok} ${s.nomor_kelas}` : '-',
+      kelas_label: formatNamaKelas(s.tingkat, s.nomor_kelas, s.kelompok),
     })),
   }
 }
@@ -131,7 +132,7 @@ export async function getAbsensiPerSiswa(siswaId: string, tglMulai: string, tglS
 
   return {
     error: null,
-    siswa: { nama: siswa.nama_lengkap, nisn: siswa.nisn, kelas: `${siswa.tingkat} ${siswa.kelompok} ${siswa.nomor_kelas}` },
+    siswa: { nama: siswa.nama_lengkap, nisn: siswa.nisn, kelas: formatNamaKelas(siswa.tingkat, siswa.nomor_kelas, siswa.kelompok) },
     days, summary, totalHari: days.length,
   }
 }
@@ -183,7 +184,7 @@ export async function getAbsensiPerKelas(tanggal: string) {
 
     return {
       kelas_id: k.id, tingkat: k.tingkat,
-      label: `${k.tingkat} ${k.kelompok} ${k.nomor_kelas}`,
+      label: formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok),
       total: k.total_siswa, hadir, sakit, izin, alfa,
     }
   })

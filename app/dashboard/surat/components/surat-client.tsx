@@ -17,6 +17,7 @@ import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { TEMPLATE_MAP, formatTanggalIndo } from './surat-templates'
 import { simpanSuratKeluar, hapusSuratKeluar, getSuratKeluar } from '../actions'
 import { type JenisSurat, JENIS_SURAT_LABEL } from '../constants'
+import { formatNamaKelas } from '@/lib/utils'
 
 // ============================================================
 // TYPES
@@ -192,7 +193,7 @@ export function SuratClient({ masterData, logSurat: initialLog, currentUser }: {
 
   const siswaOptions = useMemo(() => masterData.siswa.map((s: any) => ({
     value: s.id, label: s.nama_lengkap,
-    sub: s.tingkat ? `Kelas ${s.tingkat}.${s.nomor_kelas} ${s.kelompok}` : 'Belum ada kelas',
+    sub: s.tingkat ? `Kelas ${formatNamaKelas(s.tingkat, s.nomor_kelas, s.kelompok)}` : 'Belum ada kelas',
   })), [masterData.siswa])
   const guruOptions = useMemo(() => masterData.guru.map((g: any) => ({
     value: g.id, label: g.nama_lengkap, sub: g.jabatan_struktural || g.role || '',

@@ -4,6 +4,7 @@
 import { getDB, dbUpdate, dbInsert } from '@/utils/db'
 import { getCurrentUser } from '@/utils/auth/server'
 import { revalidatePath } from 'next/cache'
+import { formatNamaKelas } from '@/lib/utils'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
 
 // ============================================================
@@ -106,7 +107,7 @@ export async function getMonitoringHarian(tanggal: string, filterMode: 'semua' |
       guru_nama: first.guru_nama,
       mapel_nama: first.nama_mapel,
       kelas_id: first.kelas_id,
-      kelas_label: `${first.tingkat} ${first.kelompok} ${first.nomor_kelas}`,
+      kelas_label: formatNamaKelas(first.tingkat, first.nomor_kelas, first.kelompok),
       jam_ke_mulai: jamMulai,
       jam_ke_selesai: jamSelesai,
       jam_label: jamMulai === jamSelesai ? `Jam ${jamMulai}` : `Jam ${jamMulai}-${jamSelesai}`,
@@ -148,7 +149,7 @@ export async function getFilterOptions() {
     guru: (guruRes.results || []).map((g: any) => ({ id: g.id, nama: g.nama_lengkap })),
     kelas: (kelasRes.results || []).map((k: any) => ({
       id: k.id,
-      label: `${k.tingkat} ${k.kelompok} ${k.nomor_kelas}`,
+      label: formatNamaKelas(k.tingkat, k.nomor_kelas, k.kelompok),
     })),
   }
 }

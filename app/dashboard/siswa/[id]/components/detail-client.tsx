@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { EditSiswaModal } from '../../components/edit-modal'
 import { TandaiKeluarModal, BatalkanKeluarModal } from './tandai-keluar-modal'
+import { formatNamaKelas } from '@/lib/utils'
 
 export function DetailSiswaClient({ 
   siswa, riwayatKelas, pelanggaran, izinKeluar, izinKelas, kelasList, currentUser
@@ -43,19 +44,19 @@ export function DetailSiswaClient({
 
   // 2. Format Kelas Saat Ini
   const namaKelasSekarang = siswa.kelas 
-    ? `${siswa.kelas.tingkat}-${siswa.kelas.nomor_kelas} ${siswa.kelas.kelompok !== 'UMUM' ? siswa.kelas.kelompok : ''}`.trim() 
+    ? formatNamaKelas(siswa.kelas.tingkat, siswa.kelas.nomor_kelas, siswa.kelas.kelompok)
     : 'Belum Ada Kelas'
 
   // 3. Helper untuk mendapatkan riwayat kelas berdasarkan tingkat
   const getClassStr = (tingkat: number) => {
     // Prioritaskan kelas saat ini jika tingkatnya cocok
     if (siswa.kelas && siswa.kelas.tingkat === tingkat) {
-      return `${siswa.kelas.tingkat}-${siswa.kelas.nomor_kelas} ${siswa.kelas.kelompok !== 'UMUM' ? siswa.kelas.kelompok : ''}`.trim()
+      return formatNamaKelas(siswa.kelas.tingkat, siswa.kelas.nomor_kelas, siswa.kelas.kelompok)
     }
     // Cari di riwayat jika tidak cocok
     const riwayat = riwayatKelas.find(r => r.kelas?.tingkat === tingkat)
     if (riwayat) {
-      return `${riwayat.kelas.tingkat}-${riwayat.kelas.nomor_kelas} ${riwayat.kelas.kelompok !== 'UMUM' ? riwayat.kelas.kelompok : ''}`.trim()
+      return formatNamaKelas(riwayat.kelas.tingkat, riwayat.kelas.nomor_kelas, riwayat.kelas.kelompok)
     }
     return `Belum ada data historis`
   }

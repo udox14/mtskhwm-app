@@ -11,6 +11,7 @@
 
 import React from 'react'
 import type { BlankAbsensiData } from '../actions-print'
+import { formatNamaKelas } from '@/lib/utils'
 
 interface Props {
   data: BlankAbsensiData
@@ -25,7 +26,7 @@ const BORDER = '0.6pt solid #000'
 export const BlankoAbsensiTemplate = React.forwardRef<HTMLDivElement, Props>(
   ({ data, tanggalCetak, pageBreak = false }, ref) => {
     const { kelas, tahun_ajaran, siswa, jumlah_l, jumlah_p } = data
-    const namaKelas = `${kelas.tingkat}.${kelas.nomor_kelas}`
+    const namaKelas = formatNamaKelas(kelas.tingkat, kelas.nomor_kelas, kelas.kelompok)
     const TALabel = tahun_ajaran?.nama ?? '-'
     const jamKe = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     const emptyRows = Math.max(0, MIN_ROWS - siswa.length)
