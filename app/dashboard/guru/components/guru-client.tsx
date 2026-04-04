@@ -26,17 +26,29 @@ import {
 import {
   getUserFeatureOverridesAction, setUserFeatureOverride
 } from '@/app/dashboard/settings/fitur/actions'
-import { MENU_ITEMS, ALL_ROLES, getRoleLabel } from '@/config/menu'
+import { MENU_ITEMS, getRoleLabel } from '@/config/menu'
 import { cn } from '@/lib/utils'
 
 type JabatanType = { id: string, nama: string, urutan: number }
+type MasterRoleType = { value: string; label: string; is_custom: number }
 type ProfilType = {
   id: string, nama_lengkap: string, role: string, roles: string[], email: string,
   jabatan_struktural_id: string | null, jabatan_struktural_nama: string | null,
   domisili_pegawai: string | null
 }
 
-const ROLES = ALL_ROLES.map(r => ({ value: r.value, label: r.label }))
+const DEFAULT_ROLES: MasterRoleType[] = [
+  { value: 'super_admin', label: 'Super Admin', is_custom: 0 },
+  { value: 'admin_tu', label: 'Admin TU', is_custom: 0 },
+  { value: 'kepsek', label: 'Kepala Madrasah', is_custom: 0 },
+  { value: 'wakamad', label: 'Wakamad', is_custom: 0 },
+  { value: 'guru', label: 'Guru', is_custom: 0 },
+  { value: 'guru_bk', label: 'Guru BK', is_custom: 0 },
+  { value: 'guru_piket', label: 'Guru Piket', is_custom: 0 },
+  { value: 'wali_kelas', label: 'Wali Kelas', is_custom: 0 },
+  { value: 'resepsionis', label: 'Resepsionis', is_custom: 0 },
+  { value: 'guru_ppl', label: 'Guru PPL', is_custom: 0 },
+]
 
 const ROLE_COLORS: Record<string, string> = {
   super_admin: 'bg-rose-100 text-rose-700 border-rose-200',
@@ -74,7 +86,9 @@ const getAvatarColor = (name: string) => {
   return colors[(name.charCodeAt(0) || 0) % colors.length]
 }
 
-export function GuruClient({ initialData, masterJabatan }: { initialData: ProfilType[], masterJabatan: JabatanType[] }) {
+export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_ROLES }: {
+  initialData: ProfilType[], masterJabatan: JabatanType[], masterRoles?: MasterRoleType[]
+}) {
   const [isPending, setIsPending] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('ALL')
@@ -338,7 +352,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
               Centang role yang berlaku. User bisa memiliki banyak role sekaligus. Role dengan ★ adalah role utama yang ditampilkan di profil.
             </p>
             <div className="space-y-1.5">
-              {ROLES.map(r => {
+              {masterRoles.map((r: MasterRoleType) => {
                 const isSelected = selectedRoles.includes(r.value)
                 const isPrimary = selectedPrimary === r.value
                 return (
@@ -586,7 +600,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                 <SelectTrigger className="h-8 w-36 sm:w-40 text-xs rounded-md shrink-0"><SelectValue placeholder="Semua Role" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Semua Role</SelectItem>
-                  {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  {masterRoles.map((r: MasterRoleType) => <SelectItem key={r.value} value={r.value}>{r.label}{r.is_custom ? ' ★' : ''}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterJabatan} onValueChange={setFilterJabatan}>
@@ -664,7 +678,7 @@ export function GuruClient({ initialData, masterJabatan }: { initialData: Profil
                         <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Jabatan <span className="text-rose-500">*</span></Label>
                         <Select name="role" defaultValue="guru">
                           <SelectTrigger className="h-9 text-xs rounded-lg"><SelectValue /></SelectTrigger>
-                          <SelectContent>{ROLES.map(r => <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>)}</SelectContent>
+                          <SelectContent>{masterRoles.map((r: MasterRoleType) => <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
                       <SubmitButton />

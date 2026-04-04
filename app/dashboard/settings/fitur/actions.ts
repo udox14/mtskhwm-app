@@ -4,7 +4,7 @@
 import { getDB } from '@/utils/db'
 import { getCurrentUser } from '@/utils/auth/server'
 import { revalidatePath } from 'next/cache'
-import { MENU_ITEMS, ALL_ROLES } from '@/config/menu'
+import { MENU_ITEMS } from '@/config/menu'
 
 // ============================================================
 // ROLE FEATURES CRUD
@@ -12,22 +12,27 @@ import { MENU_ITEMS, ALL_ROLES } from '@/config/menu'
 
 /**
  * Get all role-feature mappings from DB
+ * Also reads roles from master_roles table (includes custom roles)
  */
-export async function getRoleFeatureMatrix(): Promise<Record<string, string[]>> {
+export async function getRoleFeatureMatrix(): Promise<{
+  matrix: Record<string, string[]>
+  roles: { value: string; label: string; is_custom: number }[]
+}> {
   const db = await getDB()
-  const result = await db.prepare(
-    'SELECT role, feature_id FROM role_features ORDER BY role, feature_id'
-  ).all<{ role: string; feature_id: string }>()
+  const [featResult, rolesResult] = await Promise.all([
+    db.prepare('SELECT role, feature_id FROM role_features ORDER BY role, feature_id').all<{ role: string; feature_id: string }>(),
+    db.prepare('SELECT value, label, is_custom FROM master_roles ORDER BY is_custom ASC, label ASC').all<{ value: string; label: string; is_custom: number }>(),
+  ])
 
+  const roles = rolesResult.results ?? []
   const matrix: Record<string, string[]> = {}
-  for (const r of ALL_ROLES) {
-    matrix[r.value] = []
-  }
-  for (const row of result.results ?? []) {
+  for (const r of roles) matrix[r.value] = []
+
+  for (const row of featResult.results ?? []) {
     if (!matrix[row.role]) matrix[row.role] = []
     matrix[row.role].push(row.feature_id)
   }
-  return matrix
+  return { matrix, roles }
 }
 
 /**
@@ -207,5 +212,104 @@ export async function setUserFeatureOverrides(
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/guru')
+  return { success: true }
+}
+
+// ============================================================
+// MASTER ROLES CRUD
+// ============================================================
+
+export type MasterRole = { value: string; label: string; is_custom: number }
+
+/**
+ * Get all roles from master_roles table
+ */
+export async function getAllMasterRoles(): Promise<MasterRole[]> {
+  const db = await getDB()
+  const result = await db.prepare(
+    'SELECT value, label, is_custom FROM master_roles ORDER BY is_custom ASC, label ASC'
+  ).all<MasterRole>()
+  return result.results ?? []
+}
+
+/**
+ * Create a new custom role
+ */
+export async function createCustomRole(label: string, value: string) {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const db = await getDB()
+  const userRow = await db.prepare('SELECT role FROM "user" WHERE id = ?').bind(user.id).first<any>()
+  if (userRow?.role !== 'super_admin') return { error: 'Hanya Super Admin yang bisa membuat role.' }
+
+  // Validasi slug: lowercase, underscore only
+  const slug = value.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '')
+  if (!slug) return { error: 'Nama role tidak valid.' }
+  if (!label.trim()) return { error: 'Label role tidak boleh kosong.' }
+
+  try {
+    await db.prepare(
+      'INSERT INTO master_roles (value, label, is_custom) VALUES (?, ?, 1)'
+    ).bind(slug, label.trim()).run()
+  } catch (e: any) {
+    if (e.message?.includes('UNIQUE')) return { error: `Role dengan ID "${slug}" sudah ada.` }
+    return { error: e.message }
+  }
+
+  revalidatePath('/dashboard/settings/fitur')
+  return { success: true, slug }
+}
+
+/**
+ * Edit label of an existing custom role
+ */
+export async function editCustomRole(value: string, newLabel: string) {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const db = await getDB()
+  const userRow = await db.prepare('SELECT role FROM "user" WHERE id = ?').bind(user.id).first<any>()
+  if (userRow?.role !== 'super_admin') return { error: 'Hanya Super Admin yang bisa mengedit role.' }
+
+  if (!newLabel.trim()) return { error: 'Label tidak boleh kosong.' }
+
+  await db.prepare(
+    'UPDATE master_roles SET label = ? WHERE value = ?'
+  ).bind(newLabel.trim(), value).run()
+
+  revalidatePath('/dashboard/settings/fitur')
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
+/**
+ * Delete a custom role (only if no users are assigned to it)
+ */
+export async function deleteCustomRole(value: string) {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const db = await getDB()
+  const userRow = await db.prepare('SELECT role FROM "user" WHERE id = ?').bind(user.id).first<any>()
+  if (userRow?.role !== 'super_admin') return { error: 'Hanya Super Admin yang bisa menghapus role.' }
+
+  // Cek apakah role ini masih dipakai oleh user
+  const inUse = await db.prepare(
+    'SELECT COUNT(*) as cnt FROM user_roles WHERE role = ?'
+  ).bind(value).first<{ cnt: number }>()
+
+  if ((inUse?.cnt ?? 0) > 0) {
+    return { error: `Role ini masih dipakai oleh ${inUse!.cnt} user. Hapus assignment dulu.` }
+  }
+
+  // Hapus dari role_features dan master_roles
+  await db.batch([
+    db.prepare('DELETE FROM role_features WHERE role = ?').bind(value),
+    db.prepare('DELETE FROM master_roles WHERE value = ?').bind(value),
+  ])
+
+  revalidatePath('/dashboard/settings/fitur')
+  revalidatePath('/dashboard')
   return { success: true }
 }

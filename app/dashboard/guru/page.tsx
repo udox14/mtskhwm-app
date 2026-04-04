@@ -14,7 +14,7 @@ export const metadata = { title: 'Data Guru & Pegawai - MTSKHWM App' }
 async function GuruDataFetcher() {
   const db = await getDB()
 
-  const [usersResult, jabatanResult, userRolesResult] = await Promise.all([
+  const [usersResult, jabatanResult, userRolesResult, masterRolesResult] = await Promise.all([
     db.prepare(`
       SELECT u.id, u.email, u.name, u.role, u.nama_lengkap,
              u.jabatan_struktural_id, u.domisili_pegawai,
@@ -29,6 +29,9 @@ async function GuruDataFetcher() {
     db.prepare(`
       SELECT user_id, role FROM user_roles ORDER BY user_id
     `).all<{ user_id: string; role: string }>(),
+    db.prepare(`
+      SELECT value, label, is_custom FROM master_roles ORDER BY is_custom ASC, label ASC
+    `).all<{ value: string; label: string; is_custom: number }>(),
   ])
 
   // Build user_roles map
@@ -53,6 +56,7 @@ async function GuruDataFetcher() {
     <GuruClient
       initialData={mergedData}
       masterJabatan={jabatanResult.results || []}
+      masterRoles={masterRolesResult.results || []}
     />
   )
 }

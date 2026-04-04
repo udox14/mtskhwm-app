@@ -18,17 +18,17 @@ export default async function FiturPage() {
   const userRow = await db.prepare('SELECT role FROM "user" WHERE id = ?').bind(user.id).first<any>()
   if (userRow?.role !== 'super_admin') redirect('/dashboard')
 
-  const matrix = await getRoleFeatureMatrix()
+  const { matrix, roles } = await getRoleFeatureMatrix()
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
       <PageHeader
         title="Manajemen Fitur"
-        description="Atur fitur mana saja yang bisa diakses oleh setiap role. Perubahan langsung berlaku."
+        description="Atur fitur mana saja yang bisa diakses oleh setiap role. Buat role baru sesuai kebutuhan."
         icon={SlidersHorizontal}
         iconColor="text-violet-500"
       />
-      <FiturClient initialMatrix={matrix} />
+      <FiturClient initialMatrix={matrix} initialRoles={roles} />
     </div>
   )
 }
