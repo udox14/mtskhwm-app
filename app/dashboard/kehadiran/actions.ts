@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/utils/auth/server'
 import { revalidatePath } from 'next/cache'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
 import { formatNamaKelas } from '@/lib/utils'
+import { getEffectiveUser } from '@/lib/act-as'
 
 // ============================================================
 // TYPES
@@ -49,8 +50,9 @@ function hariNum(d: Date): number { const day = d.getDay(); return day === 0 ? 7
 
 // ============================================================
 // 1. AMBIL BLOK MENGAJAR GURU HARI INI
+//    Menerima optional guruId untuk fitur Act As
 // ============================================================
-export async function getBlokMengajarHariIni(): Promise<{
+export async function getBlokMengajarHariIni(guruIdOverride?: string): Promise<{
   error: string | null
   blocks: BlokMengajar[]
   tanggal: string
@@ -60,6 +62,15 @@ export async function getBlokMengajarHariIni(): Promise<{
   const HARI = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
   const user = await getCurrentUser()
   if (!user) return { error: 'Unauthorized', blocks: [], tanggal: '', hari: 0, hariNama: '' }
+
+  // Gunakan guruIdOverride jika tersedia (dari Act As), atau cek cookie act-as, fallback ke user.id
+  let guruId = guruIdOverride || user.id
+  if (!guruIdOverride) {
+    const effective = await getEffectiveUser()
+    if (effective?.isActingAs) {
+      guruId = effective.effectiveUserId
+    }
+  }
 
   const db = await getDB()
   const now = new Date()
@@ -83,7 +94,7 @@ export async function getBlokMengajarHariIni(): Promise<{
     JOIN kelas k ON pm.kelas_id = k.id
     WHERE jm.tahun_ajaran_id = ? AND jm.hari = ? AND pm.guru_id = ?
     ORDER BY jm.jam_ke
-  `).bind(ta.id, hari, user.id).all<any>()).results || []
+  `).bind(ta.id, hari, guruId).all<any>()).results || []
 
   if (!rows.length) return { error: null, blocks: [], tanggal, hari, hariNama: HARI[hari] }
 
@@ -168,6 +179,7 @@ export async function loadSiswaAbsensi(penugasanId: string, kelasId: string, tan
 
 // ============================================================
 // 3. SIMPAN ABSENSI BATCH (sparse: hanya non-HADIR)
+//    Mendukung Act As: diinput_oleh = real admin user ID
 // ============================================================
 export async function simpanAbsensi(
   penugasanId: string, tanggal: string,
@@ -176,6 +188,11 @@ export async function simpanAbsensi(
 ): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser()
   if (!user) return { error: 'Unauthorized' }
+
+  // Cek act-as: gunakan real user ID untuk audit trail
+  const effective = await getEffectiveUser()
+  const diinputOleh = effective?.realUserId || user.id
+
   const db = await getDB()
 
   const toSave = dataAbsen.filter(d => d.status !== 'HADIR')
@@ -190,7 +207,7 @@ export async function simpanAbsensi(
   const insStmts = toSave.map(d =>
     db.prepare(
       `INSERT INTO absensi_siswa (penugasan_id,siswa_id,tanggal,jam_ke_mulai,jam_ke_selesai,jumlah_jam,status,catatan,diinput_oleh) VALUES (?,?,?,?,?,?,?,?,?)`
-    ).bind(penugasanId, d.siswa_id, tanggal, jamKeMulai, jamKeSelesai, jumlahJam, d.status, d.catatan || null, user.id)
+    ).bind(penugasanId, d.siswa_id, tanggal, jamKeMulai, jamKeSelesai, jumlahJam, d.status, d.catatan || null, diinputOleh)
   )
 
   try {

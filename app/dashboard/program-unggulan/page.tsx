@@ -9,12 +9,14 @@ import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 import { TesClient } from './components/tes-client'
 import { getKelasUnggulanGuru } from './actions'
+import { getEffectiveUser, getActAsUserList } from '@/lib/act-as'
+import { ActAsBanner } from '@/components/layout/act-as-banner'
 
 export const metadata = { title: 'Program Unggulan - MTSKHWM App' }
 export const dynamic = 'force-dynamic'
 
-async function DataFetcher({ userId, namaLengkap }: { userId: string; namaLengkap: string }) {
-  const { data, error } = await getKelasUnggulanGuru(userId)
+async function DataFetcher({ effectiveUserId, namaLengkap }: { effectiveUserId: string; namaLengkap: string }) {
+  const { data, error } = await getKelasUnggulanGuru(effectiveUserId)
   if (error) {
     return (
       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -22,7 +24,7 @@ async function DataFetcher({ userId, namaLengkap }: { userId: string; namaLengka
       </div>
     )
   }
-  return <TesClient kelasList={data} currentUser={{ id: userId, nama_lengkap: namaLengkap }} />
+  return <TesClient kelasList={data} currentUser={{ id: effectiveUserId, nama_lengkap: namaLengkap }} />
 }
 
 export default async function ProgramUnggulanPage() {
@@ -33,15 +35,27 @@ export default async function ProgramUnggulanPage() {
   const allowed = await checkFeatureAccess(db, user.id, 'program-unggulan')
   if (!allowed) redirect('/dashboard')
 
-  const namaLengkap = (user as any).nama_lengkap ?? user.name ?? ''
+  // Check super admin untuk fitur Act As
   const userRoles = await getUserRoles(db, user.id)
+  const isSuperAdmin = userRoles.includes('super_admin')
 
-  // Admin diarahkan ke panel kelola
-  if (userRoles.some(r => ['super_admin', 'admin_tu', 'kepsek'].includes(r))) {
+  const effective = await getEffectiveUser()
+  const effectiveUserId = effective?.effectiveUserId || user.id
+
+  // Nama yang tampil: jika act-as, pakai nama guru target
+  const namaLengkap = effective?.isActingAs
+    ? (effective.actAsName ?? '')
+    : ((user as any).nama_lengkap ?? user.name ?? '')
+
+  // Admin diarahkan ke panel kelola KECUALI jika sedang act-as
+  if (!effective?.isActingAs && userRoles.some(r => ['super_admin', 'admin_tu', 'kepsek'].includes(r))) {
     // Admin bisa juga akses halaman tes, tapi redirect default ke kelola
     // Uncomment baris di bawah jika ingin redirect otomatis:
     // redirect('/dashboard/program-unggulan/kelola')
   }
+
+  // Ambil daftar guru hanya jika super admin
+  const actAsUsers = isSuperAdmin ? await getActAsUserList() : []
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12 max-w-lg mx-auto">
@@ -51,8 +65,19 @@ export default async function ProgramUnggulanPage() {
         icon={Star}
         iconColor="text-amber-500"
       />
+
+      {/* Act As Banner — hanya untuk super admin */}
+      {isSuperAdmin && (
+        <ActAsBanner
+          isActingAs={effective?.isActingAs || false}
+          actAsName={effective?.actAsName || null}
+          userList={actAsUsers}
+          adminName={effective?.realUserName || 'Admin'}
+        />
+      )}
+
       <Suspense fallback={<PageLoading text="Memuat program unggulan..." />}>
-        <DataFetcher userId={user.id} namaLengkap={namaLengkap} />
+        <DataFetcher effectiveUserId={effectiveUserId} namaLengkap={namaLengkap} />
       </Suspense>
     </div>
   )

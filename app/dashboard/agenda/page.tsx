@@ -3,18 +3,20 @@ import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { redirect } from 'next/navigation'
 import { getDB } from '@/utils/db'
-import { checkFeatureAccess, getPrimaryRole } from '@/lib/features'
+import { checkFeatureAccess, getPrimaryRole, getUserRoles } from '@/lib/features'
 import { ClipboardPen } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 import { AgendaClient } from './components/agenda-client'
 import { getJadwalGuruHariIni } from './actions'
+import { getEffectiveUser, getActAsUserList } from '@/lib/act-as'
+import { ActAsBanner } from '@/components/layout/act-as-banner'
 
 export const metadata = { title: 'Agenda Guru - MTSKHWM App' }
 
-async function AgendaDataFetcher({ userId, role }: { userId: string; role: string }) {
-  const result = await getJadwalGuruHariIni()
-  return <AgendaClient initialData={result} userRole={role} />
+async function AgendaDataFetcher({ effectiveUserId, role, isActingAs }: { effectiveUserId: string; role: string; isActingAs: boolean }) {
+  const result = await getJadwalGuruHariIni(effectiveUserId)
+  return <AgendaClient initialData={result} userRole={role} isActingAs={isActingAs} />
 }
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +30,17 @@ export default async function AgendaPage() {
 
   const role = await getPrimaryRole(db, user.id)
 
+  // Check super admin untuk fitur Act As
+  const userRoles = await getUserRoles(db, user.id)
+  const isSuperAdmin = userRoles.includes('super_admin')
+
+  const effective = await getEffectiveUser()
+  const effectiveUserId = effective?.effectiveUserId || user.id
+  const isActingAs = effective?.isActingAs || false
+
+  // Ambil daftar guru hanya jika super admin
+  const actAsUsers = isSuperAdmin ? await getActAsUserList() : []
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
       <PageHeader
@@ -36,8 +49,19 @@ export default async function AgendaPage() {
         icon={ClipboardPen}
         iconColor="text-emerald-500"
       />
+
+      {/* Act As Banner — hanya untuk super admin */}
+      {isSuperAdmin && (
+        <ActAsBanner
+          isActingAs={isActingAs}
+          actAsName={effective?.actAsName || null}
+          userList={actAsUsers}
+          adminName={effective?.realUserName || 'Admin'}
+        />
+      )}
+
       <Suspense fallback={<PageLoading text="Memuat jadwal hari ini..." />}>
-        <AgendaDataFetcher userId={user.id} role={role} />
+        <AgendaDataFetcher effectiveUserId={effectiveUserId} role={role} isActingAs={isActingAs} />
       </Suspense>
     </div>
   )

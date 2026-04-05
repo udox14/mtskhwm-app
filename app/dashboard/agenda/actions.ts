@@ -8,6 +8,7 @@ import { uploadToR2 } from '@/utils/r2'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
 import { nowWIB, currentTimeWIB } from '@/lib/time'
 import { formatNamaKelas } from '@/lib/utils'
+import { getEffectiveUser } from '@/lib/act-as'
 
 // ============================================================
 // TYPES
@@ -47,9 +48,10 @@ function getHariNumber(date: Date): number {
 
 // ============================================================
 // 1. AMBIL JADWAL GURU HARI INI (untuk form isi agenda)
+//    Menerima optional guruId untuk fitur Act As
 //    Mengelompokkan jam berurutan jadi satu "blok"
 // ============================================================
-export async function getJadwalGuruHariIni(): Promise<{
+export async function getJadwalGuruHariIni(guruIdOverride?: string): Promise<{
   error: string | null
   blocks: JadwalBlock[]
   slots: SlotJam[]
@@ -58,6 +60,15 @@ export async function getJadwalGuruHariIni(): Promise<{
 }> {
   const user = await getCurrentUser()
   if (!user) return { error: 'Unauthorized', blocks: [], slots: [], tanggal: '', hari: 0 }
+
+  // Gunakan guruIdOverride jika tersedia (dari Act As), atau cek cookie act-as, fallback ke user.id
+  let guruId = guruIdOverride || user.id
+  if (!guruIdOverride) {
+    const effective = await getEffectiveUser()
+    if (effective?.isActingAs) {
+      guruId = effective.effectiveUserId
+    }
+  }
 
   const db = await getDB()
 
@@ -95,7 +106,7 @@ export async function getJadwalGuruHariIni(): Promise<{
     LEFT JOIN agenda_guru ag ON ag.penugasan_id = jm.penugasan_id AND ag.tanggal = ?
     WHERE jm.tahun_ajaran_id = ? AND jm.hari = ? AND pm.guru_id = ?
     ORDER BY jm.jam_ke ASC
-  `).bind(tanggal, ta.id, hari, user.id).all<any>()
+  `).bind(tanggal, ta.id, hari, guruId).all<any>()
 
   const rows = result.results || []
   if (rows.length === 0) return { error: null, blocks: [], slots, tanggal, hari }
@@ -140,12 +151,16 @@ export async function getJadwalGuruHariIni(): Promise<{
 
 // ============================================================
 // 2. SUBMIT AGENDA (guru)
-//    Validasi: hanya bisa di jam pelajarannya
+//    Validasi: hanya bisa di jam pelajarannya (BYPASS untuk Act As)
 //    Status: TEPAT_WAKTU jika ≤10 menit dari jam mulai, TELAT jika >10 menit
 // ============================================================
 export async function submitAgenda(formData: FormData): Promise<{ error?: string; success?: string }> {
   const user = await getCurrentUser()
   if (!user) return { error: 'Unauthorized' }
+
+  // Cek act-as: jika super admin, gunakan guru_id dari jadwal
+  const effective = await getEffectiveUser()
+  const isActingAs = effective?.isActingAs || false
 
   const penugasanId = formData.get('penugasan_id') as string
   const materi = (formData.get('materi') as string)?.trim()
@@ -169,25 +184,32 @@ export async function submitAgenda(formData: FormData): Promise<{ error?: string
   // Validasi: hanya bisa input di jam pelajarannya (dari mulai sampai selesai blok)
   const { hours: curH_, minutes: curM_, hhmm: currentTime } = currentTimeWIB()
 
-  // Guru hanya bisa input mulai dari jam mulai sampai jam selesai bloknya
-  // Toleransi: bisa mulai 5 menit sebelum jam mulai
-  const [mulaiH, mulaiM] = slotMulai.split(':').map(Number)
-  const [selesaiH, selesaiM] = slotSelesai.split(':').map(Number)
-  const mulaiMinutes = mulaiH * 60 + mulaiM - 5  // 5 menit toleransi sebelum
-  const selesaiMinutes = selesaiH * 60 + selesaiM
-  const [curH, curM] = currentTime.split(':').map(Number)
-  const currentMinutes = curH * 60 + curM
+  // BYPASS validasi waktu jika super admin Act As
+  if (!isActingAs) {
+    // Guru hanya bisa input mulai dari jam mulai sampai jam selesai bloknya
+    // Toleransi: bisa mulai 5 menit sebelum jam mulai
+    const [mulaiH, mulaiM] = slotMulai.split(':').map(Number)
+    const [selesaiH, selesaiM] = slotSelesai.split(':').map(Number)
+    const mulaiMinutes = mulaiH * 60 + mulaiM - 5  // 5 menit toleransi sebelum
+    const selesaiMinutes = selesaiH * 60 + selesaiM
+    const [curH, curM] = currentTime.split(':').map(Number)
+    const currentMinutes = curH * 60 + curM
 
-  if (currentMinutes < mulaiMinutes) {
-    return { error: `Belum waktunya. Agenda bisa diisi mulai pukul ${slotMulai}.` }
-  }
-  if (currentMinutes > selesaiMinutes) {
-    return { error: `Waktu pengisian sudah berakhir (batas: ${slotSelesai}).` }
+    if (currentMinutes < mulaiMinutes) {
+      return { error: `Belum waktunya. Agenda bisa diisi mulai pukul ${slotMulai}.` }
+    }
+    if (currentMinutes > selesaiMinutes) {
+      return { error: `Waktu pengisian sudah berakhir (batas: ${slotSelesai}).` }
+    }
   }
 
   // Hitung status
-  const batasTepat = mulaiH * 60 + mulaiM + 10 // 10 menit setelah jam mulai
-  const status = currentMinutes <= batasTepat ? 'TEPAT_WAKTU' : 'TELAT'
+  const [mulaiH2, mulaiM2] = slotMulai.split(':').map(Number)
+  const batasTepat = mulaiH2 * 60 + mulaiM2 + 10 // 10 menit setelah jam mulai
+  const [curH2, curM2] = currentTime.split(':').map(Number)
+  const currentMinutes2 = curH2 * 60 + curM2
+  // Jika act-as, selalu TEPAT_WAKTU karena diinput oleh admin
+  const status = isActingAs ? 'TEPAT_WAKTU' : (currentMinutes2 <= batasTepat ? 'TEPAT_WAKTU' : 'TELAT')
 
   // Upload foto ke R2 (jika ada)
   let fotoUrl: string | null = null
@@ -199,8 +221,14 @@ export async function submitAgenda(formData: FormData): Promise<{ error?: string
     fotoUrl = uploadResult.url
   }
 
+  // Tentukan guru_id: jika act-as, ambil dari penugasan
+  let guruId = user.id
+  if (isActingAs && effective?.effectiveUserId) {
+    guruId = effective.effectiveUserId
+  }
+
   const payload = {
-    guru_id: user.id,
+    guru_id: guruId,
     penugasan_id: penugasanId,
     tanggal,
     jam_ke_mulai: jamKeMulai,
@@ -209,7 +237,7 @@ export async function submitAgenda(formData: FormData): Promise<{ error?: string
     foto_url: fotoUrl,
     status,
     waktu_input: nowWIB().toISOString(),
-    diubah_oleh: user.id,
+    diubah_oleh: effective?.realUserId || user.id, // audit trail: siapa admin yang input
   }
 
   const result = await dbInsert(db, 'agenda_guru', payload)

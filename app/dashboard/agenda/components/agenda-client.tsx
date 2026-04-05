@@ -37,6 +37,7 @@ interface AgendaClientProps {
     hari: number
   }
   userRole: string
+  isActingAs?: boolean
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; icon: any; label: string }> = {
@@ -90,7 +91,7 @@ async function compressImage(file: File, maxWidth = 1280, quality = 0.7): Promis
   })
 }
 
-export function AgendaClient({ initialData, userRole }: AgendaClientProps) {
+export function AgendaClient({ initialData, userRole, isActingAs = false }: AgendaClientProps) {
   const [data, setData] = useState(initialData)
   const [expandedBlock, setExpandedBlock] = useState<string | null>(null)
   const [materi, setMateri] = useState('')
@@ -121,7 +122,8 @@ export function AgendaClient({ initialData, userRole }: AgendaClientProps) {
 
   const handleSubmit = async (block: JadwalBlock) => {
     if (!materi.trim()) { setPesan({ tipe: 'error', teks: 'Materi wajib diisi.' }); return }
-    if (!fotoFile) { setPesan({ tipe: 'error', teks: 'Foto wajib diambil.' }); return }
+    // Foto wajib hanya jika bukan act-as (admin tidak perlu foto)
+    if (!fotoFile && !isActingAs) { setPesan({ tipe: 'error', teks: 'Foto wajib diambil.' }); return }
 
     setIsSubmitting(true); setPesan(null)
 
@@ -133,7 +135,7 @@ export function AgendaClient({ initialData, userRole }: AgendaClientProps) {
     fd.append('slot_mulai', block.slot_mulai)
     fd.append('slot_selesai', block.slot_selesai)
     fd.append('materi', materi.trim())
-    fd.append('foto', fotoFile)
+    if (fotoFile) fd.append('foto', fotoFile)
 
     const result = await submitAgenda(fd)
     if (result.error) {
@@ -283,10 +285,10 @@ export function AgendaClient({ initialData, userRole }: AgendaClientProps) {
                   />
                 </div>
 
-                {/* Foto (camera only) */}
+                {/* Foto (camera only) — opsional saat act-as */}
                 <div>
                   <Label className="text-xs text-slate-600 font-medium">
-                    Foto Kegiatan <span className="text-red-500">*</span>
+                    Foto Kegiatan {!isActingAs && <span className="text-red-500">*</span>}
                   </Label>
 
                   {fotoPreview ? (
@@ -324,10 +326,17 @@ export function AgendaClient({ initialData, userRole }: AgendaClientProps) {
                   />
                 </div>
 
+                {/* Notice act-as */}
+                {isActingAs && (
+                  <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                    ⚠️ Input atas nama guru. Validasi waktu di-skip, foto opsional.
+                  </div>
+                )}
+
                 {/* Submit */}
                 <Button
                   onClick={() => handleSubmit(block)}
-                  disabled={isSubmitting || !materi.trim() || !fotoFile}
+                  disabled={isSubmitting || !materi.trim() || (!fotoFile && !isActingAs)}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   {isSubmitting ? (
