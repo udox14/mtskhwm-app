@@ -19,10 +19,13 @@ async function PresensiDataFetcher({ currentUserId }: { currentUserId: string })
   const [pegawaiResult, presensiResult, settingResult] = await Promise.all([
     db.prepare(`
       SELECT u.id, u.nama_lengkap, u.email, u.domisili_pegawai, u.avatar_url,
+             u.jabatan_struktural_id, u.role,
              j.nama as jabatan_nama
       FROM "user" u
-      INNER JOIN master_jabatan_struktural j ON u.jabatan_struktural_id = j.id
-      ORDER BY j.urutan ASC, u.nama_lengkap ASC
+      LEFT JOIN master_jabatan_struktural j ON u.jabatan_struktural_id = j.id
+      WHERE u.role NOT IN ('siswa', 'wali_murid')
+      ORDER BY CASE WHEN u.jabatan_struktural_id IS NOT NULL THEN 0 ELSE 1 END ASC,
+               j.urutan ASC, u.nama_lengkap ASC
     `).all<any>(),
     db.prepare(`
       SELECT * FROM presensi_pegawai WHERE tanggal = ?
@@ -32,7 +35,11 @@ async function PresensiDataFetcher({ currentUserId }: { currentUserId: string })
 
   return (
     <PresensiClient
-      pegawai={pegawaiResult.results || []}
+      pegawai={(pegawaiResult.results || []).map((p: any) => ({
+        ...p,
+        jabatan_nama: p.jabatan_nama || p.role?.replace(/_/g, ' ').toUpperCase() || 'Staf / Guru',
+        is_struktural: !!p.jabatan_struktural_id
+      }))}
       presensiHariIni={presensiResult.results || []}
       pengaturan={settingResult || { jam_masuk: '07:00', jam_pulang: '14:00', batas_telat_menit: 15, batas_pulang_cepat_menit: 15 }}
       tanggal={today}

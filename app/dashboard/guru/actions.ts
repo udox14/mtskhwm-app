@@ -336,15 +336,17 @@ export async function uploadFotoPegawaiAction(userId: string, formData: FormData
   const { url, error: uploadError } = await uploadFotoSiswa(`pegawai_${userId}`, file)
   if (uploadError || !url) return { error: uploadError || 'Upload gagal' }
 
+  const versionedUrl = `${url}?v=${Date.now()}`
+
   const db = await getDB()
   const result = await dbUpdate(
     db, '"user"',
-    { avatar_url: url, updatedAt: new Date().toISOString() },
+    { avatar_url: versionedUrl, updatedAt: new Date().toISOString() },
     { id: userId }
   )
   if (result.error) return { error: result.error }
 
   revalidatePath('/dashboard/guru')
   revalidatePath('/dashboard/presensi')
-  return { success: 'Foto berhasil diperbarui!', url }
+  return { success: 'Foto berhasil diperbarui!', url: versionedUrl }
 }

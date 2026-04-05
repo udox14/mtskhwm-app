@@ -17,7 +17,7 @@ import { nowWIB } from '@/lib/time'
 type Pegawai = {
   id: string; nama_lengkap: string; email: string;
   domisili_pegawai: string | null; jabatan_nama: string;
-  avatar_url: string | null;
+  avatar_url: string | null; is_struktural: boolean;
 }
 type Presensi = {
   id: string; user_id: string; tanggal: string; jam_masuk: string | null;
@@ -59,6 +59,8 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
   const [statusCatatan, setStatusCatatan] = useState('')
   const [currentTime, setCurrentTime] = useState(nowWIB())
   const [modalPending, setModalPending] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [fakeMap, setFakeMap] = useState<Record<string, Presensi>>({})
 
   // Live clock
   useState(() => {
@@ -66,42 +68,67 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
     return () => clearInterval(interval)
   })
 
+  // Combine real and fake presensi
   const presensiMap = new Map(presensiHariIni.map(p => [p.user_id, p]))
+  Object.values(fakeMap).forEach(p => presensiMap.set(p.user_id, p))
 
-  const handleMasuk = async (userId: string) => {
-    setLoadingId(userId)
-    const res = await catatPresensiMasuk(userId, currentUserId, undefined)
-    if (res.error) alert(res.error)
+  const handleMasuk = async (pg: Pegawai) => {
+    setLoadingId(pg.id)
+    if (pg.is_struktural) {
+      const res = await catatPresensiMasuk(pg.id, currentUserId, undefined)
+      if (res.error) alert(res.error)
+    } else {
+      const timeStr = nowWIB().toTimeString().slice(0, 5)
+      setFakeMap(prev => ({ ...prev, [pg.id]: { id: 'fake_m_' + pg.id, user_id: pg.id, tanggal, jam_masuk: timeStr, jam_pulang: null, status: 'hadir', is_telat: 0, is_pulang_cepat: 0, catatan: null } }))
+    }
     setLoadingId(null)
   }
 
-  const handlePulang = async (userId: string) => {
-    setLoadingId(userId)
-    const res = await catatPresensiPulang(userId, currentUserId)
-    if (res.error) alert(res.error)
+  const handlePulang = async (pg: Pegawai) => {
+    setLoadingId(pg.id)
+    if (pg.is_struktural) {
+      const res = await catatPresensiPulang(pg.id, currentUserId)
+      if (res.error) alert(res.error)
+    } else {
+      const timeStr = nowWIB().toTimeString().slice(0, 5)
+      setFakeMap(prev => ({
+        ...prev,
+        [pg.id]: prev[pg.id] ? { ...prev[pg.id], jam_pulang: timeStr } : { id: 'fake_p_' + pg.id, user_id: pg.id, tanggal, jam_masuk: null, jam_pulang: timeStr, status: 'hadir', is_telat: 0, is_pulang_cepat: 0, catatan: null }
+      }))
+    }
     setLoadingId(null)
   }
 
   const handleSetStatus = async () => {
     if (!statusModal) return
     setModalPending(true)
-    const res = await setStatusPresensi(statusModal.id, statusValue, currentUserId, statusCatatan || undefined)
-    if (res.error) alert(res.error)
-    else setStatusModal(null)
+    if (statusModal.is_struktural) {
+      const res = await setStatusPresensi(statusModal.id, statusValue, currentUserId, statusCatatan || undefined)
+      if (res.error) alert(res.error)
+      else setStatusModal(null)
+    } else {
+      setFakeMap(prev => ({ ...prev, [statusModal.id]: { id: 'fake_s_' + statusModal.id, user_id: statusModal.id, tanggal, jam_masuk: null, jam_pulang: null, status: statusValue, is_telat: 0, is_pulang_cepat: 0, catatan: statusCatatan || null } }))
+      setStatusModal(null)
+    }
     setModalPending(false)
   }
 
   const handleEditSave = async () => {
     if (!editData) return
     setModalPending(true)
-    const res = await editWaktuPresensi(
-      editData.presensi.id,
-      editJamMasuk || null,
-      editJamPulang || null,
-      currentUserId
-    )
-    if (res?.error) alert(res.error)
-    else setEditData(null)
+    if (editData.pegawai.is_struktural) {
+      const res = await editWaktuPresensi(
+        editData.presensi.id,
+        editJamMasuk || null,
+        editJamPulang || null,
+        currentUserId
+      )
+      if (res?.error) alert(res.error)
+      else setEditData(null)
+    } else {
+      setFakeMap(prev => ({ ...prev, [editData.pegawai.id]: { ...prev[editData.pegawai.id], jam_masuk: editJamMasuk || null, jam_pulang: editJamPulang || null } }))
+      setEditData(null)
+    }
     setModalPending(false)
   }
 
@@ -117,10 +144,12 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
 
   // Stats
   const totalPegawai = pegawai.length
-  const hadir = presensiHariIni.filter(p => p.status === 'hadir').length
-  const telat = presensiHariIni.filter(p => p.is_telat).length
-  const absen = presensiHariIni.filter(p => ['sakit', 'izin', 'alfa', 'dinas_luar'].includes(p.status)).length
-  const belum = totalPegawai - presensiHariIni.length
+  const hadir = Array.from(presensiMap.values()).filter(p => p.status === 'hadir').length
+  const telat = Array.from(presensiMap.values()).filter(p => p.is_telat).length
+  const absen = Array.from(presensiMap.values()).filter(p => ['sakit', 'izin', 'alfa', 'dinas_luar'].includes(p.status)).length
+  const belum = totalPegawai - presensiMap.size
+
+  const filteredPegawai = pegawai.filter(p => p.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase()) || p.jabatan_nama.toLowerCase().includes(searchTerm.toLowerCase()))
 
   return (
     <>
@@ -207,18 +236,20 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
               <p className="text-[10px] font-medium">{s.label}</p>
             </div>
           ))}
+          <div className="flex-1 max-w-sm flex shrink-0 border border-surface rounded-lg bg-surface">
+            <Input placeholder="Cari pegawai..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-9 border-0 bg-transparent" />
+          </div>
         </div>
 
         {/* GRID CARDS */}
-        {pegawai.length === 0 ? (
+        {filteredPegawai.length === 0 ? (
           <div className="bg-surface py-10 rounded-lg border border-surface text-center">
             <Building2 className="h-7 w-7 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-400">Belum ada pegawai dengan jabatan struktural.</p>
-            <p className="text-xs text-slate-400 mt-1">Assign jabatan di halaman Guru & Pegawai.</p>
+            <p className="text-sm text-slate-400">Tidak ada pegawai yang cocok dengan pencarian.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {pegawai.map(pg => {
+            {filteredPegawai.map(pg => {
               const pr = presensiMap.get(pg.id)
               const status = pr?.status || null
               const cfg = status ? STATUS_CONFIG[status] : null
@@ -286,7 +317,7 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
                     <div className="flex gap-1.5 shrink-0 mt-auto">
                       {!pr ? (
                         <>
-                          <Button size="sm" onClick={() => handleMasuk(pg.id)} disabled={loadingId === pg.id}
+                          <Button size="sm" onClick={() => handleMasuk(pg)} disabled={loadingId === pg.id}
                             className="flex-1 h-7 text-[11px] rounded bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2">
                             {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogIn className="h-3 w-3" />} Masuk
                           </Button>
@@ -297,7 +328,7 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
                         </>
                       ) : pr.status === 'hadir' && !pr.jam_pulang ? (
                         <>
-                          <Button size="sm" onClick={() => handlePulang(pg.id)} disabled={loadingId === pg.id}
+                          <Button size="sm" onClick={() => handlePulang(pg)} disabled={loadingId === pg.id}
                             className="flex-1 h-7 text-[11px] rounded bg-rose-500 hover:bg-rose-600 text-white gap-1 px-2">
                             {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3 w-3" />} Pulang
                           </Button>

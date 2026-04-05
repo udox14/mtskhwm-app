@@ -607,8 +607,14 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
               ) : pegawaiStruktural.map(p => (
                 <div key={p.id} className="bg-surface border border-surface rounded-lg p-3">
                   <div className="flex items-center gap-2.5 mb-2">
-                    <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br shrink-0 flex items-center justify-center text-sm font-bold", getAvatarColor(p.nama_lengkap))}>
-                      {p.nama_lengkap.charAt(0).toUpperCase()}
+                    <div className={cn("h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-sm font-bold overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700", getAvatarColor(p.nama_lengkap))}>
+                      {p.avatar_url ? (
+                        <img src={p.avatar_url} alt={p.nama_lengkap} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br flex items-center justify-center text-white/90">
+                          {p.nama_lengkap.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight">{p.nama_lengkap}</p>
@@ -803,8 +809,14 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
               ) : paginatedData.map(p => (
                 <div key={p.id} className="bg-surface border border-surface rounded-lg p-3">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className={cn("h-9 w-9 rounded-full bg-gradient-to-br shrink-0 flex items-center justify-center text-sm font-bold", getAvatarColor(p.nama_lengkap))}>
-                      {p.nama_lengkap.charAt(0).toUpperCase()}
+                    <div className={cn("h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-sm font-bold overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700", getAvatarColor(p.nama_lengkap))}>
+                      {p.avatar_url ? (
+                        <img src={p.avatar_url} alt={p.nama_lengkap} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br flex items-center justify-center text-white/90">
+                          {p.nama_lengkap.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight">{p.nama_lengkap}</p>
@@ -880,8 +892,14 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
                     <TableRow key={p.id} className="hover:bg-emerald-50/20 border-surface-2 group">
                       <TableCell className="px-4 py-2.5">
                         <div className="flex items-center gap-3">
-                          <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br shrink-0 flex items-center justify-center text-sm font-bold", getAvatarColor(p.nama_lengkap))}>
-                            {p.nama_lengkap.charAt(0).toUpperCase()}
+                          <div className={cn("h-8 w-8 rounded-full shrink-0 flex items-center justify-center text-sm font-bold overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700", getAvatarColor(p.nama_lengkap))}>
+                            {p.avatar_url ? (
+                              <img src={p.avatar_url} alt={p.nama_lengkap} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br flex items-center justify-center text-white/90">
+                                {p.nama_lengkap.charAt(0).toUpperCase()}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-emerald-700 transition-colors leading-tight">{p.nama_lengkap}</p>
