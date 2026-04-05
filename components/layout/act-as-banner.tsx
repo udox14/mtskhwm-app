@@ -2,15 +2,15 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { UserCog, X, ChevronDown, Shield, Search } from 'lucide-react'
+import { UserCog, X, ChevronDown, Shield, Search, Loader2 } from 'lucide-react'
 import { setActAsUser, clearActAs } from '@/lib/act-as-actions'
 import { useRouter } from 'next/navigation'
 import { getRoleLabel } from '@/config/menu'
 
 interface ActAsBannerProps {
-  /** Apakah sedang act-as? */
+  /** Apakah sedang act-as? (initial dari server) */
   isActingAs: boolean
-  /** Nama guru yang di-act-as-kan */
+  /** Nama guru yang di-act-as-kan (initial dari server) */
   actAsName: string | null
   /** Daftar guru yang bisa dipilih */
   userList: Array<{ id: string; nama_lengkap: string; role: string }>
@@ -18,7 +18,11 @@ interface ActAsBannerProps {
   adminName: string
 }
 
-export function ActAsBanner({ isActingAs, actAsName, userList, adminName }: ActAsBannerProps) {
+export function ActAsBanner({ isActingAs: initialIsActingAs, actAsName: initialActAsName, userList, adminName }: ActAsBannerProps) {
+  // ── Local state untuk optimistic update ──
+  const [localIsActingAs, setLocalIsActingAs] = useState(initialIsActingAs)
+  const [localActAsName, setLocalActAsName] = useState<string | null>(initialActAsName)
+
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -28,16 +32,27 @@ export function ActAsBanner({ isActingAs, actAsName, userList, adminName }: ActA
     u.nama_lengkap.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleSelect = (userId: string) => {
+  const handleSelect = (userId: string, userName: string) => {
+    // 1. Optimistic update: langsung ubah UI
+    setLocalIsActingAs(true)
+    setLocalActAsName(userName)
+    setIsOpen(false)
+    setSearch('')
+
+    // 2. Server sync di background
     startTransition(async () => {
       await setActAsUser(userId)
-      setIsOpen(false)
-      setSearch('')
-      router.refresh()
+      router.refresh() // re-fetch server components (data jadwal, dll)
     })
   }
 
   const handleClear = () => {
+    // 1. Optimistic update: langsung ubah UI
+    setLocalIsActingAs(false)
+    setLocalActAsName(null)
+    setIsOpen(false)
+
+    // 2. Server sync di background
     startTransition(async () => {
       await clearActAs()
       router.refresh()
@@ -45,13 +60,16 @@ export function ActAsBanner({ isActingAs, actAsName, userList, adminName }: ActA
   }
 
   // ── ACTIVE BANNER: sedang act-as ──
-  if (isActingAs) {
+  if (localIsActingAs) {
     return (
-      <div className="relative rounded-xl border-2 border-amber-300 dark:border-amber-600 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-950/50 dark:via-orange-950/30 dark:to-amber-950/50 px-4 py-3 shadow-sm animate-in slide-in-from-top-2 duration-300">
+      <div className="relative rounded-xl border-2 border-amber-300 dark:border-amber-600 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-950/50 dark:via-orange-950/30 dark:to-amber-950/50 px-4 py-3 shadow-sm animate-in slide-in-from-top-2 duration-200">
         <div className="flex items-center gap-3">
           {/* Icon */}
           <div className="shrink-0 p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700">
-            <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            {isPending
+              ? <Loader2 className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-spin" />
+              : <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            }
           </div>
 
           {/* Info */}
@@ -60,10 +78,10 @@ export function ActAsBanner({ isActingAs, actAsName, userList, adminName }: ActA
               Mode Act As · Super Admin
             </p>
             <p className="text-sm font-bold text-amber-900 dark:text-amber-100 truncate">
-              Bertindak sebagai: {actAsName}
+              Bertindak sebagai: {localActAsName}
             </p>
             <p className="text-[11px] text-amber-600/70 dark:text-amber-400/60 mt-0.5">
-              Data & input akan atas nama guru di atas. Admin: {adminName}
+              {isPending ? 'Memuat data guru...' : `Data & input akan atas nama guru di atas. Admin: ${adminName}`}
             </p>
           </div>
 
@@ -72,14 +90,14 @@ export function ActAsBanner({ isActingAs, actAsName, userList, adminName }: ActA
             <button
               onClick={() => setIsOpen(!isOpen)}
               disabled={isPending}
-              className="text-[11px] font-medium text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 bg-amber-100 dark:bg-amber-800/50 hover:bg-amber-200 dark:hover:bg-amber-800 border border-amber-200 dark:border-amber-700 px-2.5 py-1.5 rounded-lg transition-colors"
+              className="text-[11px] font-medium text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 bg-amber-100 dark:bg-amber-800/50 hover:bg-amber-200 dark:hover:bg-amber-800 border border-amber-200 dark:border-amber-700 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-60"
             >
               Ganti
             </button>
             <button
               onClick={handleClear}
               disabled={isPending}
-              className="p-1.5 rounded-lg text-amber-500 dark:text-amber-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              className="p-1.5 rounded-lg text-amber-500 dark:text-amber-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60"
               title="Kembali ke akun sendiri"
             >
               <X className="h-4 w-4" />
@@ -108,18 +126,21 @@ export function ActAsBanner({ isActingAs, actAsName, userList, adminName }: ActA
     <div className="relative rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 px-4 py-3 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="shrink-0 p-2 rounded-lg bg-violet-50 dark:bg-violet-900/30 border border-violet-100 dark:border-violet-800">
-          <UserCog className="h-4 w-4 text-violet-500 dark:text-violet-400" />
+          {isPending
+            ? <Loader2 className="h-4 w-4 text-violet-500 dark:text-violet-400 animate-spin" />
+            : <UserCog className="h-4 w-4 text-violet-500 dark:text-violet-400" />
+          }
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Fitur Act As</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Pilih guru untuk bertindak atas namanya di halaman ini
+            {isPending ? 'Memproses...' : 'Pilih guru untuk bertindak atas namanya di halaman ini'}
           </p>
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
           disabled={isPending}
-          className="shrink-0 flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-700 px-3 py-2 rounded-lg transition-colors"
+          className="shrink-0 flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-700 px-3 py-2 rounded-lg transition-colors disabled:opacity-60"
         >
           <UserCog className="h-3.5 w-3.5" />
           Pilih Guru
@@ -149,7 +170,7 @@ function UserDropdown({
   users: Array<{ id: string; nama_lengkap: string; role: string }>
   search: string
   onSearch: (v: string) => void
-  onSelect: (id: string) => void
+  onSelect: (id: string, name: string) => void
   isPending: boolean
 }) {
   return (
@@ -177,7 +198,8 @@ function UserDropdown({
           users.map(u => (
             <button
               key={u.id}
-              onClick={() => onSelect(u.id)}
+              // Pass nama_lengkap juga agar bisa optimistic update
+              onClick={() => onSelect(u.id, u.nama_lengkap)}
               disabled={isPending}
               className="w-full text-left px-3 py-2.5 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors flex items-center gap-2.5 disabled:opacity-50"
             >

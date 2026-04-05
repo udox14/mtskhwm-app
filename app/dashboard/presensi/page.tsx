@@ -18,7 +18,7 @@ async function PresensiDataFetcher({ currentUserId }: { currentUserId: string })
 
   const [pegawaiResult, presensiResult, settingResult] = await Promise.all([
     db.prepare(`
-      SELECT u.id, u.nama_lengkap, u.email, u.domisili_pegawai,
+      SELECT u.id, u.nama_lengkap, u.email, u.domisili_pegawai, u.avatar_url,
              j.nama as jabatan_nama
       FROM "user" u
       INNER JOIN master_jabatan_struktural j ON u.jabatan_struktural_id = j.id

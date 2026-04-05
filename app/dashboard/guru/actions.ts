@@ -5,6 +5,7 @@ import { getDB, dbUpdate } from '@/utils/db'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { createAuth, hashPassword } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
+import { uploadFotoSiswa, validateImageFile } from '@/utils/r2'
 
 async function getAuth() {
   const { env } = await getCloudflareContext({ async: true })
@@ -319,4 +320,31 @@ export async function editJabatanStruktural(id: string, nama: string): Promise<{
   }
   revalidatePath('/dashboard/guru')
   return { success: 'Jabatan struktural berhasil diperbarui.' }
+}
+
+// ============================================================
+// UPLOAD FOTO PEGAWAI KE R2
+// ============================================================
+export async function uploadFotoPegawaiAction(userId: string, formData: FormData) {
+  const file = formData.get('foto') as File
+  if (!file || file.size === 0) return { error: 'Tidak ada file.' }
+
+  const validationError = validateImageFile(file)
+  if (validationError) return { error: validationError }
+
+  // Reuse the existing R2 upload function
+  const { url, error: uploadError } = await uploadFotoSiswa(`pegawai_${userId}`, file)
+  if (uploadError || !url) return { error: uploadError || 'Upload gagal' }
+
+  const db = await getDB()
+  const result = await dbUpdate(
+    db, '"user"',
+    { avatar_url: url, updatedAt: new Date().toISOString() },
+    { id: userId }
+  )
+  if (result.error) return { error: result.error }
+
+  revalidatePath('/dashboard/guru')
+  revalidatePath('/dashboard/presensi')
+  return { success: 'Foto berhasil diperbarui!', url }
 }

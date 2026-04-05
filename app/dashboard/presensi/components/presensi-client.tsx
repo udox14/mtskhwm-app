@@ -16,7 +16,8 @@ import { nowWIB } from '@/lib/time'
 
 type Pegawai = {
   id: string; nama_lengkap: string; email: string;
-  domisili_pegawai: string | null; jabatan_nama: string
+  domisili_pegawai: string | null; jabatan_nama: string;
+  avatar_url: string | null;
 }
 type Presensi = {
   id: string; user_id: string; tanggal: string; jam_masuk: string | null;
@@ -34,6 +35,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
   izin: { label: 'Izin', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: FileText },
   alfa: { label: 'Alfa', color: 'bg-rose-100 text-rose-700 border-rose-200', icon: XCircle },
   dinas_luar: { label: 'Dinas Luar', color: 'bg-violet-100 text-violet-700 border-violet-200', icon: MapPin },
+}
+
+const getAvatarColor = (name: string) => {
+  const colors = [
+    'from-rose-400 to-rose-600', 'from-violet-400 to-violet-600',
+    'from-blue-400 to-blue-600', 'from-emerald-400 to-emerald-600',
+    'from-amber-400 to-amber-600', 'from-cyan-400 to-cyan-600'
+  ]
+  let hash = 0; for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return colors[Math.abs(hash) % colors.length]
 }
 
 export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, currentUserId }: {
@@ -215,97 +226,101 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
 
               return (
                 <div key={pg.id} className={cn(
-                  "bg-surface border rounded-xl p-3.5 transition-all",
+                  "bg-surface border rounded-xl p-2.5 flex gap-3 h-[132px] overflow-hidden transition-all",
                   status === 'hadir' ? 'border-emerald-200' : status ? 'border-surface' : 'border-dashed border-slate-300'
                 )}>
-                  {/* Top: Name + Jabatan */}
-                  <div className="flex items-start gap-2.5 mb-3">
-                    <div className={cn(
-                      "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
-                      status === 'hadir' ? 'bg-emerald-100 text-emerald-700' :
-                        status ? 'bg-slate-100 text-slate-500' : 'bg-slate-50 text-slate-400'
-                    )}>
-                      {pg.nama_lengkap.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight">{pg.nama_lengkap}</p>
+                  {/* Photo Profile 3:4 */}
+                  <div className="w-[84px] h-[112px] shrink-0 rounded bg-slate-100 border border-slate-100 dark:border-slate-800 flex items-center justify-center relative overflow-hidden">
+                    {pg.avatar_url ? (
+                      <img src={pg.avatar_url} alt={pg.nama_lengkap} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className={cn("w-full h-full bg-gradient-to-br flex items-center justify-center text-4xl font-black text-white/50", getAvatarColor(pg.nama_lengkap))}>
+                        {pg.nama_lengkap.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info area */}
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 min-w-0 mb-1">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight" title={pg.nama_lengkap}>{pg.nama_lengkap}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-100 text-violet-700 border border-violet-200">
-                          <Building2 className="h-2.5 w-2.5" />{pg.jabatan_nama}
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-violet-100 text-violet-700 border border-violet-200 max-w-full truncate">
+                          <Building2 className="h-2 w-2 shrink-0" /><span className="truncate">{pg.jabatan_nama}</span>
                         </span>
                         {pg.domisili_pegawai && (
-                          <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold border",
+                          <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold border",
                             pg.domisili_pegawai === 'dalam' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-amber-50 text-amber-600 border-amber-200'
                           )}>
-                            <MapPin className="h-2.5 w-2.5" />{pg.domisili_pegawai === 'dalam' ? 'Dalam' : 'Luar'}
+                            <MapPin className="h-2 w-2 shrink-0" />{pg.domisili_pegawai === 'dalam' ? 'Dalam' : 'Luar'}
                           </span>
                         )}
                       </div>
-                    </div>
-                  </div>
+                      
+                      {/* Fixed height status block */}
+                      <div className="h-[36px] mt-2 flex flex-col justify-start">
+                        {cfg ? (
+                          <div className={cn("flex items-center gap-1.5 px-1.5 py-0.5 rounded border text-[10px] font-semibold w-fit", cfg.color)}>
+                            {StatusIcon && <StatusIcon className="h-3 w-3 shrink-0" />}
+                            <span>{cfg.label}</span>
+                            {pr?.is_telat ? <span className="ml-1 text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded shadow-sm border border-amber-100">TELAT</span> : null}
+                            {pr?.is_pulang_cepat ? <span className="ml-1 text-[8px] font-bold text-orange-600 bg-orange-50 px-1 py-0.5 rounded shadow-sm border border-orange-100">PC</span> : null}
 
-                  {/* Status Badge */}
-                  {cfg && (
-                    <div className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border mb-3 text-xs font-semibold", cfg.color)}>
-                      {StatusIcon && <StatusIcon className="h-3.5 w-3.5" />}
-                      {cfg.label}
-                      {pr?.is_telat ? <span className="ml-auto text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">TELAT</span> : null}
-                      {pr?.is_pulang_cepat ? <span className="ml-auto text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">PULANG CEPAT</span> : null}
+                            {pr?.status === 'hadir' && pr?.jam_masuk && (
+                              <div className="flex items-center gap-1 ml-1 pl-1.5 border-l border-emerald-200 font-mono text-[9px]">
+                                <LogIn className="h-2.5 w-2.5"/> {pr.jam_masuk}
+                                {pr.jam_pulang && <><span className="text-emerald-400">→</span><LogOut className="h-2.5 w-2.5"/> {pr.jam_pulang}</>}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400 italic">Belum absen</div>
+                        )}
+                        {pr?.catatan && (
+                          <p className="text-[9px] text-slate-400 italic line-clamp-1 mt-0.5" title={pr.catatan}>{pr.catatan}</p>
+                        )}
+                      </div>
                     </div>
-                  )}
 
-                  {/* Time display */}
-                  {pr?.status === 'hadir' && (
-                    <div className="flex items-center gap-3 mb-3 text-xs">
-                      <div className="flex items-center gap-1 text-emerald-600">
-                        <LogIn className="h-3 w-3" />
-                        <span className="font-mono font-semibold">{pr.jam_masuk || '—'}</span>
-                      </div>
-                      <span className="text-slate-300">→</span>
-                      <div className="flex items-center gap-1 text-rose-500">
-                        <LogOut className="h-3 w-3" />
-                        <span className="font-mono font-semibold">{pr.jam_pulang || '—'}</span>
-                      </div>
-                      {pr && (
-                        <button onClick={() => openEdit(pr, pg)} className="ml-auto p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50">
-                          <Pencil className="h-3 w-3" />
-                        </button>
+                    {/* Action Buttons (bottom aligned, fixed size) */}
+                    <div className="flex gap-1.5 shrink-0 mt-auto">
+                      {!pr ? (
+                        <>
+                          <Button size="sm" onClick={() => handleMasuk(pg.id)} disabled={loadingId === pg.id}
+                            className="flex-1 h-7 text-[11px] rounded bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2">
+                            {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogIn className="h-3 w-3" />} Masuk
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue('sakit'); setStatusCatatan('') }} disabled={loadingId === pg.id}
+                            className="h-7 text-[11px] rounded gap-1 px-2 shrink-0">
+                            <AlertTriangle className="h-3 w-3" />
+                          </Button>
+                        </>
+                      ) : pr.status === 'hadir' && !pr.jam_pulang ? (
+                        <>
+                          <Button size="sm" onClick={() => handlePulang(pg.id)} disabled={loadingId === pg.id}
+                            className="flex-1 h-7 text-[11px] rounded bg-rose-500 hover:bg-rose-600 text-white gap-1 px-2">
+                            {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3 w-3" />} Pulang
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => openEdit(pr, pg)} className="h-7 w-7 p-0 rounded shrink-0">
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </>
+                      ) : pr.status === 'hadir' && pr.jam_pulang ? (
+                        <>
+                          <div className="flex-1 flex items-center justify-center h-7 text-[11px] text-emerald-600 font-semibold gap-1 bg-emerald-50 rounded border border-emerald-100">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
+                          </div>
+                          <Button size="sm" variant="outline" onClick={() => openEdit(pr, pg)} className="h-7 w-7 p-0 rounded shrink-0">
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue(pr.status); setStatusCatatan(pr.catatan || '') }} disabled={loadingId === pg.id}
+                          className="flex-1 h-7 text-[11px] rounded gap-1 px-2">
+                          <Pencil className="h-3 w-3" /> Ubah Status
+                        </Button>
                       )}
                     </div>
-                  )}
-
-                  {pr?.catatan && (
-                    <p className="text-[10px] text-slate-400 mb-2 italic truncate">{pr.catatan}</p>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-1.5">
-                    {!pr ? (
-                      <>
-                        <Button size="sm" onClick={() => handleMasuk(pg.id)} disabled={loadingId === pg.id}
-                          className="flex-1 h-8 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
-                          {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogIn className="h-3 w-3" />} Masuk
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue('sakit'); setStatusCatatan('') }} disabled={loadingId === pg.id}
-                          className="h-8 text-xs rounded-lg gap-1">
-                          <AlertTriangle className="h-3 w-3" /> Status
-                        </Button>
-                      </>
-                    ) : pr.status === 'hadir' && !pr.jam_pulang ? (
-                      <Button size="sm" onClick={() => handlePulang(pg.id)} disabled={loadingId === pg.id}
-                        className="flex-1 h-8 text-xs rounded-lg bg-rose-500 hover:bg-rose-600 text-white gap-1">
-                        {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3 w-3" />} Pulang
-                      </Button>
-                    ) : pr.status === 'hadir' && pr.jam_pulang ? (
-                      <div className="flex-1 flex items-center justify-center h-8 text-xs text-emerald-600 font-semibold gap-1">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue(pr.status); setStatusCatatan(pr.catatan || '') }} disabled={loadingId === pg.id}
-                        className="flex-1 h-8 text-xs rounded-lg gap-1">
-                        <Pencil className="h-3 w-3" /> Ubah Status
-                      </Button>
-                    )}
                   </div>
                 </div>
               )

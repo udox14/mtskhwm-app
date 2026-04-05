@@ -15,13 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Search, UserPlus, Trash2, ShieldAlert, Loader2, Mail, FileSpreadsheet,
   Download, KeyRound, Pencil, AlertCircle, Users, CheckCircle2,
-  Building2, MapPin, PlusCircle, X, Shield, SlidersHorizontal, Check
+  Building2, MapPin, PlusCircle, X, Shield, SlidersHorizontal, Check, Camera, LayoutGrid, List
 } from 'lucide-react'
 import {
   tambahPegawai, hapusPegawai, importPegawaiMassal,
   editPegawai, resetPasswordPegawai, setUserRoles,
   assignJabatanStruktural, setDomisiliPegawai,
-  tambahJabatanStruktural, hapusJabatanStruktural, editJabatanStruktural
+  tambahJabatanStruktural, hapusJabatanStruktural, editJabatanStruktural, uploadFotoPegawaiAction
 } from '../actions'
 import {
   getUserFeatureOverridesAction, setUserFeatureOverride
@@ -34,7 +34,33 @@ type MasterRoleType = { value: string; label: string; is_custom: number }
 type ProfilType = {
   id: string, nama_lengkap: string, role: string, roles: string[], email: string,
   jabatan_struktural_id: string | null, jabatan_struktural_nama: string | null,
-  domisili_pegawai: string | null
+  domisili_pegawai: string | null, avatar_url: string | null
+}
+
+const compressImage = async (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target?.result as string
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const MAX_SIZE = 800
+        let width = img.width, height = img.height
+        if (width > height && width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE }
+        else if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE }
+        canvas.width = width; canvas.height = height
+        canvas.getContext('2d')?.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(blob => {
+          if (blob) resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', { type: 'image/jpeg' }))
+          else resolve(file)
+        }, 'image/jpeg', 0.8)
+      }
+      img.onerror = reject
+    }
+    reader.onerror = reject
+  })
 }
 
 const DEFAULT_ROLES: MasterRoleType[] = [
@@ -106,6 +132,9 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
   const [editingJabatan, setEditingJabatan] = useState<JabatanType | null>(null)
   const [editJabatanNama, setEditJabatanNama] = useState('')
   const [activeTab, setActiveTab] = useState('pegawai')
+  const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table')
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  
   // Multi-role modal
   const [roleModalUser, setRoleModalUser] = useState<ProfilType | null>(null)
   const [selectedRoles, setSelectedRoles] = useState<string[]>([])
@@ -131,8 +160,9 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
     return matchSearch && matchRole && matchJabatan
   })
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
-  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const dynamicItemsPerPage = viewMode === 'gallery' ? 24 : itemsPerPage
+  const totalPages = Math.ceil(filteredData.length / dynamicItemsPerPage)
+  const paginatedData = filteredData.slice((currentPage - 1) * dynamicItemsPerPage, currentPage * dynamicItemsPerPage)
 
   const handleHapus = async (id: string, nama: string) => {
     if (!confirm(`PERMANEN!\nYakin hapus semua data dan akses login ${nama}?`)) return
@@ -159,6 +189,20 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
     if (res?.error) alert(res.error)
     else { alert(res.success); setEditingPegawai(null) }
     setIsPending(false)
+  }
+
+  const handleUploadFoto = async (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingId(id)
+    try {
+      const compressedFile = await compressImage(file)
+      const fd = new FormData()
+      fd.append('foto', compressedFile)
+      const res = await uploadFotoPegawaiAction(id, fd)
+      if (res.error) alert(res.error)
+    } catch { alert('Gagal memproses gambar.') }
+    finally { setUploadingId(null); e.target.value = '' }
   }
 
   // Multi-role handlers
@@ -594,16 +638,43 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
             <div className="bg-surface border border-surface rounded-lg p-3 flex flex-wrap gap-2 items-center">
               <div className="relative flex-1 min-w-0" style={{ minWidth: '140px' }}>
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                <Input placeholder="Cari nama atau email..." className="pl-8 h-8 text-sm rounded-md" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <Input placeholder="Cari nama atau email..." className="pl-8 h-8 text-sm rounded-md" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1) }} />
               </div>
-              <Select value={filterRole} onValueChange={setFilterRole}>
+              
+              {/* View toggle pill */}
+              <div className="flex bg-surface-2 border border-surface p-0.5 rounded-lg shrink-0">
+                <button
+                  onClick={() => { setViewMode('table'); setCurrentPage(1) }}
+                  className={`h-7 px-2.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${
+                    viewMode === 'table'
+                      ? 'bg-surface text-slate-800 dark:text-slate-100 shadow-sm'
+                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:text-slate-300 dark:text-slate-600'
+                  }`}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Tabel</span>
+                </button>
+                <button
+                  onClick={() => { setViewMode('gallery'); setCurrentPage(1) }}
+                  className={`h-7 px-2.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${
+                    viewMode === 'gallery'
+                      ? 'bg-surface text-slate-800 dark:text-slate-100 shadow-sm'
+                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:text-slate-300 dark:text-slate-600'
+                  }`}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Foto</span>
+                </button>
+              </div>
+
+              <Select value={filterRole} onValueChange={val => { setFilterRole(val); setCurrentPage(1) }}>
                 <SelectTrigger className="h-8 w-36 sm:w-40 text-xs rounded-md shrink-0"><SelectValue placeholder="Semua Role" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Semua Role</SelectItem>
                   {masterRoles.map((r: MasterRoleType) => <SelectItem key={r.value} value={r.value}>{r.label}{r.is_custom ? ' ★' : ''}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={filterJabatan} onValueChange={setFilterJabatan}>
+              <Select value={filterJabatan} onValueChange={val => { setFilterJabatan(val); setCurrentPage(1) }}>
                 <SelectTrigger className="h-8 w-36 sm:w-44 text-xs rounded-md shrink-0"><SelectValue placeholder="Semua Jabatan" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Semua Jabatan</SelectItem>
@@ -688,8 +759,42 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
               </div>
             </div>
 
-            {/* MOBILE CARDS */}
-            <div className="block md:hidden space-y-2">
+            {viewMode === 'gallery' ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                {paginatedData.length === 0 ? (
+                  <div className="col-span-full py-12 text-center text-sm text-slate-400 dark:text-slate-500 bg-surface rounded-lg border border-surface">
+                    Tidak ada pegawai ditemukan.
+                  </div>
+                ) : paginatedData.map(p => (
+                  <div key={p.id} className="bg-surface rounded-lg border border-surface overflow-hidden group flex flex-col">
+                    <div className="relative aspect-[3/4] bg-surface-3">
+                      {uploadingId === p.id ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">
+                          <Loader2 className="h-5 w-5 text-emerald-600 animate-spin" />
+                        </div>
+                      ) : p.avatar_url ? (
+                        <img src={p.avatar_url} alt={p.nama_lengkap} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className={cn("w-full h-full bg-gradient-to-br flex items-center justify-center text-3xl font-black text-white/60", getAvatarColor(p.nama_lengkap))}>
+                          {p.nama_lengkap.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <label className="absolute bottom-1 right-1 bg-white/90 text-slate-700 dark:text-slate-200 p-1 rounded shadow cursor-pointer z-10 hover:bg-surface transition-colors">
+                        <Camera className="w-3 h-3" />
+                        <input type="file" className="hidden" accept="image/*" capture="environment" onChange={e => handleUploadFoto(p.id, e)} />
+                      </label>
+                    </div>
+                    <div className="p-1.5 text-center flex-1">
+                      <p className="text-[10px] font-semibold text-slate-800 dark:text-slate-100 leading-tight line-clamp-2">{p.nama_lengkap}</p>
+                      <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">{getRoleLabel(p.role)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* MOBILE CARDS */}
+                <div className="block md:hidden space-y-2">
               {paginatedData.length === 0 ? (
                 <div className="bg-surface py-10 rounded-lg border border-surface text-center">
                   <Users className="h-7 w-7 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
@@ -843,11 +948,13 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
               {/* PAGINATION */}
               <div className="flex items-center justify-between px-4 py-2 border-t border-surface-2 bg-slate-50/50">
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span>Tampilkan</span>
-                  <Select value={itemsPerPage.toString()} onValueChange={v => { setItemsPerPage(Number(v)); setCurrentPage(1) }}>
-                    <SelectTrigger className="h-7 w-16 text-xs rounded border-surface"><SelectValue /></SelectTrigger>
-                    <SelectContent>{[10, 20, 50].map(n => <SelectItem key={n} value={n.toString()}>{n}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <span className="hidden sm:inline">Tampilkan</span>
+                  {viewMode === 'table' && (
+                    <Select value={itemsPerPage.toString()} onValueChange={v => { setItemsPerPage(Number(v)); setCurrentPage(1) }}>
+                      <SelectTrigger className="h-7 w-16 text-xs rounded border-surface"><SelectValue /></SelectTrigger>
+                      <SelectContent>{[10, 20, 50].map(n => <SelectItem key={n} value={n.toString()}>{n}</SelectItem>)}</SelectContent>
+                    </Select>
+                  )}
                   <span><strong className="text-slate-700 dark:text-slate-200">{filteredData.length}</strong> pegawai</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -857,8 +964,10 @@ export function GuruClient({ initialData, masterJabatan, masterRoles = DEFAULT_R
                 </div>
               </div>
             </div>
+            </>
+          )}
 
-            {/* Mobile pagination */}
+          {/* Mobile pagination */}
             <div className="flex items-center justify-between md:hidden bg-surface border border-surface rounded-lg px-3 py-2">
               <span className="text-xs text-slate-500 dark:text-slate-400"><strong>{filteredData.length}</strong> pegawai</span>
               <div className="flex items-center gap-1">
