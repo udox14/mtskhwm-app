@@ -30,11 +30,11 @@ type Pengaturan = {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  hadir: { label: 'Hadir', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  sakit: { label: 'Sakit', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Stethoscope },
-  izin: { label: 'Izin', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: FileText },
-  alfa: { label: 'Alfa', color: 'bg-rose-100 text-rose-700 border-rose-200', icon: XCircle },
-  dinas_luar: { label: 'Dinas Luar', color: 'bg-violet-100 text-violet-700 border-violet-200', icon: MapPin },
+  hadir: { label: 'Hadir', color: 'text-emerald-600', icon: CheckCircle2 },
+  sakit: { label: 'Sakit', color: 'text-amber-600', icon: Stethoscope },
+  izin: { label: 'Izin', color: 'text-blue-600', icon: FileText },
+  alfa: { label: 'Alfa', color: 'text-rose-600', icon: XCircle },
+  dinas_luar: { label: 'Dinas Luar', color: 'text-violet-600', icon: MapPin },
 }
 
 const getAvatarColor = (name: string) => {
@@ -311,21 +311,21 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
                       {/* Fixed height status block */}
                       <div className="h-[40px] mt-2 flex flex-col justify-start">
                         {cfg ? (
-                          <div className={cn("flex flex-wrap items-center gap-1.5 px-1.5 py-1 rounded border text-[10px] font-semibold w-fit", cfg.color)}>
-                            {StatusIcon && <StatusIcon className="h-3 w-3 shrink-0" />}
-                            <span>{cfg.label}</span>
+                          <div className="flex flex-wrap items-center gap-1.5 px-1.5 py-1 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-[10px] font-semibold w-fit">
+                            {StatusIcon && <StatusIcon className={cn("h-3 w-3 shrink-0", cfg.color)} />}
+                            <span className="text-slate-700 dark:text-slate-300">{cfg.label}</span>
                             {pr?.is_telat ? <span className="ml-0.5 text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded shadow-sm border border-amber-100">TELAT</span> : null}
                             {pr?.is_pulang_cepat ? <span className="ml-0.5 text-[8px] font-bold text-orange-600 bg-orange-50 px-1 py-0.5 rounded shadow-sm border border-orange-100">PC</span> : null}
 
                             {pr?.status === 'hadir' && pr?.jam_masuk && (
-                              <div className="flex items-center gap-1.5 ml-1 pl-1.5 border-l border-emerald-200">
-                                <div className="px-1.5 py-0.5 rounded border border-emerald-200 bg-white/60 dark:bg-slate-800 font-mono text-[10px] text-emerald-800 dark:text-emerald-300 font-bold leading-none shadow-sm">
+                              <div className="flex items-center gap-1.5 ml-1 pl-1.5 border-l border-slate-300 dark:border-slate-700">
+                                <div className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold leading-none shadow-sm">
                                   {pr.jam_masuk}
                                 </div>
                                 {pr.jam_pulang && (
                                   <>
-                                    <span className="text-emerald-600 text-[10px]">→</span>
-                                    <div className="px-1.5 py-0.5 rounded border border-rose-200 bg-white/60 dark:bg-slate-800 font-mono text-[10px] text-rose-700 dark:text-rose-400 font-bold leading-none shadow-sm">
+                                    <span className="text-slate-400 text-[10px]">→</span>
+                                    <div className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-[10px] text-rose-600 dark:text-rose-400 font-bold leading-none shadow-sm">
                                       {pr.jam_pulang}
                                     </div>
                                   </>
