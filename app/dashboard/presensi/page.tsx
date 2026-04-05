@@ -12,7 +12,7 @@ import { todayWIB } from '@/lib/time'
 
 export const metadata = { title: 'Presensi Pegawai - MTSKHWM App' }
 
-async function PresensiDataFetcher({ currentUserId }: { currentUserId: string }) {
+async function PresensiDataFetcher({ currentUserId, currentUserRole }: { currentUserId: string, currentUserRole: string }) {
   const db = await getDB()
   const today = todayWIB()
 
@@ -44,6 +44,7 @@ async function PresensiDataFetcher({ currentUserId }: { currentUserId: string })
       pengaturan={settingResult || { jam_masuk: '07:00', jam_pulang: '14:00', batas_telat_menit: 15, batas_pulang_cepat_menit: 15 }}
       tanggal={today}
       currentUserId={currentUserId}
+      currentUserRole={currentUserRole}
     />
   )
 }
@@ -66,7 +67,7 @@ export default async function PresensiPage() {
         iconColor="text-teal-500"
       />
       <Suspense fallback={<PageLoading text="Memuat data presensi..." />}>
-        <PresensiDataFetcher currentUserId={user.id} />
+        <PresensiDataFetcher currentUserId={user.id} currentUserRole={user.role} />
       </Suspense>
     </div>
   )
