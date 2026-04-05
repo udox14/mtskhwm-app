@@ -342,15 +342,22 @@ function TabCetak({ filterOptions }: { filterOptions: FilterOpt }) {
   const [tglSelesai, setTglSelesai] = useState(today())
   const [kelasId, setKelasId] = useState('')
   const [statusFilter, setStatusFilter] = useState('semua')
+  const [siswaId, setSiswaId] = useState('')
+  const [searchQ, setSearchQ] = useState('')
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
+
+  const filteredSiswa = searchQ.length >= 2
+    ? filterOptions.siswa.filter((s: any) => s.nama.toLowerCase().includes(searchQ.toLowerCase()) || s.nisn.includes(searchQ)).slice(0, 20)
+    : []
 
   const search = async () => {
     setLoading(true)
     setData(await getDataCetakAbsensi({
       tglMulai, tglSelesai,
       kelasId: kelasId && kelasId !== 'all' ? kelasId : undefined,
+      siswaId: siswaId || undefined,
       statusFilter,
     }))
     setLoading(false)
@@ -385,7 +392,26 @@ function TabCetak({ filterOptions }: { filterOptions: FilterOpt }) {
   return (
     <div className="space-y-3">
       <div className="rounded-lg border bg-white dark:bg-slate-800 p-4 space-y-3">
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="relative max-w-sm">
+          <Label className="text-xs text-slate-500">Filter Siswa (Opsional)</Label>
+          <div className="flex items-center gap-2 mt-1">
+            <Input placeholder="Ketik nama atau NISN..." value={searchQ} onChange={e => { setSearchQ(e.target.value); setSiswaId('') }}
+              className="h-9 text-sm flex-1" />
+            {siswaId && <Button size="sm" variant="outline" className="h-9" onClick={() => { setSiswaId(''); setSearchQ('') }}>Reset</Button>}
+          </div>
+          {filteredSiswa.length > 0 && !siswaId && (
+            <div className="absolute z-10 w-full mt-1 max-h-40 overflow-y-auto rounded-md border bg-white dark:bg-slate-800 shadow-lg">
+              {filteredSiswa.map((s: any) => (
+                <button key={s.id} onClick={() => { setSiswaId(s.id); setSearchQ(s.nama) }}
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs border-b border-slate-100 dark:border-slate-700 last:border-0 block">
+                  <span className="font-medium text-slate-800 dark:text-slate-100">{s.nama}</span>
+                  <span className="text-slate-400 ml-2">{s.nisn} — {s.kelas_label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-end gap-3 relative z-0">
           <div><Label className="text-xs text-slate-500">Dari</Label><Input type="date" value={tglMulai} onChange={e => setTglMulai(e.target.value)} className="h-9 text-sm w-[150px]" /></div>
           <div><Label className="text-xs text-slate-500">Sampai</Label><Input type="date" value={tglSelesai} onChange={e => setTglSelesai(e.target.value)} className="h-9 text-sm w-[150px]" /></div>
           <div>
@@ -430,7 +456,8 @@ function TabCetak({ filterOptions }: { filterOptions: FilterOpt }) {
             <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>Rekap Absensi Siswa — MTs KH. Ahmad Wahab Muhsin</h2>
             <p style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
               Periode: {fmtTgl(tglMulai)} s/d {fmtTgl(tglSelesai)}
-              {kelasId && kelasId !== 'all' && ` — Kelas ${kelasLabel(kelasId)}`}
+              {kelasId && kelasId !== 'all' && !siswaId && ` — Kelas ${kelasLabel(kelasId)}`}
+              {siswaId && ` — Siswa: ${searchQ}`}
               {statusFilter !== 'semua' && ` — Status: ${statusFilter}`}
             </p>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
