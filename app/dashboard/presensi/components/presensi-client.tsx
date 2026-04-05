@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -61,6 +61,31 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
   const [modalPending, setModalPending] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [fakeMap, setFakeMap] = useState<Record<string, Presensi>>({})
+
+  // Initialize from LocalStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mtskhwm_fake_presensi')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // Check if data is from today, otherwise clear
+        const todayKeys: Record<string, Presensi> = {}
+        for (const k in parsed) {
+          if (parsed[k].tanggal === tanggal) {
+            todayKeys[k] = parsed[k]
+          }
+        }
+        setFakeMap(todayKeys)
+      }
+    } catch (e) {
+      console.error('Failed to parse fake presensi', e)
+    }
+  }, [tanggal])
+
+  // Save to LocalStorage whenever fakeMap changes
+  useEffect(() => {
+    localStorage.setItem('mtskhwm_fake_presensi', JSON.stringify(fakeMap))
+  }, [fakeMap])
 
   // Live clock
   useState(() => {
@@ -236,9 +261,11 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
               <p className="text-[10px] font-medium">{s.label}</p>
             </div>
           ))}
-          <div className="flex-1 max-w-sm flex shrink-0 border border-surface rounded-lg bg-surface">
-            <Input placeholder="Cari pegawai..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-9 border-0 bg-transparent" />
-          </div>
+        </div>
+
+        {/* SEARCH BAR (FULL WIDTH) */}
+        <div className="w-full flex shrink-0 border border-surface rounded-lg bg-surface mb-2 mt-3">
+          <Input placeholder="Cari pegawai..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-10 border-0 bg-transparent text-sm w-full" />
         </div>
 
         {/* GRID CARDS */}
@@ -276,45 +303,47 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
                     <div className="flex-1 min-w-0 mb-1">
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight" title={pg.nama_lengkap}>{pg.nama_lengkap}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-violet-100 text-violet-700 border border-violet-200 max-w-full truncate">
-                          <Building2 className="h-2 w-2 shrink-0" /><span className="truncate">{pg.jabatan_nama}</span>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 max-w-full truncate">
+                          <Building2 className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{pg.jabatan_nama}</span>
                         </span>
-                        {pg.domisili_pegawai && (
-                          <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold border",
-                            pg.domisili_pegawai === 'dalam' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-amber-50 text-amber-600 border-amber-200'
-                          )}>
-                            <MapPin className="h-2 w-2 shrink-0" />{pg.domisili_pegawai === 'dalam' ? 'Dalam' : 'Luar'}
-                          </span>
-                        )}
                       </div>
                       
                       {/* Fixed height status block */}
-                      <div className="h-[36px] mt-2 flex flex-col justify-start">
+                      <div className="h-[40px] mt-2 flex flex-col justify-start">
                         {cfg ? (
-                          <div className={cn("flex items-center gap-1.5 px-1.5 py-0.5 rounded border text-[10px] font-semibold w-fit", cfg.color)}>
+                          <div className={cn("flex flex-wrap items-center gap-1.5 px-1.5 py-1 rounded border text-[10px] font-semibold w-fit", cfg.color)}>
                             {StatusIcon && <StatusIcon className="h-3 w-3 shrink-0" />}
                             <span>{cfg.label}</span>
-                            {pr?.is_telat ? <span className="ml-1 text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded shadow-sm border border-amber-100">TELAT</span> : null}
-                            {pr?.is_pulang_cepat ? <span className="ml-1 text-[8px] font-bold text-orange-600 bg-orange-50 px-1 py-0.5 rounded shadow-sm border border-orange-100">PC</span> : null}
+                            {pr?.is_telat ? <span className="ml-0.5 text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded shadow-sm border border-amber-100">TELAT</span> : null}
+                            {pr?.is_pulang_cepat ? <span className="ml-0.5 text-[8px] font-bold text-orange-600 bg-orange-50 px-1 py-0.5 rounded shadow-sm border border-orange-100">PC</span> : null}
 
                             {pr?.status === 'hadir' && pr?.jam_masuk && (
-                              <div className="flex items-center gap-1 ml-1 pl-1.5 border-l border-emerald-200 font-mono text-[9px]">
-                                <LogIn className="h-2.5 w-2.5"/> {pr.jam_masuk}
-                                {pr.jam_pulang && <><span className="text-emerald-400">→</span><LogOut className="h-2.5 w-2.5"/> {pr.jam_pulang}</>}
+                              <div className="flex items-center gap-1.5 ml-1 pl-1.5 border-l border-emerald-200">
+                                <div className="px-1.5 py-0.5 rounded border border-emerald-200 bg-white/60 dark:bg-slate-800 font-mono text-[10px] text-emerald-800 dark:text-emerald-300 font-bold leading-none shadow-sm">
+                                  {pr.jam_masuk}
+                                </div>
+                                {pr.jam_pulang && (
+                                  <>
+                                    <span className="text-emerald-600 text-[10px]">→</span>
+                                    <div className="px-1.5 py-0.5 rounded border border-rose-200 bg-white/60 dark:bg-slate-800 font-mono text-[10px] text-rose-700 dark:text-rose-400 font-bold leading-none shadow-sm">
+                                      {pr.jam_pulang}
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="text-[10px] text-slate-400 italic">Belum absen</div>
+                          <div className="text-[10px] text-slate-400 italic py-1">Belum absen</div>
                         )}
                         {pr?.catatan && (
-                          <p className="text-[9px] text-slate-400 italic line-clamp-1 mt-0.5" title={pr.catatan}>{pr.catatan}</p>
+                          <p className="text-[9px] text-slate-400 italic line-clamp-1 mt-1" title={pr.catatan}>{pr.catatan}</p>
                         )}
                       </div>
                     </div>
 
-                    {/* Action Buttons (bottom aligned, fixed size) */}
-                    <div className="flex gap-1.5 shrink-0 mt-auto">
+                    {/* Action Buttons (fixed size but slightly higher) */}
+                    <div className="flex gap-1.5 shrink-0 mt-1 mb-1">
                       {!pr ? (
                         <>
                           <Button size="sm" onClick={() => handleMasuk(pg)} disabled={loadingId === pg.id}
