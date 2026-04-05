@@ -248,11 +248,11 @@ export function KelasClient({ initialData, daftarGuru, daftarJurusan = [], userR
         <Table>
           <TableHeader>
             <TableRow className="bg-surface-2 hover:bg-surface-2">
-              <TableHead className="h-9 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 w-32">Kelas</TableHead>
-              <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 w-44">Jurusan</TableHead>
-              <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500">Wali Kelas</TableHead>
-              <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 text-center w-36">Keterisian</TableHead>
-              <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 text-right px-4 w-20">Aksi</TableHead>
+              <TableHead className="h-9 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 w-[30%]">Kelas</TableHead>
+              <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 w-48">Jurusan</TableHead>
+              <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400">Wali Kelas</TableHead>
+              <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center w-36">Keterisian</TableHead>
+              <TableHead className="h-9 text-xs font-semibold text-slate-500 dark:text-slate-400 text-right px-4 w-20">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
