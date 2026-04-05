@@ -34,7 +34,7 @@ export default async function DashboardPage() {
     db.prepare(`
       SELECT
         (SELECT COUNT(*) FROM siswa WHERE status = 'aktif') as siswa,
-        (SELECT COUNT(*) FROM "user" WHERE role IN ('guru','guru_bk','wakamad','kepsek','guru_piket')) as guru,
+        (SELECT COUNT(*) FROM "user" WHERE nama_lengkap IS NOT NULL) as guru,
         (SELECT COUNT(*) FROM kelas) as kelas
     `).first<{ siswa: number; guru: number; kelas: number }>(),
 
