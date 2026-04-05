@@ -284,11 +284,11 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
 
               return (
                 <div key={pg.id} className={cn(
-                  "bg-surface border rounded-xl p-2.5 flex gap-3 h-[132px] overflow-hidden transition-all",
+                  "bg-surface border rounded-xl p-2.5 flex gap-3 h-[148px] overflow-hidden transition-all",
                   status === 'hadir' ? 'border-emerald-200' : status ? 'border-surface' : 'border-dashed border-slate-300'
                 )}>
                   {/* Photo Profile 3:4 */}
-                  <div className="w-[84px] h-[112px] shrink-0 rounded bg-slate-100 border border-slate-100 dark:border-slate-800 flex items-center justify-center relative overflow-hidden">
+                  <div className="w-[96px] h-[128px] shrink-0 rounded bg-slate-100 border border-slate-100 dark:border-slate-800 flex items-center justify-center relative overflow-hidden">
                     {pg.avatar_url ? (
                       <img src={pg.avatar_url} alt={pg.nama_lengkap} className="w-full h-full object-cover" />
                     ) : (
@@ -342,8 +342,8 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
                       </div>
                     </div>
 
-                    {/* Action Buttons (fixed size but slightly higher) */}
-                    <div className="flex gap-1.5 shrink-0 mt-1 mb-1">
+                    {/* Action Buttons (bottom aligned with mt-auto) */}
+                    <div className="flex gap-1.5 shrink-0 mt-auto">
                       {!pr ? (
                         <>
                           <Button size="sm" onClick={() => handleMasuk(pg)} disabled={loadingId === pg.id}
