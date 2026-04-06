@@ -1,12 +1,12 @@
 -- Migration: Ganti URL foto dari R2 public domain ke /api/media/ proxy
 -- Jalankan satu-satu di Cloudflare Dashboard > D1 > Console
 
--- 1. Siswa: foto_url
+-- 1. Siswa: foto_url (tanpa query string)
 UPDATE siswa
 SET foto_url = '/api/media/' || substr(foto_url, 56)
 WHERE foto_url IS NOT NULL AND substr(foto_url, 1, 55) = 'https://pub-cf9e4144c81e46f1b06fb2a0d277b844.r2.dev/';
 
--- 2. User: avatar_url
+-- 2. User: avatar_url (tanpa query string)
 UPDATE "user"
 SET avatar_url = '/api/media/' || substr(avatar_url, 56)
 WHERE avatar_url IS NOT NULL AND substr(avatar_url, 1, 55) = 'https://pub-cf9e4144c81e46f1b06fb2a0d277b844.r2.dev/';

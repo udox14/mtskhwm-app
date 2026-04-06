@@ -3,12 +3,10 @@
 // Ini mengatasi masalah SSL certificate error pada domain r2.dev
 
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { NextRequest, NextResponse } from 'next/server'
-
-export const runtime = 'edge'
+import { NextResponse } from 'next/server'
 
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
@@ -23,26 +21,36 @@ export async function GET(
     const object = await env.R2.get(key)
 
     if (!object) {
-      return new NextResponse('Not Found', { status: 404 })
+      return new Response('Not Found', { status: 404 })
     }
 
-    const headers = new Headers()
-    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg')
-    headers.set('Cache-Control', 'public, max-age=31536000, immutable')
-    headers.set('ETag', object.etag)
+    const contentType = object.httpMetadata?.contentType || 'image/jpeg'
 
-    // Check if-none-match for 304 responses
+    // Check if-none-match for 304 responses  
     const ifNoneMatch = request.headers.get('if-none-match')
-    if (ifNoneMatch === object.etag) {
-      return new NextResponse(null, { status: 304, headers })
+    if (ifNoneMatch && ifNoneMatch === object.etag) {
+      return new Response(null, {
+        status: 304,
+        headers: {
+          'ETag': object.etag,
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      })
     }
 
-    return new NextResponse(object.body as ReadableStream, {
+    // Stream body langsung dari R2
+    const body = await object.arrayBuffer()
+
+    return new Response(body, {
       status: 200,
-      headers,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'ETag': object.etag,
+      },
     })
   } catch (e: any) {
-    console.error('R2 media proxy error:', e)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    console.error('R2 media proxy error:', e?.message || e)
+    return new Response('Internal Server Error', { status: 500 })
   }
 }
