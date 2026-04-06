@@ -9,13 +9,13 @@ import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 import { AgendaClient } from './components/agenda-client'
 import { getJadwalGuruHariIni } from './actions'
-import { getEffectiveUser, getActAsUserList } from '@/lib/act-as'
+import { getEffectiveUser, getActAsUserList, getActAsDate } from '@/lib/act-as'
 import { ActAsBanner } from '@/components/layout/act-as-banner'
 
 export const metadata = { title: 'Agenda Guru - MTSKHWM App' }
 
-async function AgendaDataFetcher({ effectiveUserId, role, isActingAs }: { effectiveUserId: string; role: string; isActingAs: boolean }) {
-  const result = await getJadwalGuruHariIni(effectiveUserId)
+async function AgendaDataFetcher({ effectiveUserId, role, isActingAs, dateOverride }: { effectiveUserId: string; role: string; isActingAs: boolean; dateOverride?: string }) {
+  const result = await getJadwalGuruHariIni(effectiveUserId, dateOverride)
   return <AgendaClient initialData={result} userRole={role} isActingAs={isActingAs} />
 }
 
@@ -38,6 +38,9 @@ export default async function AgendaPage() {
   const effectiveUserId = effective?.effectiveUserId || user.id
   const isActingAs = effective?.isActingAs || false
 
+  // Tanggal override (hanya berlaku saat act-as)
+  const actAsDate = (isSuperAdmin && isActingAs) ? await getActAsDate() : null
+
   // Ambil daftar guru hanya jika super admin
   const actAsUsers = isSuperAdmin ? await getActAsUserList() : []
 
@@ -57,11 +60,13 @@ export default async function AgendaPage() {
           actAsName={effective?.actAsName || null}
           userList={actAsUsers}
           adminName={effective?.realUserName || 'Admin'}
+          actAsDate={actAsDate}
+          showDatePicker={true}
         />
       )}
 
       <Suspense fallback={<PageLoading text="Memuat jadwal hari ini..." />}>
-        <AgendaDataFetcher effectiveUserId={effectiveUserId} role={role} isActingAs={isActingAs} />
+        <AgendaDataFetcher effectiveUserId={effectiveUserId} role={role} isActingAs={isActingAs} dateOverride={actAsDate ?? undefined} />
       </Suspense>
     </div>
   )

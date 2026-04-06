@@ -8,6 +8,7 @@ import { getDB } from '@/utils/db'
 import { getUserRoles } from '@/lib/features'
 
 export const ACT_AS_COOKIE = 'act-as-user-id'
+export const ACT_AS_DATE_COOKIE = 'act-as-date'
 
 /**
  * Cek apakah user saat ini adalah super_admin
@@ -70,17 +71,41 @@ export async function getEffectiveUser(): Promise<{
 }
 
 /**
- * Ambil daftar guru/pegawai yang bisa di-act-as-kan
- * Mengembalikan semua user yang punya role guru/wali_kelas/guru_bk/guru_piket/guru_ppl
+ * Ambil daftar guru/pegawai yang bisa di-act-as-kan.
+ * Mengembalikan SEMUA user yang punya SALAH SATU role mengajar,
+ * baik di kolom user.role maupun di tabel user_roles (multi-role).
  */
 export async function getActAsUserList(): Promise<Array<{ id: string; nama_lengkap: string; role: string }>> {
   const db = await getDB()
+  const TEACHING_ROLES = ['guru', 'wali_kelas', 'guru_bk', 'guru_piket', 'guru_ppl', 'wakamad', 'kepsek', 'guru_mapel']
+  const placeholders = TEACHING_ROLES.map(() => '?').join(',')
+
+  // Sertakan user yang punya role mengajar di kolom PRIMARY (user.role)
+  // ATAU di tabel user_roles (bisa multi-role)
   const result = await db.prepare(`
     SELECT DISTINCT u.id, u.nama_lengkap, u.role
     FROM "user" u
-    WHERE u.role IN ('guru', 'wali_kelas', 'guru_bk', 'guru_piket', 'guru_ppl', 'wakamad', 'kepsek')
+    WHERE u.role IN (${placeholders})
+       OR u.id IN (
+         SELECT user_id FROM user_roles
+         WHERE role IN (${placeholders})
+       )
     ORDER BY u.nama_lengkap ASC
-  `).all<{ id: string; nama_lengkap: string; role: string }>()
+  `).bind(...TEACHING_ROLES, ...TEACHING_ROLES).all<{ id: string; nama_lengkap: string; role: string }>()
 
   return result.results || []
+}
+
+/**
+ * Ambil tanggal override untuk fitur Act As.
+ * Admin bisa memilih tanggal berbeda dari hari ini.
+ * Returns: string 'YYYY-MM-DD' atau null (berarti hari ini)
+ */
+export async function getActAsDate(): Promise<string | null> {
+  const cookieStore = await cookies()
+  const dateCookie = cookieStore.get(ACT_AS_DATE_COOKIE)
+  if (!dateCookie?.value) return null
+  // Validasi format YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateCookie.value)) return null
+  return dateCookie.value
 }

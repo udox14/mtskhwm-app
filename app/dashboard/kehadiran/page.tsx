@@ -9,13 +9,13 @@ import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 import { AbsensiClient } from './components/absensi-client'
 import { getBlokMengajarHariIni } from './actions'
-import { getEffectiveUser, getActAsUserList } from '@/lib/act-as'
+import { getEffectiveUser, getActAsUserList, getActAsDate } from '@/lib/act-as'
 import { ActAsBanner } from '@/components/layout/act-as-banner'
 
 export const metadata = { title: 'Absensi Siswa - MTSKHWM App' }
 
-async function AbsensiFetcher({ effectiveUserId }: { effectiveUserId: string }) {
-  const data = await getBlokMengajarHariIni(effectiveUserId)
+async function AbsensiFetcher({ effectiveUserId, dateOverride }: { effectiveUserId: string; dateOverride?: string }) {
+  const data = await getBlokMengajarHariIni(effectiveUserId, dateOverride)
   return <AbsensiClient initialData={data} />
 }
 
@@ -34,6 +34,9 @@ export default async function KehadiranPage() {
 
   const effective = await getEffectiveUser()
   const effectiveUserId = effective?.effectiveUserId || user.id
+
+  // Tanggal override (hanya berlaku saat act-as)
+  const actAsDate = (isSuperAdmin && effective?.isActingAs) ? await getActAsDate() : null
 
   // Ambil daftar guru hanya jika super admin
   const actAsUsers = isSuperAdmin ? await getActAsUserList() : []
@@ -54,11 +57,13 @@ export default async function KehadiranPage() {
           actAsName={effective?.actAsName || null}
           userList={actAsUsers}
           adminName={effective?.realUserName || 'Admin'}
+          actAsDate={actAsDate}
+          showDatePicker={true}
         />
       )}
 
       <Suspense fallback={<PageLoading text="Memuat jadwal mengajar..." />}>
-        <AbsensiFetcher effectiveUserId={effectiveUserId} />
+        <AbsensiFetcher effectiveUserId={effectiveUserId} dateOverride={actAsDate ?? undefined} />
       </Suspense>
     </div>
   )

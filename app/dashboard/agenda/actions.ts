@@ -8,7 +8,7 @@ import { uploadToR2 } from '@/utils/r2'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
 import { nowWIB, currentTimeWIB } from '@/lib/time'
 import { formatNamaKelas } from '@/lib/utils'
-import { getEffectiveUser } from '@/lib/act-as'
+import { getEffectiveUser, getActAsDate } from '@/lib/act-as'
 
 // ============================================================
 // TYPES
@@ -49,9 +49,10 @@ function getHariNumber(date: Date): number {
 // ============================================================
 // 1. AMBIL JADWAL GURU HARI INI (untuk form isi agenda)
 //    Menerima optional guruId untuk fitur Act As
+//    dan dateOverride untuk admin memilih tanggal
 //    Mengelompokkan jam berurutan jadi satu "blok"
 // ============================================================
-export async function getJadwalGuruHariIni(guruIdOverride?: string): Promise<{
+export async function getJadwalGuruHariIni(guruIdOverride?: string, dateOverride?: string): Promise<{
   error: string | null
   blocks: JadwalBlock[]
   slots: SlotJam[]
@@ -72,9 +73,21 @@ export async function getJadwalGuruHariIni(guruIdOverride?: string): Promise<{
 
   const db = await getDB()
 
-  const now = nowWIB()
-  const tanggal = now.toISOString().split('T')[0]
-  const hari = getHariNumber(now)
+  // Gunakan dateOverride jika tersedia (admin memilih tanggal)
+  // Jika tidak ada explicit override, baca dari cookie act-as-date
+  let tanggal: string
+  let hari: number
+  const resolvedDateOverride = dateOverride || (await getActAsDate()) || null
+  if (resolvedDateOverride && /^\d{4}-\d{2}-\d{2}$/.test(resolvedDateOverride)) {
+    tanggal = resolvedDateOverride
+    const d = new Date(resolvedDateOverride + 'T00:00:00')
+    const day = d.getDay()
+    hari = day === 0 ? 7 : day
+  } else {
+    const now = nowWIB()
+    tanggal = now.toISOString().split('T')[0]
+    hari = getHariNumber(now)
+  }
 
   if (hari === 7) return { error: null, blocks: [], slots: [], tanggal, hari }
 

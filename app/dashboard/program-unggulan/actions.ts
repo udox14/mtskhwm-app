@@ -4,6 +4,7 @@
 import { getDB } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
 import { todayWIB } from '@/lib/time'
+import { getActAsDate } from '@/lib/act-as'
 
 // ============================================================
 // TYPES
@@ -60,9 +61,15 @@ export async function getKelasUnggulanGuru(guruId: string) {
 //    Queue round-robin: siswa dgn tes selesai paling sedikit diprioritaskan
 //    Sharing antar guru: siswa yg sudah di-assign hari ini oleh guru lain di-exclude
 // ============================================================
-export async function getSiswaTesList(puKelasId: string, guruId: string, jamMengajar: number) {
+export async function getSiswaTesList(puKelasId: string, guruId: string, jamMengajar: number, dateOverride?: string) {
   const db = await getDB()
-  const today = todayWIB()
+  
+  let today = todayWIB()
+  const resolvedDate = dateOverride || (await getActAsDate()) || null
+  if (resolvedDate && /^\d{4}-\d{2}-\d{2}$/.test(resolvedDate)) {
+    today = resolvedDate
+  }
+  
   const jumlahSiswa = JAM_TO_SISWA[jamMengajar] ?? 3
 
   // Cek apakah sudah ada assignment untuk guru ini hari ini di kelas ini

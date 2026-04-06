@@ -2,8 +2,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { UserCog, X, ChevronDown, Shield, Search, Loader2 } from 'lucide-react'
-import { setActAsUser, clearActAs } from '@/lib/act-as-actions'
+import { UserCog, X, ChevronDown, Shield, Search, Loader2, CalendarDays, RotateCcw } from 'lucide-react'
+import { setActAsUser, clearActAs, setActAsDate, clearActAsDate } from '@/lib/act-as-actions'
 import { useRouter } from 'next/navigation'
 import { getRoleLabel } from '@/config/menu'
 
@@ -16,17 +16,47 @@ interface ActAsBannerProps {
   userList: Array<{ id: string; nama_lengkap: string; role: string }>
   /** Real user name (admin) */
   adminName: string
+  /** Tanggal override saat ini (YYYY-MM-DD) atau null */
+  actAsDate?: string | null
+  /** Tampilkan date picker (true untuk kehadiran & agenda, false untuk program-unggulan) */
+  showDatePicker?: boolean
 }
 
-export function ActAsBanner({ isActingAs: initialIsActingAs, actAsName: initialActAsName, userList, adminName }: ActAsBannerProps) {
+export function ActAsBanner({
+  isActingAs: initialIsActingAs,
+  actAsName: initialActAsName,
+  userList,
+  adminName,
+  actAsDate: initialActAsDate = null,
+  showDatePicker = false,
+}: ActAsBannerProps) {
   // ── Local state untuk optimistic update ──
   const [localIsActingAs, setLocalIsActingAs] = useState(initialIsActingAs)
   const [localActAsName, setLocalActAsName] = useState<string | null>(initialActAsName)
+  const [localActAsDate, setLocalActAsDate] = useState<string | null>(initialActAsDate)
 
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  // Format tanggal ke display Bahasa Indonesia
+  const formatDateDisplay = (dateStr: string | null): string => {
+    if (!dateStr) return 'Hari Ini'
+    try {
+      const d = new Date(dateStr + 'T00:00:00')
+      return d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+    } catch { return dateStr }
+  }
+
+  // Hari ini dalam format YYYY-MM-DD (local)
+  const getTodayLocal = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 
   const filteredUsers = userList.filter(u =>
     u.nama_lengkap.toLowerCase().includes(search.toLowerCase())
@@ -50,11 +80,35 @@ export function ActAsBanner({ isActingAs: initialIsActingAs, actAsName: initialA
     // 1. Optimistic update: langsung ubah UI
     setLocalIsActingAs(false)
     setLocalActAsName(null)
+    setLocalActAsDate(null)
     setIsOpen(false)
 
     // 2. Server sync di background
     startTransition(async () => {
       await clearActAs()
+      router.refresh()
+    })
+  }
+
+  const handleDateChange = (newDate: string) => {
+    const today = getTodayLocal()
+    const dateValue = newDate === today ? null : newDate
+    setLocalActAsDate(dateValue)
+
+    startTransition(async () => {
+      if (!dateValue) {
+        await clearActAsDate()
+      } else {
+        await setActAsDate(newDate)
+      }
+      router.refresh()
+    })
+  }
+
+  const handleClearDate = () => {
+    setLocalActAsDate(null)
+    startTransition(async () => {
+      await clearActAsDate()
       router.refresh()
     })
   }
@@ -104,6 +158,47 @@ export function ActAsBanner({ isActingAs: initialIsActingAs, actAsName: initialA
             </button>
           </div>
         </div>
+
+        {/* ── Date Picker Row (hanya untuk kehadiran & agenda) ── */}
+        {showDatePicker && (
+          <div className="mt-2.5 pt-2.5 border-t border-amber-200 dark:border-amber-700">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 shrink-0">
+                Tanggal jadwal:
+              </span>
+              <div className="flex items-center gap-1.5 flex-1">
+                <input
+                  type="date"
+                  value={localActAsDate || getTodayLocal()}
+                  onChange={e => handleDateChange(e.target.value)}
+                  disabled={isPending}
+                  className="text-[11px] bg-white dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-md px-2 py-1 text-amber-900 dark:text-amber-100 focus:outline-none focus:border-amber-400 disabled:opacity-60 flex-1 min-w-0"
+                />
+                {localActAsDate && (
+                  <button
+                    onClick={handleClearDate}
+                    disabled={isPending}
+                    title="Kembali ke hari ini"
+                    className="p-1 rounded-md text-amber-500 hover:text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-800 transition-colors disabled:opacity-60 shrink-0"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              {localActAsDate && (
+                <span className="text-[10px] text-amber-600/70 dark:text-amber-400/60 shrink-0">
+                  {formatDateDisplay(localActAsDate)}
+                </span>
+              )}
+            </div>
+            {localActAsDate && (
+              <p className="text-[10px] text-amber-600/60 dark:text-amber-400/50 mt-1 ml-5">
+                ⚠️ Menampilkan jadwal untuk tanggal yang dipilih, bukan hari ini
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Dropdown ganti guru */}
         {isOpen && (

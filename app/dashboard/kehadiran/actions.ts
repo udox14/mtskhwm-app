@@ -6,7 +6,7 @@ import { getCurrentUser } from '@/utils/auth/server'
 import { revalidatePath } from 'next/cache'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
 import { formatNamaKelas } from '@/lib/utils'
-import { getEffectiveUser } from '@/lib/act-as'
+import { getEffectiveUser, getActAsDate } from '@/lib/act-as'
 
 // ============================================================
 // TYPES
@@ -51,8 +51,9 @@ function hariNum(d: Date): number { const day = d.getDay(); return day === 0 ? 7
 // ============================================================
 // 1. AMBIL BLOK MENGAJAR GURU HARI INI
 //    Menerima optional guruId untuk fitur Act As
+//    dan dateOverride untuk admin memilih tanggal
 // ============================================================
-export async function getBlokMengajarHariIni(guruIdOverride?: string): Promise<{
+export async function getBlokMengajarHariIni(guruIdOverride?: string, dateOverride?: string): Promise<{
   error: string | null
   blocks: BlokMengajar[]
   tanggal: string
@@ -73,9 +74,23 @@ export async function getBlokMengajarHariIni(guruIdOverride?: string): Promise<{
   }
 
   const db = await getDB()
-  const now = new Date()
-  const tanggal = now.toISOString().split('T')[0]
-  const hari = hariNum(now)
+
+  // Gunakan dateOverride jika tersedia (admin memilih tanggal)
+  // Jika tidak ada explicit override, baca dari cookie act-as-date
+  let tanggal: string
+  let hari: number
+  const resolvedDateOverride = dateOverride || (await getActAsDate()) || null
+  if (resolvedDateOverride && /^\d{4}-\d{2}-\d{2}$/.test(resolvedDateOverride)) {
+    tanggal = resolvedDateOverride
+    // Hitung hari dari tanggal override: 1=Senin...7=Minggu
+    const d = new Date(resolvedDateOverride + 'T00:00:00')
+    const day = d.getDay()
+    hari = day === 0 ? 7 : day
+  } else {
+    const now = new Date()
+    tanggal = now.toISOString().split('T')[0]
+    hari = hariNum(now)
+  }
 
   if (hari === 7) return { error: null, blocks: [], tanggal, hari, hariNama: 'Minggu' }
 

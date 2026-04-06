@@ -9,7 +9,7 @@ import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
 import { TesClient } from './components/tes-client'
 import { getKelasUnggulanGuru } from './actions'
-import { getEffectiveUser, getActAsUserList } from '@/lib/act-as'
+import { getEffectiveUser, getActAsUserList, getActAsDate } from '@/lib/act-as'
 import { ActAsBanner } from '@/components/layout/act-as-banner'
 
 export const metadata = { title: 'Program Unggulan - MTSKHWM App' }
@@ -57,6 +57,9 @@ export default async function ProgramUnggulanPage() {
   // Ambil daftar guru hanya jika super admin
   const actAsUsers = isSuperAdmin ? await getActAsUserList() : []
 
+  // Ambil tanggal override jika sedang Act As
+  const actAsDate = (isSuperAdmin && effective?.isActingAs) ? await getActAsDate() : null
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12 max-w-lg mx-auto">
       <PageHeader
@@ -73,6 +76,8 @@ export default async function ProgramUnggulanPage() {
           actAsName={effective?.actAsName || null}
           userList={actAsUsers}
           adminName={effective?.realUserName || 'Admin'}
+          actAsDate={actAsDate}
+          showDatePicker={true}
         />
       )}
 
