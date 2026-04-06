@@ -12,6 +12,7 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
   const [countdown, setCountdown] = useState<number | null>(3)
   const [error, setError] = useState<string | null>(null)
   const [captured, setCaptured] = useState(false)
+  const [isVideoReady, setIsVideoReady] = useState(false)
 
   // Start Camera
   useEffect(() => {
@@ -27,6 +28,8 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
         setStream(s)
         if (videoRef.current) {
           videoRef.current.srcObject = s
+          // Explicitly call play to ensure it starts
+          videoRef.current.play().catch(e => console.error("Play error:", e))
         }
       } catch (err: any) {
         console.error('Camera error:', err)
@@ -43,22 +46,30 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
 
   // Auto Countdown Logic
   useEffect(() => {
-    if (stream && countdown !== null && countdown > 0) {
+    // Only start countdown if stream is active AND video is actually playing/ready
+    if (stream && isVideoReady && countdown !== null && countdown > 0) {
       const timer = setTimeout(() => {
         setCountdown(countdown - 1)
       }, 1000)
       return () => clearTimeout(timer)
-    } else if (stream && countdown === 0 && !captured) {
+    } else if (stream && isVideoReady && countdown === 0 && !captured) {
       capturePhoto()
     }
-  }, [stream, countdown])
+  }, [stream, isVideoReady, countdown])
 
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current || captured) return
-    setCaptured(true)
-    
     const video = videoRef.current
     const canvas = canvasRef.current
+    if (!video || !canvas || captured) return
+    
+    // Safety check: video must have dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.warn("Video not ready for capture, retrying in 500ms...")
+      setTimeout(capturePhoto, 500)
+      return
+    }
+
+    setCaptured(true)
     
     // Target resolution: 800x600 (approx 4:3)
     const targetWidth = 800
@@ -67,6 +78,7 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
     
     canvas.width = targetWidth
     canvas.height = targetHeight
+
 
     const ctx = canvas.getContext('2d')
     if (ctx) {
@@ -79,10 +91,18 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
         if (blob) {
           const file = new File([blob], `presensi_${Date.now()}.jpg`, { type: 'image/jpeg' })
           onCapture(file)
+        } else {
+          console.error("Canvas toBlob returned null")
+          setError("Gagal memproses foto. Silakan coba lagi.")
+          setCaptured(false)
         }
       }, 'image/jpeg', 0.85) // 85% quality for "sedikit lebih bagus"
+    } else {
+      setError("Gagal menginisialisasi context kamera.")
+      setCaptured(false)
     }
   }
+
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !captured) onClose() }}>
@@ -121,6 +141,10 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
                 autoPlay 
                 playsInline 
                 muted 
+                onLoadedMetadata={() => {
+                  console.log("Video metadata loaded:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)
+                  setIsVideoReady(true)
+                }}
                 className="w-full h-full object-cover -scale-x-100" 
               />
               
