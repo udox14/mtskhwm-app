@@ -11,10 +11,11 @@ import {
   User, GraduationCap, ShieldAlert, DoorOpen, LineChart, 
   MapPin, Phone, Users, CheckCircle2, History, AlertTriangle, 
   Image as ImageIcon, ChevronDown, ChevronUp, BookOpen, Pencil,
-  LogOut, RotateCcw
+  LogOut, RotateCcw, CalendarSearch
 } from 'lucide-react'
 import { EditSiswaModal } from '../../components/edit-modal'
 import { TandaiKeluarModal, BatalkanKeluarModal } from './tandai-keluar-modal'
+import { RekapAbsensiTab } from './rekap-absensi-tab'
 import { formatNamaKelas } from '@/lib/utils'
 
 export function DetailSiswaClient({ 
@@ -283,6 +284,7 @@ export function DetailSiswaClient({
               {totalPoin > 0 && <span className="absolute top-1 right-2 h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>}
             </TabsTrigger>
             <TabsTrigger value="izin" className="py-2 px-3 rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white text-xs font-medium flex-1 gap-1.5"><DoorOpen className="h-4 w-4"/> Perizinan</TabsTrigger>
+            <TabsTrigger value="absensi" className="py-2 px-3 rounded-md data-[state=active]:bg-cyan-600 data-[state=active]:text-white text-xs font-medium flex-1 gap-1.5"><CalendarSearch className="h-4 w-4"/> Rekap Absensi</TabsTrigger>
           </TabsList>
         </div>
 
@@ -485,6 +487,11 @@ export function DetailSiswaClient({
             </div>
 
           </div>
+        </TabsContent>
+
+        {/* ======================= TAB 5: REKAP ABSENSI ======================= */}
+        <TabsContent value="absensi" className="mt-4 animate-in fade-in">
+          <RekapAbsensiTab siswaId={siswa.id} />
         </TabsContent>
 
       </Tabs>
