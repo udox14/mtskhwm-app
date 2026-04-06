@@ -287,3 +287,18 @@ export async function getDataCetakAbsensi(params: {
   sql += ' ORDER BY ab.tanggal, k.tingkat, k.kelompok, k.nomor_kelas, s.nama_lengkap, ab.jam_ke_mulai'
   return (await db.prepare(sql).bind(...p).all<any>()).results || []
 }
+
+// ============================================================
+// 5. WALI KELAS — ambil nama wali kelas untuk siswa tertentu
+// ============================================================
+export async function getWaliKelasForSiswa(siswaId: string) {
+  const db = await getDB()
+  const row = await db.prepare(`
+    SELECT u.nama_lengkap as wali_kelas_nama
+    FROM siswa s
+    JOIN kelas k ON s.kelas_id = k.id
+    LEFT JOIN "user" u ON k.wali_kelas_id = u.id
+    WHERE s.id = ?
+  `).bind(siswaId).first<any>()
+  return row?.wali_kelas_nama ?? null
+}

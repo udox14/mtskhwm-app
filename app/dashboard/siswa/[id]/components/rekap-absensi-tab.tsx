@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { getAbsensiPerSiswa } from '@/app/dashboard/rekap-absensi/actions'
+import { getAbsensiPerSiswa, getWaliKelasForSiswa } from '@/app/dashboard/rekap-absensi/actions'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { 
@@ -73,6 +73,7 @@ export function RekapAbsensiTab({ siswaId, siswa }: { siswaId: string; siswa?: {
   const [loaded, setLoaded] = useState(false)
   const [result, setResult] = useState<RekapResult | null>(null)
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
+  const [waliKelas, setWaliKelas] = useState<string | null>(null)
 
   const toggleDay = (tgl: string) => setExpandedDays(prev => {
     const next = new Set(prev)
@@ -86,8 +87,12 @@ export function RekapAbsensiTab({ siswaId, siswa }: { siswaId: string; siswa?: {
     setResult(null)
     setExpandedDays(new Set())
     try {
-      const data = await getAbsensiPerSiswa(siswaId, tglMulai, tglSelesai)
+      const [data, wkNama] = await Promise.all([
+        getAbsensiPerSiswa(siswaId, tglMulai, tglSelesai),
+        getWaliKelasForSiswa(siswaId),
+      ])
       setResult(data as RekapResult)
+      setWaliKelas(wkNama)
       setLoaded(true)
     } catch (e) {
       setResult({ error: 'Gagal memuat data. Coba lagi.' })
@@ -101,176 +106,165 @@ export function RekapAbsensiTab({ siswaId, siswa }: { siswaId: string; siswa?: {
   const handlePrint = () => {
     if (!result || result.error || !result.days) return
     const { days, summary, siswa: siswaMeta, totalHari } = result
+
     const fmtTgl = (t: string) => new Date(t + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
     const fmtTglShort = (t: string) => new Date(t + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
     const nowStr = new Date(Date.now() + 7 * 60 * 60 * 1000).toLocaleString('id-ID', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    const tglTtd = new Date(Date.now() + 7 * 60 * 60 * 1000).toLocaleDateString('id-ID', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' })
 
-    const statusColor: Record<string, string> = {
-      HADIR: '#059669', 'HADIR PARSIAL': '#d97706', SAKIT: '#2563eb', IZIN: '#7c3aed', ALFA: '#dc2626'
-    }
     const statusLabel: Record<string, string> = {
       HADIR: 'Hadir', 'HADIR PARSIAL': 'Hadir Parsial', SAKIT: 'Sakit', IZIN: 'Izin', ALFA: 'Alfa'
     }
 
+    const namaMeta  = siswa?.nama_lengkap || siswaMeta?.nama || '-'
+    const nisnMeta  = siswa?.nisn         || siswaMeta?.nisn || '-'
+    const nisMeta   = siswa?.nis_lokal    || '-'
     const kelasMeta = result.siswa?.kelas || '-'
-    const namaMeta = siswa?.nama_lengkap || siswaMeta?.nama || '-'
-    const nisnMeta = siswa?.nisn || siswaMeta?.nisn || '-'
-    const nisMeta = siswa?.nis_lokal || '-'
+    const wkNama    = waliKelas           || 'Belum Ditentukan'
 
-    const TD = 'border:1px solid #ddd;padding:3px 5px;vertical-align:top;'
+    const TD = 'border:1px solid #555;padding:3px 5px;vertical-align:top;'
 
     // Baris tabel detail per hari
     const tableRows = days.map((day, i) => {
-      const statusC = statusColor[day.statusHari] || '#333'
       const detailStr = day.detail.length > 0
-        ? day.detail.map(d => `${d.nama_mapel} (Jam ${d.jam_ke_mulai}${d.jam_ke_selesai > d.jam_ke_mulai ? '\u2013' + d.jam_ke_selesai : ''}): <span style="color:${statusColor[d.status] || '#333'}">${d.status}</span>${d.catatan ? ' — ' + d.catatan : ''}`).join('<br/>')
-        : '<span style="color:#059669">Hadir semua jam</span>'
-      return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
-        <td style="${TD}text-align:center;width:28px">${i + 1}</td>
-        <td style="${TD}width:28px;text-align:center;font-weight:600">${new Date(day.tanggal + 'T00:00:00').getDate()}</td>
-        <td style="${TD}">${day.hariNama}</td>
-        <td style="${TD}">${fmtTglShort(day.tanggal)}</td>
-        <td style="${TD}text-align:center">${day.blokHadir}/${day.totalBlok}</td>
-        <td style="${TD}font-weight:700;color:${statusC}">${statusLabel[day.statusHari] || day.statusHari}</td>
+        ? day.detail.map(d =>
+            `${d.nama_mapel} (Jam ${d.jam_ke_mulai}${d.jam_ke_selesai > d.jam_ke_mulai ? '\u2013' + d.jam_ke_selesai : ''}):` +
+            ` ${statusLabel[d.status] || d.status}` +
+            `${d.catatan ? ' — ' + d.catatan : ''}`
+          ).join('<br/>')
+        : 'Hadir semua jam'
+
+      return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f5f5f5'}">
+        <td style="${TD}text-align:center;width:24px">${i + 1}</td>
+        <td style="${TD}width:24px;text-align:center">${new Date(day.tanggal + 'T00:00:00').getDate()}</td>
+        <td style="${TD}width:44px">${day.hariNama}</td>
+        <td style="${TD}width:70px">${fmtTglShort(day.tanggal)}</td>
+        <td style="${TD}width:40px;text-align:center">${day.blokHadir}/${day.totalBlok}</td>
+        <td style="${TD}width:70px">${statusLabel[day.statusHari] || day.statusHari}</td>
         <td style="${TD}font-size:8.5px;line-height:1.5">${detailStr}</td>
       </tr>`
     }).join('')
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Rekap Absensi — ${namaMeta}</title>
+    // Dapatkan origin untuk URL absolut gambar kopsurat
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+
+    const html = `<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+<title>Rekap Absensi \u2014 ${namaMeta}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Arial', sans-serif; font-size: 10px; color: #1a202c; background: #fff; }
-  @page { size: 215mm 330mm; margin: 10mm 12mm 12mm 15mm; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #000; background: #fff; }
+  @page { size: 215mm 330mm; margin: 0; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  .page { width: 100%; max-width: 100%; }
 
-  /* === HEADER SEKOLAH === */
-  .kop { display: flex; align-items: center; gap: 10px; border-bottom: 3px solid #1a1a1a; padding-bottom: 6px; margin-bottom: 6px; }
-  .kop-logo { width: 52px; height: 52px; flex-shrink: 0; }
-  .kop-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .kop-logo-placeholder { width: 52px; height: 52px; background: #065f46; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; font-weight: 900; flex-shrink: 0; }
-  .kop-text { flex: 1; text-align: center; }
-  .kop-text .nama-sekolah { font-size: 15px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; }
-  .kop-text .nama-pondok { font-size: 10px; font-weight: 600; color: #374151; margin: 1px 0; }
-  .kop-text .alamat { font-size: 8.5px; color: #6b7280; }
+  .page { width: 215mm; min-height: 330mm; padding: 0 12mm 12mm 12mm; }
 
-  /* === JUDUL LAPORAN === */
-  .judul-wrap { text-align: center; margin: 8px 0 6px; }
-  .judul-wrap h2 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-  .judul-wrap p { font-size: 9px; color: #4b5563; margin-top: 2px; }
-  .garis-judul { height: 1px; background: #d1d5db; margin: 4px 0; }
+  /* KOP */
+  .kop-img { width: calc(100% + 24mm); margin-left: -12mm; display: block; margin-bottom: 8pt; }
 
-  /* === INFO SISWA === */
-  .info-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 16px; }
-  .info-item { display: flex; flex-direction: column; }
-  .info-item .lbl { font-size: 7.5px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-  .info-item .val { font-size: 10px; font-weight: 700; color: #111827; }
+  /* GARIS BAWAH KOP */
+  .kop-line { border-top: 2pt solid #000; margin-bottom: 10pt; }
 
-  /* === SUMMARY === */
-  .summary-row { display: flex; gap: 6px; margin-bottom: 8px; }
-  .stat-card { flex: 1; border-radius: 4px; padding: 5px 6px; text-align: center; border: 1px solid #e5e7eb; }
-  .stat-card .num { font-size: 16px; font-weight: 900; line-height: 1; }
-  .stat-card .lbl { font-size: 7.5px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
-  .stat-hadir   { background: #f0fdf4; color: #065f46; border-color: #bbf7d0; }
-  .stat-parsial { background: #fffbeb; color: #92400e; border-color: #fde68a; }
-  .stat-sakit   { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
-  .stat-izin    { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
-  .stat-alfa    { background: #fff1f2; color: #9f1239; border-color: #fecdd3; }
-  .stat-total   { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+  /* JUDUL */
+  .judul { text-align: center; margin-bottom: 10pt; }
+  .judul h2 { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 2pt; }
+  .judul .periode { font-size: 11pt; font-weight: normal; }
 
-  /* === TABEL === */
-  table { width: 100%; border-collapse: collapse; font-size: 9px; }
-  thead tr { background: #1e293b; color: #fff; }
-  thead th { border: 1px solid #334155; padding: 4px 5px; font-weight: 700; text-align: center; }
-  tbody td { border: 1px solid #e2e8f0; padding: 3px 5px; vertical-align: top; }
-  tbody tr:hover { background: #f8fafc; }
+  /* INFO SISWA */
+  .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10pt; font-size: 10pt; }
+  .info-table td { padding: 1.5pt 0; vertical-align: top; }
+  .info-table td:first-child { width: 110pt; }
+  .info-table td:nth-child(2) { width: 10pt; text-align: center; }
 
-  /* === FOOTER === */
-  .footer { margin-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; }
-  .footer .ttd-box { text-align: center; }
-  .footer .ttd-label { font-size: 9px; }
-  .footer .ttd-space { height: 36px; }
-  .footer .ttd-nama { font-size: 9px; font-weight: 700; border-top: 1px solid #374151; padding-top: 2px; width: 120px; text-align: center; }
-  .colofon { font-size: 8px; color: #9ca3af; text-align: center; margin-top: 8px; }
+  /* RINGKASAN */
+  .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; }
+  .summary-table th, .summary-table td { border: 1px solid #555; padding: 4pt 6pt; text-align: center; font-size: 10pt; }
+  .summary-table th { font-weight: bold; background: #eee; }
+
+  /* TABEL HARIAN */
+  table.main { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  table.main thead tr { background: #ddd; }
+  table.main thead th { border: 1px solid #555; padding: 4pt 4pt; font-weight: bold; text-align: center; }
+  table.main tbody td { border: 1px solid #888; padding: 2.5pt 4pt; vertical-align: top; }
+
+  /* FOOTER */
+  .footer { margin-top: 14pt; display: flex; justify-content: space-between; align-items: flex-end; font-size: 10pt; }
+  .footer .keterangan p { margin-bottom: 1.5pt; }
+  .footer .ttd { text-align: center; }
+  .footer .ttd-space { height: 44pt; }
+  .footer .ttd-nama { font-weight: bold; border-top: 1pt solid #000; padding-top: 2pt; }
+
+  /* Colofon */
+  .colofon { font-size: 7.5pt; color: #777; text-align: center; margin-top: 10pt; }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- KOP SEKOLAH -->
-  <div class="kop">
-    <div class="kop-logo-placeholder">M</div>
-    <div class="kop-text">
-      <div class="nama-pondok">Pondok Pesantren KH. Ahmad Wahab Muhsin</div>
-      <div class="nama-sekolah">MTs KH. A. Wahab Muhsin Sukahideng</div>
-      <div class="alamat">Sukahideng, Sukaresik, Tasikmalaya, Jawa Barat</div>
-    </div>
+  <img class="kop-img" src="${origin}/kopsurat.png" alt="Kop Surat" />
+
+  <div class="judul">
+    <h2>Rekap Kehadiran Siswa</h2>
+    <div class="periode">Periode: ${fmtTgl(tglMulai)} &ndash; ${fmtTgl(tglSelesai)}</div>
   </div>
 
-  <!-- JUDUL -->
-  <div class="judul-wrap">
-    <h2>Laporan Rekap Kehadiran Siswa</h2>
-    <p>Periode: ${fmtTgl(tglMulai)} s/d ${fmtTgl(tglSelesai)}</p>
-  </div>
-  <div class="garis-judul"></div>
+  <table class="info-table">
+    <tr><td>Nama Siswa</td><td>:</td><td><strong>${namaMeta}</strong></td></tr>
+    <tr><td>NISN</td><td>:</td><td>${nisnMeta}</td></tr>
+    <tr><td>NIS Lokal</td><td>:</td><td>${nisMeta}</td></tr>
+    <tr><td>Kelas</td><td>:</td><td>${kelasMeta}</td></tr>
+    <tr><td>Total Hari Efektif</td><td>:</td><td>${totalHari || days.length} hari</td></tr>
+  </table>
 
-  <!-- INFO SISWA -->
-  <div class="info-box">
-    <div class="info-grid">
-      <div class="info-item"><span class="lbl">Nama Siswa</span><span class="val">${namaMeta}</span></div>
-      <div class="info-item"><span class="lbl">NISN</span><span class="val">${nisnMeta}</span></div>
-      <div class="info-item"><span class="lbl">NIS Lokal</span><span class="val">${nisMeta}</span></div>
-      <div class="info-item" style="margin-top:4px"><span class="lbl">Kelas</span><span class="val">${kelasMeta}</span></div>
-      <div class="info-item" style="margin-top:4px"><span class="lbl">Total Hari Efektif</span><span class="val">${totalHari || days.length} hari</span></div>
-    </div>
-  </div>
-
-  <!-- RINGKASAN -->
-  <div class="summary-row">
-    <div class="stat-card stat-hadir"><div class="num">${summary?.hadir ?? 0}</div><div class="lbl">Hadir</div></div>
-    <div class="stat-card stat-parsial"><div class="num">${summary?.parsial ?? 0}</div><div class="lbl">Parsial</div></div>
-    <div class="stat-card stat-sakit"><div class="num">${summary?.sakit ?? 0}</div><div class="lbl">Sakit</div></div>
-    <div class="stat-card stat-izin"><div class="num">${summary?.izin ?? 0}</div><div class="lbl">Izin</div></div>
-    <div class="stat-card stat-alfa"><div class="num">${summary?.alfa ?? 0}</div><div class="lbl">Alfa</div></div>
-    <div class="stat-card stat-total"><div class="num">${days.length}</div><div class="lbl">Total Hari</div></div>
-  </div>
-
-  <!-- TABEL HARIAN -->
-  <table>
+  <table class="summary-table">
     <thead>
       <tr>
-        <th style="width:20px">No</th>
-        <th style="width:22px">Tgl</th>
-        <th style="width:45px">Hari</th>
-        <th style="width:70px">Tanggal</th>
-        <th style="width:45px">Blok</th>
-        <th style="width:65px">Status Hari</th>
-        <th>Detail Ketidakhadiran / Keterangan</th>
+        <th>Hadir</th><th>Hadir Parsial</th><th>Sakit</th><th>Izin</th><th>Alfa</th><th>Total Hari</th>
       </tr>
     </thead>
     <tbody>
-      ${tableRows}
+      <tr>
+        <td>${summary?.hadir ?? 0}</td>
+        <td>${summary?.parsial ?? 0}</td>
+        <td>${summary?.sakit ?? 0}</td>
+        <td>${summary?.izin ?? 0}</td>
+        <td>${summary?.alfa ?? 0}</td>
+        <td>${days.length}</td>
+      </tr>
     </tbody>
   </table>
 
-  <!-- FOOTER -->
+  <table class="main">
+    <thead>
+      <tr>
+        <th style="width:24px">No</th>
+        <th style="width:24px">Tgl</th>
+        <th style="width:44px">Hari</th>
+        <th style="width:70px">Tanggal</th>
+        <th style="width:40px">Blok</th>
+        <th style="width:70px">Status</th>
+        <th>Detail Ketidakhadiran</th>
+      </tr>
+    </thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+
   <div class="footer">
-    <div style="font-size:9px;color:#6b7280">
+    <div class="keterangan">
       <p><strong>Keterangan:</strong></p>
-      <p>• <strong>Hadir</strong>: Hadir semua blok jam  &nbsp; • <strong>Parsial</strong>: Hadir sebagian jam</p>
-      <p>• <strong>Sakit / Izin</strong>: Tidak hadir dengan keterangan  &nbsp; • <strong>Alfa</strong>: Tidak hadir tanpa keterangan</p>
+      <p>Hadir: Hadir semua blok jam pelajaran</p>
+      <p>Hadir Parsial: Hadir sebagian jam</p>
+      <p>Sakit / Izin: Tidak hadir dengan keterangan</p>
+      <p>Alfa: Tidak hadir tanpa keterangan</p>
     </div>
-    <div class="ttd-box">
-      <p class="ttd-label">Tasikmalaya, ${new Date(Date.now() + 7*60*60*1000).toLocaleDateString('id-ID', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' })}</p>
-      <p class="ttd-label" style="margin-top:2px">Wali Kelas / Kabid Kesiswaan,</p>
+    <div class="ttd">
+      <p>Tasikmalaya, ${tglTtd}</p>
+      <p style="margin-top:2pt">Wali Kelas,</p>
       <div class="ttd-space"></div>
-      <div class="ttd-nama">(...............................)</div>
+      <div class="ttd-nama">${wkNama}</div>
     </div>
   </div>
 
-  <p class="colofon">Dokumen ini dicetak melalui Sistem Informasi Manajemen MTs KH. A. Wahab Muhsin Sukahideng &bull; ${nowStr} WIB</p>
+  <p class="colofon">Dicetak melalui Sistem Informasi Manajemen MTs KH. A. Wahab Muhsin Sukahideng &bull; ${nowStr} WIB</p>
 </div>
 </body></html>`
 
@@ -279,7 +273,7 @@ export function RekapAbsensiTab({ siswaId, siswa }: { siswaId: string; siswa?: {
     w.document.write(html)
     w.document.close()
     w.focus()
-    setTimeout(() => w.print(), 300)
+    setTimeout(() => w.print(), 400)
   }
 
   const summary = result?.summary
