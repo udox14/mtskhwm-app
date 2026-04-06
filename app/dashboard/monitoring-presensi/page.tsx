@@ -1,5 +1,6 @@
 // Lokasi: app/dashboard/monitoring-presensi/page.tsx
 import { Suspense } from 'react'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getCurrentUser } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import { redirect } from 'next/navigation'
@@ -13,7 +14,10 @@ import { todayWIB } from '@/lib/time'
 export const metadata = { title: 'Monitoring Presensi - MTSKHWM App' }
 
 async function MonitoringDataFetcher() {
+  const { env } = await getCloudflareContext({ async: true })
+  const r2PublicUrl = env.R2_PUBLIC_URL || ''
   const db = await getDB()
+
   const today = todayWIB()
 
   const [pegawaiResult, presensiHariIniResult, pengaturanPresensi, pengaturanTunjangan] = await Promise.all([
@@ -54,9 +58,11 @@ async function MonitoringDataFetcher() {
         aturan_tiers: tiers,
       }}
       tanggalHariIni={today}
+      r2PublicUrl={r2PublicUrl}
     />
   )
 }
+
 
 export const dynamic = 'force-dynamic'
 export default async function MonitoringPage() {

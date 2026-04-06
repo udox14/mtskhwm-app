@@ -4,6 +4,8 @@
 import { getDB, dbSelectOne } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
 import { todayWIB, nowWIB, currentTimeWIB } from '@/lib/time'
+import { uploadFotoPresensi } from '@/utils/r2'
+
 
 // ============================================================
 // GET PENGATURAN PRESENSI
@@ -188,3 +190,23 @@ export async function setStatusPresensi(userId: string, status: string, diinputO
     return { error: e.message || 'Gagal menyimpan status presensi.' }
   }
 }
+
+// ============================================================
+// SIMPAN FOTO PRESENSI KE R2
+// ============================================================
+export async function simpanFotoPresensi(formData: FormData) {
+  const file = formData.get('file') as File
+  const userId = formData.get('userId') as string
+  const action = formData.get('action') as string
+  const tanggal = todayWIB()
+
+  if (!file || !userId || !action) return { error: 'Data tidak lengkap.' }
+
+  try {
+    const res = await uploadFotoPresensi(file, userId, action, tanggal)
+    return res
+  } catch (e: any) {
+    return { error: e.message || 'Gagal mengunggah foto ke R2.' }
+  }
+}
+

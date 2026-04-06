@@ -105,3 +105,20 @@ export async function uploadBuktiFoto(file: File) {
   const fileName = `bukti_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
   return uploadToR2(file, 'pelanggaran', fileName)
 }
+
+// Upload foto presensi — nama file: presensi/{tanggal}/{userId}_{action}.jpg
+export async function uploadFotoPresensi(file: File, userId: string, action: string, tanggal: string) {
+  const validationError = validateImageFile(file)
+  if (validationError) return { url: null, error: validationError }
+
+  const fileName = `${userId}_${action}.jpg`
+  const folder = `presensi/${tanggal}`
+  return uploadToR2(file, folder, fileName)
+}
+
+export function getPresensiPhotoUrl(userId: string, action: string, tanggal: string) {
+  const baseUrl = process.env.R2_PUBLIC_URL
+  if (!baseUrl) return null
+  return `${baseUrl}/presensi/${tanggal}/${userId}_${action}.jpg`
+}
+

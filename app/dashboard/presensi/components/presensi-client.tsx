@@ -10,7 +10,8 @@ import {
   LogIn, LogOut, Clock, AlertTriangle, CheckCircle2, XCircle, Stethoscope,
   FileText, Loader2, Pencil, MapPin, Building2, CalendarDays, Timer
 } from 'lucide-react'
-import { catatPresensiMasuk, catatPresensiPulang, setStatusPresensi, editWaktuPresensi } from '../actions'
+import { catatPresensiMasuk, catatPresensiPulang, setStatusPresensi, editWaktuPresensi, simpanFotoPresensi } from '../actions'
+import { CameraCapture } from '@/components/presensi/camera-capture'
 import { cn } from '@/lib/utils'
 import { nowWIB } from '@/lib/time'
 
@@ -61,6 +62,7 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
   const [modalPending, setModalPending] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [fakeMap, setFakeMap] = useState<Record<string, Presensi>>({})
+  const [cameraTarget, setCameraTarget] = useState<{ pg: Pegawai; action: 'masuk' | 'pulang' } | null>(null)
 
   // Initialize from LocalStorage
   useEffect(() => {
@@ -97,32 +99,47 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
   const presensiMap = new Map(presensiHariIni.map(p => [p.user_id, p]))
   Object.values(fakeMap).forEach(p => presensiMap.set(p.user_id, p))
 
-  const handleMasuk = async (pg: Pegawai) => {
+  const handleCapture = async (file: File) => {
+    if (!cameraTarget) return
+    const { pg, action } = cameraTarget
     setLoadingId(pg.id)
-    if (pg.is_struktural) {
-      const res = await catatPresensiMasuk(pg.id, currentUserId, undefined)
-      if (res.error) alert(res.error)
+    setCameraTarget(null)
+
+    // 1. Upload ke R2
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('userId', pg.id)
+    formData.append('action', action)
+    
+    const uploadRes = await simpanFotoPresensi(formData)
+    if (uploadRes.error) {
+      alert("Peringatan: Gagal mengunggah foto ke Cloud. Namun presensi akan tetap dicatat.\nError: " + uploadRes.error)
+    }
+
+    // 2. Catat Presensi
+    if (action === 'masuk') {
+      if (pg.is_struktural) {
+        const res = await catatPresensiMasuk(pg.id, currentUserId, undefined)
+        if (res.error) alert(res.error)
+      } else {
+        const timeStr = nowWIB().toTimeString().slice(0, 5)
+        setFakeMap(prev => ({ ...prev, [pg.id]: { id: 'fake_m_' + pg.id, user_id: pg.id, tanggal, jam_masuk: timeStr, jam_pulang: null, status: 'hadir', is_telat: 0, is_pulang_cepat: 0, catatan: null } }))
+      }
     } else {
-      const timeStr = nowWIB().toTimeString().slice(0, 5)
-      setFakeMap(prev => ({ ...prev, [pg.id]: { id: 'fake_m_' + pg.id, user_id: pg.id, tanggal, jam_masuk: timeStr, jam_pulang: null, status: 'hadir', is_telat: 0, is_pulang_cepat: 0, catatan: null } }))
+      if (pg.is_struktural) {
+        const res = await catatPresensiPulang(pg.id, currentUserId)
+        if (res.error) alert(res.error)
+      } else {
+        const timeStr = nowWIB().toTimeString().slice(0, 5)
+        setFakeMap(prev => ({
+          ...prev,
+          [pg.id]: prev[pg.id] ? { ...prev[pg.id], jam_pulang: timeStr } : { id: 'fake_p_' + pg.id, user_id: pg.id, tanggal, jam_masuk: null, jam_pulang: timeStr, status: 'hadir', is_telat: 0, is_pulang_cepat: 0, catatan: null }
+        }))
+      }
     }
     setLoadingId(null)
   }
 
-  const handlePulang = async (pg: Pegawai) => {
-    setLoadingId(pg.id)
-    if (pg.is_struktural) {
-      const res = await catatPresensiPulang(pg.id, currentUserId)
-      if (res.error) alert(res.error)
-    } else {
-      const timeStr = nowWIB().toTimeString().slice(0, 5)
-      setFakeMap(prev => ({
-        ...prev,
-        [pg.id]: prev[pg.id] ? { ...prev[pg.id], jam_pulang: timeStr } : { id: 'fake_p_' + pg.id, user_id: pg.id, tanggal, jam_masuk: null, jam_pulang: timeStr, status: 'hadir', is_telat: 0, is_pulang_cepat: 0, catatan: null }
-      }))
-    }
-    setLoadingId(null)
-  }
 
   const handleSetStatus = async () => {
     if (!statusModal) return
@@ -178,7 +195,15 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
 
   return (
     <>
+      {cameraTarget && (
+        <CameraCapture 
+          onCapture={handleCapture} 
+          onClose={() => setCameraTarget(null)} 
+        />
+      )}
+
       {/* MODAL SET STATUS */}
+
       <Dialog open={!!statusModal} onOpenChange={o => !o && setStatusModal(null)}>
         <DialogContent className="sm:max-w-sm rounded-xl">
           <DialogHeader className="border-b pb-3">
@@ -346,10 +371,11 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
                     <div className="flex gap-1.5 shrink-0 mt-auto">
                       {!pr ? (
                         <>
-                          <Button size="sm" onClick={() => handleMasuk(pg)} disabled={loadingId === pg.id}
+                          <Button size="sm" onClick={() => setCameraTarget({ pg, action: 'masuk' })} disabled={loadingId === pg.id}
                             className="flex-1 h-7 text-[11px] rounded bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2">
                             {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogIn className="h-3 w-3" />} Masuk
                           </Button>
+
                           <Button size="sm" variant="outline" onClick={() => { setStatusModal(pg); setStatusValue('sakit'); setStatusCatatan('') }} disabled={loadingId === pg.id}
                             className="h-7 text-[11px] rounded gap-1 px-2 shrink-0">
                             <AlertTriangle className="h-3 w-3" />
@@ -357,10 +383,11 @@ export function PresensiClient({ pegawai, presensiHariIni, pengaturan, tanggal, 
                         </>
                       ) : pr.status === 'hadir' && !pr.jam_pulang ? (
                         <>
-                          <Button size="sm" onClick={() => handlePulang(pg)} disabled={loadingId === pg.id}
+                          <Button size="sm" onClick={() => setCameraTarget({ pg, action: 'pulang' })} disabled={loadingId === pg.id}
                             className="flex-1 h-7 text-[11px] rounded bg-rose-500 hover:bg-rose-600 text-white gap-1 px-2">
                             {loadingId === pg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3 w-3" />} Pulang
                           </Button>
+
                           <Button size="sm" variant="outline" onClick={() => openEdit(pr, pg)} className="h-7 w-7 p-0 rounded shrink-0">
                             <Pencil className="h-3 w-3" />
                           </Button>

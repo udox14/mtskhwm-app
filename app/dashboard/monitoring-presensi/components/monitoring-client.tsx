@@ -11,8 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   CalendarDays, Search, Printer, Loader2, CheckCircle2, XCircle, Clock,
   AlertTriangle, Stethoscope, FileText, MapPin, Settings, DollarSign,
-  BarChart3, User, Building2, Save, PlusCircle, Trash2, TrendingUp
+  BarChart3, User, Building2, Save, PlusCircle, Trash2, TrendingUp,
+  Camera, Eye
 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
 import {
   getPresensiByTanggal, getPresensiByRange, getPresensiPerOrang,
   simpanPengaturanPresensi, simpanPengaturanTunjangan, hitungTunjanganBulanan
@@ -51,15 +54,18 @@ function formatRupiah(n: number) {
 }
 
 export function MonitoringClient({
-  pegawai, presensiHariIni, pengaturanPresensi, pengaturanTunjangan, tanggalHariIni
+  pegawai, presensiHariIni, pengaturanPresensi, pengaturanTunjangan, tanggalHariIni, r2PublicUrl
 }: {
   pegawai: Pegawai[]; presensiHariIni: PresensiRow[];
   pengaturanPresensi: PengaturanPresensi; pengaturanTunjangan: PengaturanTunjangan;
-  tanggalHariIni: string
+  tanggalHariIni: string; r2PublicUrl: string
 }) {
+
   const [isPending, startTransition] = useTransition()
   const printRef = useRef<HTMLDivElement>(null)
   const handlePrint = useReactToPrint({ contentRef: printRef })
+  const [viewPhoto, setViewPhoto] = useState<{ url: string; title: string } | null>(null)
+
 
   // ---- TAB: HARIAN ----
   const [harianTgl, setHarianTgl] = useState(tanggalHariIni)
@@ -167,7 +173,32 @@ export function MonitoringClient({
 
   return (
     <div className="space-y-3">
+      {/* MODAL VIEW FOTO */}
+      <Dialog open={!!viewPhoto} onOpenChange={o => !o && setViewPhoto(null)}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-2xl border-none bg-slate-900">
+          <DialogHeader className="p-4 border-b border-white/10 bg-black/20 backdrop-blur-md">
+            <DialogTitle className="text-sm font-bold text-white flex items-center gap-2">
+              <Camera className="h-4 w-4 text-teal-400" />
+              {viewPhoto?.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="aspect-[4/3] relative bg-black flex items-center justify-center">
+            {viewPhoto && (
+              <img 
+                src={viewPhoto.url} 
+                alt="Foto Presensi" 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://placehold.co/800x600/0f172a/64748b?text=Foto+Tidak+Ditemukan'
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Tabs defaultValue="harian">
+
         <TabsList className="bg-surface border border-surface flex-wrap">
           <TabsTrigger value="harian" className="text-xs gap-1 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
             <CalendarDays className="h-3.5 w-3.5" /> Harian
@@ -221,9 +252,11 @@ export function MonitoringClient({
                   <TableHead className="h-8 text-[11px] font-semibold text-slate-500">Nama</TableHead>
                   <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-24">Jabatan</TableHead>
                   <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16">Status</TableHead>
-                  <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16 text-center">Masuk</TableHead>
+                   <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16 text-center">Masuk</TableHead>
                   <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16 text-center">Pulang</TableHead>
+                  <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16 text-center">Foto</TableHead>
                   <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16">Ket</TableHead>
+
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -330,7 +363,9 @@ export function MonitoringClient({
                       <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16">Status</TableHead>
                       <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16 text-center">Masuk</TableHead>
                       <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16 text-center">Pulang</TableHead>
+                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16 text-center">Foto</TableHead>
                       <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-16">Ket</TableHead>
+
                     </TableRow>
                   </TableHeader>
                   <TableBody>
