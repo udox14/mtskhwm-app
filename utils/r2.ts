@@ -22,11 +22,18 @@ async function getR2(): Promise<R2Bucket> {
   return env.R2
 }
 
-// Ekstrak R2 key dari public URL
+// Ekstrak R2 key dari URL (mendukung format lama r2.dev dan format baru /api/media/)
 function urlToKey(publicUrl: string): string | null {
+  // Format baru: /api/media/folder/file.jpg
+  if (publicUrl.startsWith('/api/media/')) {
+    return publicUrl.replace('/api/media/', '')
+  }
+  // Format lama: https://pub-xxx.r2.dev/folder/file.jpg (backward compat)
   const baseUrl = process.env.R2_PUBLIC_URL
-  if (!baseUrl || !publicUrl.startsWith(baseUrl)) return null
-  return publicUrl.replace(`${baseUrl}/`, '')
+  if (baseUrl && publicUrl.startsWith(baseUrl)) {
+    return publicUrl.replace(`${baseUrl}/`, '')
+  }
+  return null
 }
 
 export async function uploadToR2(
@@ -54,8 +61,9 @@ export async function uploadToR2(
       },
     })
 
-    const publicUrl = `${process.env.R2_PUBLIC_URL}/${fileName}`
-    return { url: publicUrl, error: null }
+    // Gunakan /api/media/ proxy agar foto bisa diakses dari semua perangkat
+    const proxyUrl = `/api/media/${fileName}`
+    return { url: proxyUrl, error: null }
   } catch (e: any) {
     return { url: null, error: e.message }
   }
@@ -117,8 +125,6 @@ export async function uploadFotoPresensi(file: File, userId: string, action: str
 }
 
 export function getPresensiPhotoUrl(userId: string, action: string, tanggal: string) {
-  const baseUrl = process.env.R2_PUBLIC_URL
-  if (!baseUrl) return null
-  return `${baseUrl}/presensi/${tanggal}/${userId}_${action}.jpg`
+  return `/api/media/presensi/${tanggal}/${userId}_${action}.jpg`
 }
 
