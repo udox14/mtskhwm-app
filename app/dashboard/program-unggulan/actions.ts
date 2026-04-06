@@ -222,14 +222,131 @@ export async function resetStatusTes(hasilId: string) {
 
 // ============================================================
 // 6. GET MATERI TES UNTUK KELAS
+//    Mengirim format HTML legacy agar sesuai dengan tes-client
 // ============================================================
 export async function getMateriTes(puKelasId: string) {
   const db = await getDB()
+  
+  // Ambil materi mingguan aktif (urut dari yang terbaru)
   const result = await db.prepare(`
-    SELECT id, judul, konten, urutan
-    FROM pu_materi
-    WHERE pu_kelas_id = ? AND is_active = 1
-    ORDER BY urutan ASC, created_at ASC
-  `).bind(puKelasId).all<{ id: string; judul: string; konten: string; urutan: number }>()
-  return result.results || []
+    SELECT m.id, m.program, m.minggu_mulai, m.konten
+    FROM pu_materi_mingguan m
+    JOIN pu_materi_mingguan_kelas mk ON mk.materi_id = m.id
+    WHERE mk.pu_kelas_id = ?
+    ORDER BY m.minggu_mulai DESC, m.created_at DESC
+  `).bind(puKelasId).all<{ id: string; program: string; minggu_mulai: string; konten: string }>()
+
+  const HARI_NAMES: Record<number, string> = { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu' }
+
+  return (result.results || []).map((row, index) => {
+    let judul = `Materi ${row.program === 'tahfidz' ? 'Tahfidz' : row.program === 'bahasa_arab' ? 'Bahasa Arab' : 'Bahasa Inggris'} (Mulai ${row.minggu_mulai})`
+    let html = ''
+    try {
+      const data = JSON.parse(row.konten)
+      
+      if (row.program === 'tahfidz') {
+        judul = `Tahfidz: Surah ${data.surat || ''} (${data.nama_arab || ''})`
+        let tableHtml = '<table class="w-full text-sm"><thead><tr><th>Hari</th><th>Ayat</th><th>Teks</th></tr></thead><tbody>'
+        for (let i = 1; i <= 6; i++) {
+          const h = data.hari?.[i]
+          if (h && (h.dari || h.sampai)) {
+            tableHtml += `<tr>
+              <td class="font-semibold whitespace-nowrap">${HARI_NAMES[i]}</td>
+              <td class="whitespace-nowrap pb-2">Ayat ${h.dari} - ${h.sampai || h.dari}</td>
+              <td dir="rtl" class="font-arabic text-right text-lg leading-loose">${h.teks_arab || '-'}</td>
+            </tr>`
+          }
+        }
+        tableHtml += '</tbody></table>'
+        html = tableHtml
+      } 
+      else if (row.program === 'bahasa_arab') {
+        let listHtml = '<div class="space-y-4">'
+        for (let i = 1; i <= 6; i++) {
+          const items = data.hari?.[i]
+          if (items && items.length > 0 && items.some((x: any) => x.kata || x.arti)) {
+            listHtml += `<div class="border rounded p-3"><h4 class="font-bold text-blue-600 mb-2">${HARI_NAMES[i]}</h4><table class="w-full text-sm"><tbody>`
+            for (const item of items) {
+              if (!item.kata && !item.arti) continue
+              listHtml += `<tr>
+                <td dir="rtl" class="font-arabic text-right text-lg py-1">${item.kata || ''}</td>
+                <td class="text-left py-1 pl-3 border-l text-gray-600">${item.arti || ''}</td>
+              </tr>`
+            }
+            listHtml += '</tbody></table></div>'
+          }
+        }
+        listHtml += '</div>'
+        html = listHtml
+      } 
+      else if (row.program === 'bahasa_inggris') {
+        let contentHtml = '<div class="space-y-4">'
+        for (let i = 1; i <= 6; i++) {
+          const dayData = data.hari?.[i]
+          if (!dayData) continue
+
+          if (typeof dayData === 'string') {
+            // Legacy format string
+            if (dayData.trim() !== '') {
+              contentHtml += `<div class="border rounded p-3"><h4 class="font-bold text-violet-600 mb-2">${HARI_NAMES[i]}</h4><p class="whitespace-pre-wrap">${dayData}</p></div>`
+            }
+          } else {
+            // New table format
+            const { vocab, phrasal } = dayData
+            let hasVocab = vocab && vocab.length > 0 && vocab.some((v: any) => v.word)
+            let hasPhrasal = phrasal && (phrasal.verb || phrasal.arti || phrasal.contoh)
+            
+            if (hasVocab || hasPhrasal) {
+              contentHtml += `<div class="border rounded px-3 py-2"><h4 class="font-bold text-violet-600 mb-2 pb-1 border-b">${HARI_NAMES[i]}</h4>`
+              
+              if (hasVocab) {
+                contentHtml += `<table class="w-full text-xs text-left mb-3">
+                  <thead class="bg-gray-100">
+                    <tr><th class="p-1">Word</th><th class="p-1">Phonetic</th><th class="p-1">Cara Baca</th><th class="p-1">POS</th><th class="p-1">Meaning</th></tr>
+                  </thead>
+                  <tbody>`
+                vocab.forEach((v: any) => {
+                  if (v.word) contentHtml += `<tr class="border-b">
+                    <td class="p-1 font-semibold">${v.word}</td>
+                    <td class="p-1 text-gray-500">${v.phonetic}</td>
+                    <td class="p-1 text-blue-600">${v.cara_baca}</td>
+                    <td class="p-1 text-xs text-gray-400">${v.pos}</td>
+                    <td class="p-1">${v.meaning}</td>
+                  </tr>`
+                })
+                contentHtml += '</tbody></table>'
+              }
+
+              if (hasPhrasal) {
+                contentHtml += `<table class="w-full text-xs text-left">
+                  <thead class="bg-gray-100">
+                    <tr><th class="p-1 w-1/4">Phrasal Verb</th><th class="p-1 w-1/4">Arti</th><th class="p-1">Contoh</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr class="border-b">
+                      <td class="p-1 font-semibold text-amber-600">${phrasal.verb || '-'}</td>
+                      <td class="p-1">${phrasal.arti || '-'}</td>
+                      <td class="p-1 italic text-gray-600">${phrasal.contoh || '-'}</td>
+                    </tr>
+                  </tbody>
+                </table>`
+              }
+              contentHtml += '</div>'
+            }
+          }
+        }
+        contentHtml += '</div>'
+        html = contentHtml
+      }
+    } catch (e) {
+      html = '<p class="text-red-500">Format konten tidak valid</p>'
+    }
+
+    return {
+      id: row.id,
+      judul,
+      konten: html || '<p class="text-gray-400">Belum ada materi untuk minggu ini.</p>',
+      urutan: index
+    }
+  })
 }

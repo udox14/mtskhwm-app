@@ -598,9 +598,9 @@ function ModalMateri({ program, kelasList, currentUserId, editData, onClose, onS
 
   // Tahfidz
   const [suratNomor, setSuratNomor] = useState<number>(existingKonten?.surat_nomor || 1)
-  const [tahfidzHari, setTahfidzHari] = useState<Record<number, { dari: number; sampai: number }>>(() => {
+  const [tahfidzHari, setTahfidzHari] = useState<Record<number, { dari: number; sampai: number; teks_arab?: string }>>(() => {
     if (existingKonten?.hari) return existingKonten.hari
-    return { 1: { dari: 1, sampai: 5 }, 2: { dari: 6, sampai: 10 }, 3: { dari: 11, sampai: 15 }, 4: { dari: 16, sampai: 20 }, 5: { dari: 21, sampai: 25 }, 6: { dari: 26, sampai: 30 } }
+    return { 1: { dari: 1, sampai: 5, teks_arab: '' }, 2: { dari: 6, sampai: 10, teks_arab: '' }, 3: { dari: 11, sampai: 15, teks_arab: '' }, 4: { dari: 16, sampai: 20, teks_arab: '' }, 5: { dari: 21, sampai: 25, teks_arab: '' }, 6: { dari: 26, sampai: 30, teks_arab: '' } }
   })
 
   // Bahasa Arab
@@ -611,11 +611,24 @@ function ModalMateri({ program, kelasList, currentUserId, editData, onClose, onS
     return def
   })
 
-  // Bahasa Inggris
-  const [inggrisHari, setInggrisHari] = useState<Record<number, string>>(() => {
-    if (existingKonten?.hari && program === 'bahasa_inggris') return existingKonten.hari
-    const def: Record<number, string> = {}
-    for (let i = 1; i <= 6; i++) def[i] = ''
+  // Bahasa Inggris (Table style)
+  const [inggrisHari, setInggrisHari] = useState<Record<number, {
+    vocab: { word: string; phonetic: string; cara_baca: string; pos: string; meaning: string }[];
+    phrasal: { verb: string; arti: string; contoh: string }
+  }>>(() => {
+    if (existingKonten?.hari && program === 'bahasa_inggris') {
+      // Handle legacy string data if exist
+      if (typeof Object.values(existingKonten.hari)[0] === 'string') {
+        const migrated: any = {}
+        Object.keys(existingKonten.hari).forEach(k => {
+          migrated[Number(k)] = { vocab: [], phrasal: { verb: '', arti: '', contoh: '' } }
+        })
+        return migrated
+      }
+      return existingKonten.hari
+    }
+    const def: any = {}
+    for (let i = 1; i <= 6; i++) def[i] = { vocab: [{ word: '', phonetic: '', cara_baca: '', pos: '', meaning: '' }], phrasal: { verb: '', arti: '', contoh: '' } }
     return def
   })
 
@@ -686,24 +699,33 @@ function ModalMateri({ program, kelasList, currentUserId, editData, onClose, onS
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Ayat per Hari</Label>
+              <div className="space-y-4">
+                <Label className="text-xs font-semibold">Ayat & Teks per Hari</Label>
                 {[1, 2, 3, 4, 5, 6].map(h => (
-                  <div key={h} className="flex items-center gap-2">
-                    <span className="text-xs font-medium w-14 text-slate-500">{HARI_NAMES[h]}</span>
-                    <span className="text-[10px] text-slate-400">Ayat</span>
-                    <Input type="number" min={1} max={surah?.jumlahAyat || 999}
-                      className="w-16 h-7 text-xs text-center"
-                      value={tahfidzHari[h]?.dari || ''}
-                      onChange={e => setTahfidzHari(prev => ({ ...prev, [h]: { ...prev[h], dari: Number(e.target.value) } }))} />
-                    <span className="text-[10px] text-slate-400">s.d.</span>
-                    <Input type="number" min={1} max={surah?.jumlahAyat || 999}
-                      className="w-16 h-7 text-xs text-center"
-                      value={tahfidzHari[h]?.sampai || ''}
-                      onChange={e => setTahfidzHari(prev => ({ ...prev, [h]: { ...prev[h], sampai: Number(e.target.value) } }))} />
-                    {surah && (tahfidzHari[h]?.sampai > surah.jumlahAyat) && (
-                      <span className="text-[10px] text-red-500">Max {surah.jumlahAyat}</span>
-                    )}
+                  <div key={h} className="p-3 border border-emerald-100 dark:border-emerald-900 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 w-14">{HARI_NAMES[h]}</span>
+                      <span className="text-[10px] text-slate-400">Ayat</span>
+                      <Input type="number" min={1} max={surah?.jumlahAyat || 999}
+                        className="w-16 h-8 text-xs text-center"
+                        value={tahfidzHari[h]?.dari || ''}
+                        onChange={e => setTahfidzHari(prev => ({ ...prev, [h]: { ...prev[h], dari: Number(e.target.value) } }))} />
+                      <span className="text-[10px] text-slate-400">s.d.</span>
+                      <Input type="number" min={1} max={surah?.jumlahAyat || 999}
+                        className="w-16 h-8 text-xs text-center"
+                        value={tahfidzHari[h]?.sampai || ''}
+                        onChange={e => setTahfidzHari(prev => ({ ...prev, [h]: { ...prev[h], sampai: Number(e.target.value) } }))} />
+                      {surah && (tahfidzHari[h]?.sampai > surah.jumlahAyat) && (
+                        <span className="text-[10px] text-red-500">Max {surah.jumlahAyat}</span>
+                      )}
+                    </div>
+                    <textarea 
+                      placeholder="Paste ayat Arab di sini..." 
+                      dir="rtl"
+                      className="w-full mt-1.5 h-16 rounded-md border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm md:text-base font-arabic leading-loose focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={tahfidzHari[h]?.teks_arab || ''}
+                      onChange={e => setTahfidzHari(prev => ({ ...prev, [h]: { ...prev[h], teks_arab: e.target.value } }))}
+                    />
                   </div>
                 ))}
               </div>
@@ -753,15 +775,86 @@ function ModalMateri({ program, kelasList, currentUserId, editData, onClose, onS
 
           {/* BAHASA INGGRIS FORM */}
           {program === 'bahasa_inggris' && (
-            <div className="space-y-3">
-              <Label className="text-xs font-semibold">Materi per Hari (teks bebas)</Label>
+            <div className="space-y-5">
+              <Label className="text-sm font-semibold">Materi Vocabulary & Phrasal Verb</Label>
+              
+              <div className="bg-amber-50 dark:bg-amber-950/20 text-xs text-amber-700 dark:text-amber-400 p-3 rounded-lg border border-amber-200 dark:border-amber-900">
+                <b className="block mb-1">Tips Import:</b>
+                Berikan format yang terstruktur kepada pemateri untuk dicopy/paste, atau salin langsung dari Excel. Fitur auto-import Excel sedang dikembangkan, mohon isikan manual sementara waktu di kolom tabel ini.
+              </div>
+
               {[1, 2, 3, 4, 5, 6].map(h => (
-                <div key={h}>
-                  <label className="text-xs font-bold text-violet-600 mb-1 block">{HARI_NAMES[h]}</label>
-                  <textarea className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm min-h-[60px]"
-                    placeholder={`Materi ${HARI_NAMES[h]}: vocabulary, sentence, exercise...`}
-                    value={inggrisHari[h] || ''}
-                    onChange={e => setInggrisHari(prev => ({ ...prev, [h]: e.target.value }))} />
+                <div key={h} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="bg-violet-50 dark:bg-violet-950/30 px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <span className="text-xs font-bold text-violet-700 dark:text-violet-400">{HARI_NAMES[h]}</span>
+                    <button type="button" onClick={() => {
+                        const copy = { ...inggrisHari }
+                        copy[h].vocab.push({ word: '', phonetic: '', cara_baca: '', pos: '', meaning: '' })
+                        setInggrisHari(copy)
+                      }} className="text-[10px] text-violet-600 hover:text-violet-800 font-semibold flex items-center gap-0.5"
+                    >
+                      <Plus className="w-3 h-3" /> Tambah Word
+                    </button>
+                  </div>
+                  
+                  {/* Table Vocab */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-[#f2a900] text-black">
+                        <tr>
+                          <th className="py-1.5 px-2 border border-black/20 font-semibold w-8 text-center">No</th>
+                          <th className="py-1.5 px-2 border border-black/20 font-semibold w-1/5">Word</th>
+                          <th className="py-1.5 px-2 border border-black/20 font-semibold w-1/5">Phonetic Symbol</th>
+                          <th className="py-1.5 px-2 border border-black/20 font-semibold w-1/5">Cara Baca</th>
+                          <th className="py-1.5 px-2 border border-black/20 font-semibold w-1/6 text-center">Part of Speech</th>
+                          <th className="py-1.5 px-2 border border-black/20 font-semibold">Meaning</th>
+                          <th className="w-6 border border-black/20"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inggrisHari[h]?.vocab.map((v, i) => (
+                          <tr key={i} className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                            <td className="py-1 px-1 border-r border-slate-200 dark:border-slate-800 text-center text-slate-500">{i + 1}</td>
+                            <td className="py-1 px-1 border-r border-slate-200 dark:border-slate-800"><Input className="h-7 text-xs px-2 rounded-sm border-0 focus-visible:ring-1" placeholder="Orange" value={v.word} onChange={e => { const copy = { ...inggrisHari }; copy[h].vocab[i].word = e.target.value; setInggrisHari(copy) }} /></td>
+                            <td className="py-1 px-1 border-r border-slate-200 dark:border-slate-800"><Input className="h-7 text-xs px-2 rounded-sm border-0 focus-visible:ring-1" placeholder="/ˈɔːrɪndʒ/" value={v.phonetic} onChange={e => { const copy = { ...inggrisHari }; copy[h].vocab[i].phonetic = e.target.value; setInggrisHari(copy) }} /></td>
+                            <td className="py-1 px-1 border-r border-slate-200 dark:border-slate-800"><Input className="h-7 text-xs px-2 rounded-sm border-0 focus-visible:ring-1" placeholder="o-rinj" value={v.cara_baca} onChange={e => { const copy = { ...inggrisHari }; copy[h].vocab[i].cara_baca = e.target.value; setInggrisHari(copy) }} /></td>
+                            <td className="py-1 px-1 border-r border-slate-200 dark:border-slate-800"><Input className="h-7 text-xs px-2 rounded-sm border-0 focus-visible:ring-1 text-center" placeholder="Noun/Adj" value={v.pos} onChange={e => { const copy = { ...inggrisHari }; copy[h].vocab[i].pos = e.target.value; setInggrisHari(copy) }} /></td>
+                            <td className="py-1 px-1 border-r border-slate-200 dark:border-slate-800"><Input className="h-7 text-xs px-2 rounded-sm border-0 focus-visible:ring-1" placeholder="Oranye/Jingga" value={v.meaning} onChange={e => { const copy = { ...inggrisHari }; copy[h].vocab[i].meaning = e.target.value; setInggrisHari(copy) }} /></td>
+                            <td className="py-1 px-1 text-center"><button type="button" onClick={() => { const copy = { ...inggrisHari }; copy[h].vocab = copy[h].vocab.filter((_, idx) => idx !== i); setInggrisHari(copy) }} className="text-slate-400 hover:text-red-500"><X className="w-3 h-3 mx-auto" /></button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Table Phrasal Verb */}
+                  <div className="overflow-x-auto border-t border-slate-300 dark:border-slate-700">
+                    <table className="w-full text-xs">
+                      <tbody>
+                        <tr className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                          <td className="w-8 break-all flex items-center justify-center -rotate-90 origin-center text-[8px] font-bold tracking-widest text-[#f2a900] bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 h-16">PHRASAL<br/>VERB</td>
+                          <td className="flex-1 p-0">
+                            <table className="w-full h-full text-xs">
+                              <thead className="bg-[#f2a900] text-black">
+                                <tr>
+                                  <th className="py-1.5 px-2 border-r border-b border-black/20 font-semibold w-[25%]">Phrasal Verb</th>
+                                  <th className="py-1.5 px-2 border-r border-b border-black/20 font-semibold w-[25%]">Arti</th>
+                                  <th className="py-1.5 px-2 border-b border-black/20 font-semibold">Contoh Kalimat</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td className="py-1 px-1 border-r border-slate-200 dark:border-slate-800"><Input className="h-8 text-xs px-2 rounded-sm border-0 focus-visible:ring-1 text-center" placeholder="Grow up" value={inggrisHari[h]?.phrasal?.verb || ''} onChange={e => { const copy = { ...inggrisHari }; copy[h].phrasal.verb = e.target.value; setInggrisHari(copy) }} /></td>
+                                  <td className="py-1 px-1 border-r border-slate-200 dark:border-slate-800"><Input className="h-8 text-xs px-2 rounded-sm border-0 focus-visible:ring-1 text-center" placeholder="Tumbuh dewasa" value={inggrisHari[h]?.phrasal?.arti || ''} onChange={e => { const copy = { ...inggrisHari }; copy[h].phrasal.arti = e.target.value; setInggrisHari(copy) }} /></td>
+                                  <td className="py-1 px-1"><Input className="h-8 text-xs px-2 rounded-sm border-0 focus-visible:ring-1" placeholder="Their children are all grown up..." value={inggrisHari[h]?.phrasal?.contoh || ''} onChange={e => { const copy = { ...inggrisHari }; copy[h].phrasal.contoh = e.target.value; setInggrisHari(copy) }} /></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ))}
             </div>
