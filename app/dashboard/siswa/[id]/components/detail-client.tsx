@@ -491,7 +491,7 @@ export function DetailSiswaClient({
 
         {/* ======================= TAB 5: REKAP ABSENSI ======================= */}
         <TabsContent value="absensi" className="mt-4 animate-in fade-in">
-          <RekapAbsensiTab siswaId={siswa.id} />
+          <RekapAbsensiTab siswaId={siswa.id} siswa={siswa} />
         </TabsContent>
 
       </Tabs>
