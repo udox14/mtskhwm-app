@@ -5,10 +5,11 @@ import { useState } from 'react'
 import { getAbsensiPerSiswa, getWaliKelasForSiswa } from '@/app/dashboard/rekap-absensi/actions'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { 
   CalendarSearch, RefreshCw, CheckCircle2, AlertTriangle, 
   Clock, XCircle, MinusCircle, ChevronDown, ChevronRight,
-  Loader2, BarChart3, Printer
+  Loader2, BarChart3, Printer, SlidersHorizontal
 } from 'lucide-react'
 
 // ============================================================
@@ -75,6 +76,18 @@ export function RekapAbsensiTab({ siswaId, siswa }: { siswaId: string; siswa?: {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
   const [waliKelas, setWaliKelas] = useState<string | null>(null)
 
+  // ── State dialog cetak ──
+  const [showPrintDialog, setShowPrintDialog] = useState(false)
+  type StatusKey = 'HADIR' | 'HADIR PARSIAL' | 'SAKIT' | 'IZIN' | 'ALFA'
+  const ALL_STATUS: StatusKey[] = ['HADIR', 'HADIR PARSIAL', 'SAKIT', 'IZIN', 'ALFA']
+  const [printFilter, setPrintFilter] = useState<Set<StatusKey>>(new Set(ALL_STATUS))
+
+  const togglePrintFilter = (s: StatusKey) => setPrintFilter(prev => {
+    const next = new Set(prev)
+    next.has(s) ? next.delete(s) : next.add(s)
+    return next
+  })
+
   const toggleDay = (tgl: string) => setExpandedDays(prev => {
     const next = new Set(prev)
     next.has(tgl) ? next.delete(tgl) : next.add(tgl)
@@ -103,9 +116,12 @@ export function RekapAbsensiTab({ siswaId, siswa }: { siswaId: string; siswa?: {
   }
 
   // ── CETAK LAPORAN ──
-  const handlePrint = () => {
+  const handlePrint = (filterStatus: Set<StatusKey>) => {
     if (!result || result.error || !result.days) return
-    const { days, summary, siswa: siswaMeta, totalHari } = result
+    const { days: allDays, summary, siswa: siswaMeta, totalHari } = result
+
+    // Filter hari berdasarkan status yang dipilih
+    const days = allDays.filter(d => filterStatus.has(d.statusHari as StatusKey))
 
     const fmtTgl = (t: string) => new Date(t + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
     const fmtTglShort = (t: string) => new Date(t + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -274,6 +290,7 @@ export function RekapAbsensiTab({ siswaId, siswa }: { siswaId: string; siswa?: {
     w.document.close()
     w.focus()
     setTimeout(() => w.print(), 400)
+    setShowPrintDialog(false)
   }
 
   const summary = result?.summary
@@ -289,202 +306,274 @@ export function RekapAbsensiTab({ siswaId, siswa }: { siswaId: string; siswa?: {
   ] : []
 
   return (
-    <div className="space-y-4">
-      {/* ─── FILTER & TOMBOL ─── */}
-      <div className="bg-surface border border-surface rounded-xl p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <CalendarSearch className="h-5 w-5 text-cyan-600" />
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Rekap Absensi Harian</h3>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 items-end">
-          <div className="flex-1 flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Tanggal Mulai
-              </label>
-              <input
-                type="date"
-                value={tglMulai}
-                max={tglSelesai}
-                onChange={e => setTglMulai(e.target.value)}
-                className="w-full border border-surface rounded-lg px-3 py-1.5 text-sm font-medium bg-surface-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Tanggal Selesai
-              </label>
-              <input
-                type="date"
-                value={tglSelesai}
-                min={tglMulai}
-                onChange={e => setTglSelesai(e.target.value)}
-                className="w-full border border-surface rounded-lg px-3 py-1.5 text-sm font-medium bg-surface-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
-              />
-            </div>
+    <>
+      <div className="space-y-4">
+        {/* ─── FILTER & TOMBOL ─── */}
+        <div className="bg-surface border border-surface rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarSearch className="h-5 w-5 text-cyan-600" />
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Rekap Absensi Harian</h3>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <Button
-              onClick={handleLoad}
-              disabled={loading}
-              className="h-9 px-5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-sm gap-2 shadow-sm"
-            >
-              {loading
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat...</>
-                : loaded
-                ? <><RefreshCw className="h-4 w-4" /> Muat Ulang</>
-                : <><BarChart3 className="h-4 w-4" /> Muat Data</>
-              }
-            </Button>
-            {loaded && !result?.error && (result?.days?.length ?? 0) > 0 && (
-              <Button
-                onClick={handlePrint}
-                variant="outline"
-                className="h-9 px-4 text-sm font-bold gap-2 border-cyan-300 text-cyan-700 hover:bg-cyan-50"
-              >
-                <Printer className="h-4 w-4" /> Cetak Laporan
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── PLACEHOLDER (SEBELUM LOAD) ─── */}
-      {!loaded && !loading && (
-        <div className="flex flex-col items-center justify-center py-16 text-slate-400 bg-surface border border-dashed border-surface rounded-xl">
-          <BarChart3 className="h-12 w-12 mb-4 opacity-25" />
-          <p className="font-semibold text-slate-500">Data belum dimuat</p>
-          <p className="text-sm mt-1">Atur rentang tanggal lalu tekan <strong>Muat Data Absensi</strong></p>
-        </div>
-      )}
-
-      {/* ─── LOADING SKELETON ─── */}
-      {loading && (
-        <div className="space-y-2 animate-pulse">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-14 bg-surface rounded-xl border border-surface" />
-          ))}
-        </div>
-      )}
-
-      {/* ─── ERROR ─── */}
-      {loaded && result?.error && (
-        <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-4">
-          <AlertTriangle className="h-5 w-5 shrink-0" />
-          <p className="font-semibold text-sm">{result.error}</p>
-        </div>
-      )}
-
-      {/* ─── HASIL ─── */}
-      {loaded && !result?.error && (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {statCards.map(s => (
-              <div key={s.label} className={`border rounded-xl p-3 text-center flex flex-col items-center ${s.cls}`}>
-                <p className="text-2xl font-black">{s.val}</p>
-                <p className="text-[10px] font-bold uppercase tracking-wider mt-0.5">{s.label}</p>
+          <div className="flex flex-col sm:flex-row gap-3 items-end">
+            <div className="flex-1 flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Tanggal Mulai
+                </label>
+                <input
+                  type="date"
+                  value={tglMulai}
+                  max={tglSelesai}
+                  onChange={e => setTglMulai(e.target.value)}
+                  className="w-full border border-surface rounded-lg px-3 py-1.5 text-sm font-medium bg-surface-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
+                />
               </div>
+              <div className="flex-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Tanggal Selesai
+                </label>
+                <input
+                  type="date"
+                  value={tglSelesai}
+                  min={tglMulai}
+                  onChange={e => setTglSelesai(e.target.value)}
+                  className="w-full border border-surface rounded-lg px-3 py-1.5 text-sm font-medium bg-surface-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button
+                onClick={handleLoad}
+                disabled={loading}
+                className="h-9 px-5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-sm gap-2 shadow-sm"
+              >
+                {loading
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat...</>
+                  : loaded
+                  ? <><RefreshCw className="h-4 w-4" /> Muat Ulang</>
+                  : <><BarChart3 className="h-4 w-4" /> Muat Data</>
+                }
+              </Button>
+              {loaded && !result?.error && (result?.days?.length ?? 0) > 0 && (
+                <Button
+                  onClick={() => {
+                    setPrintFilter(new Set(ALL_STATUS))
+                    setShowPrintDialog(true)
+                  }}
+                  variant="outline"
+                  className="h-9 px-4 text-sm font-bold gap-2 border-cyan-300 text-cyan-700 hover:bg-cyan-50"
+                >
+                  <Printer className="h-4 w-4" /> Cetak Laporan
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── PLACEHOLDER (SEBELUM LOAD) ─── */}
+        {!loaded && !loading && (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400 bg-surface border border-dashed border-surface rounded-xl">
+            <BarChart3 className="h-12 w-12 mb-4 opacity-25" />
+            <p className="font-semibold text-slate-500">Data belum dimuat</p>
+            <p className="text-sm mt-1">Atur rentang tanggal lalu tekan <strong>Muat Data Absensi</strong></p>
+          </div>
+        )}
+
+        {/* ─── LOADING SKELETON ─── */}
+        {loading && (
+          <div className="space-y-2 animate-pulse">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-14 bg-surface rounded-xl border border-surface" />
             ))}
           </div>
+        )}
 
-          {/* Daftar Harian */}
-          {days.length === 0 ? (
-            <div className="text-center py-12 bg-surface border border-dashed border-surface rounded-xl text-slate-400">
-              <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-emerald-200" />
-              <p className="font-semibold text-slate-500">Tidak ada data absensi pada rentang ini.</p>
+        {/* ─── ERROR ─── */}
+        {loaded && result?.error && (
+          <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-4">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="font-semibold text-sm">{result.error}</p>
+          </div>
+        )}
+
+        {/* ─── HASIL ─── */}
+        {loaded && !result?.error && (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {statCards.map(s => (
+                <div key={s.label} className={`border rounded-xl p-3 text-center flex flex-col items-center ${s.cls}`}>
+                  <p className="text-2xl font-black">{s.val}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider mt-0.5">{s.label}</p>
+                </div>
+              ))}
             </div>
-          ) : (
-            <ScrollArea className="max-h-[520px] pr-1">
-              <div className="space-y-1.5">
-                {days.map(day => {
-                  const isExpanded = expandedDays.has(day.tanggal)
-                  const hasDetail = day.detail.length > 0
-                  return (
-                    <div
-                      key={day.tanggal}
-                      className="border border-surface rounded-xl overflow-hidden bg-surface shadow-sm"
-                    >
-                      {/* Row Utama */}
-                      <button
-                        onClick={() => hasDetail && toggleDay(day.tanggal)}
-                        disabled={!hasDetail}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left ${
-                          hasDetail ? 'hover:bg-surface-2 cursor-pointer' : 'cursor-default'
-                        } ${isExpanded ? 'bg-surface-2' : ''}`}
-                      >
-                        {/* Tanggal */}
-                        <div className="shrink-0 text-center w-10">
-                          <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-none">
-                            {new Date(day.tanggal + 'T00:00:00').getDate()}
-                          </p>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">
-                            {day.hariNama.slice(0, 3)}
-                          </p>
-                        </div>
 
-                        {/* Tanggal lengkap */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">
-                            {new Date(day.tanggal + 'T00:00:00').toLocaleDateString('id-ID', {
-                              day: 'numeric', month: 'long', year: 'numeric'
-                            })}
-                          </p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {day.blokHadir}/{day.totalBlok} blok hadir
-                          </p>
-                        </div>
-
-                        {/* Status */}
-                        <StatusBadge status={day.statusHari} />
-
-                        {/* Chevron jika ada detail */}
-                        {hasDetail && (
-                          <span className="text-slate-400 shrink-0">
-                            {isExpanded
-                              ? <ChevronDown className="h-4 w-4" />
-                              : <ChevronRight className="h-4 w-4" />}
-                          </span>
-                        )}
-                      </button>
-
-                      {/* Detail Ketidakhadiran */}
-                      {isExpanded && hasDetail && (
-                        <div className="border-t border-surface bg-slate-50/70 divide-y divide-slate-100 animate-in slide-in-from-top-1 fade-in duration-200">
-                          {day.detail.map((d, i) => (
-                            <div key={i} className="flex items-start gap-3 px-4 py-2">
-                              <span className={`mt-0.5 shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full border ${
-                                d.status === 'ALFA'  ? 'bg-rose-100 text-rose-700 border-rose-200' :
-                                d.status === 'SAKIT' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                d.status === 'IZIN'  ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                'bg-slate-100 text-slate-600 border-slate-200'
-                              }`}>
-                                {d.status}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{d.nama_mapel}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">
-                                  Jam ke-{d.jam_ke_mulai}{d.jam_ke_selesai > d.jam_ke_mulai ? `–${d.jam_ke_selesai}` : ''}
-                                  {d.guru_nama ? ` · ${d.guru_nama}` : ''}
-                                </p>
-                                {d.catatan && (
-                                  <p className="text-[10px] italic text-slate-500 mt-0.5 bg-white border border-slate-100 rounded px-2 py-0.5">
-                                    "{d.catatan}"
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+            {/* Daftar Harian */}
+            {days.length === 0 ? (
+              <div className="text-center py-12 bg-surface border border-dashed border-surface rounded-xl text-slate-400">
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-emerald-200" />
+                <p className="font-semibold text-slate-500">Tidak ada data absensi pada rentang ini.</p>
               </div>
-            </ScrollArea>
-          )}
-        </>
-      )}
-    </div>
+            ) : (
+              <ScrollArea className="max-h-[520px] pr-1">
+                <div className="space-y-1.5">
+                  {days.map(day => {
+                    const isExpanded = expandedDays.has(day.tanggal)
+                    const hasDetail = day.detail.length > 0
+                    return (
+                      <div
+                        key={day.tanggal}
+                        className="border border-surface rounded-xl overflow-hidden bg-surface shadow-sm"
+                      >
+                        <button
+                          onClick={() => hasDetail && toggleDay(day.tanggal)}
+                          disabled={!hasDetail}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left ${
+                            hasDetail ? 'hover:bg-surface-2 cursor-pointer' : 'cursor-default'
+                          } ${isExpanded ? 'bg-surface-2' : ''}`}
+                        >
+                          <div className="shrink-0 text-center w-10">
+                            <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-none">
+                              {new Date(day.tanggal + 'T00:00:00').getDate()}
+                            </p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase">
+                              {day.hariNama.slice(0, 3)}
+                            </p>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">
+                              {new Date(day.tanggal + 'T00:00:00').toLocaleDateString('id-ID', {
+                                day: 'numeric', month: 'long', year: 'numeric'
+                              })}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {day.blokHadir}/{day.totalBlok} blok hadir
+                            </p>
+                          </div>
+                          <StatusBadge status={day.statusHari} />
+                          {hasDetail && (
+                            <span className="text-slate-400 shrink-0">
+                              {isExpanded
+                                ? <ChevronDown className="h-4 w-4" />
+                                : <ChevronRight className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </button>
+
+                        {isExpanded && hasDetail && (
+                          <div className="border-t border-surface bg-slate-50/70 divide-y divide-slate-100 animate-in slide-in-from-top-1 fade-in duration-200">
+                            {day.detail.map((d, i) => (
+                              <div key={i} className="flex items-start gap-3 px-4 py-2">
+                                <span className={`mt-0.5 shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                                  d.status === 'ALFA'  ? 'bg-rose-100 text-rose-700 border-rose-200' :
+                                  d.status === 'SAKIT' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                  d.status === 'IZIN'  ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                  'bg-slate-100 text-slate-600 border-slate-200'
+                                }`}>
+                                  {d.status}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{d.nama_mapel}</p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">
+                                    Jam ke-{d.jam_ke_mulai}{d.jam_ke_selesai > d.jam_ke_mulai ? `–${d.jam_ke_selesai}` : ''}
+                                    {d.guru_nama ? ` · ${d.guru_nama}` : ''}
+                                  </p>
+                                  {d.catatan && (
+                                    <p className="text-[10px] italic text-slate-500 mt-0.5 bg-white border border-slate-100 rounded px-2 py-0.5">
+                                      "{d.catatan}"
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ─── DIALOG KONFIRMASI CETAK ─── */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <SlidersHorizontal className="h-5 w-5 text-cyan-600" />
+              Pilih Status yang Dicetak
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-1 space-y-2">
+            <p className="text-xs text-slate-500 pb-1">
+              Centang status kehadiran yang ingin diikutkan dalam laporan cetak.
+            </p>
+
+            {([
+              { key: 'HADIR'         as StatusKey, label: 'Hadir',         desc: 'Hadir semua jam pelajaran',   cls: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+              { key: 'HADIR PARSIAL' as StatusKey, label: 'Hadir Parsial', desc: 'Hadir sebagian jam',          cls: 'bg-amber-50 border-amber-200 text-amber-700' },
+              { key: 'SAKIT'         as StatusKey, label: 'Sakit',         desc: 'Tidak hadir karena sakit',    cls: 'bg-blue-50 border-blue-200 text-blue-700' },
+              { key: 'IZIN'          as StatusKey, label: 'Izin',          desc: 'Tidak hadir karena izin',     cls: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+              { key: 'ALFA'          as StatusKey, label: 'Alfa',          desc: 'Tidak hadir tanpa keterangan',cls: 'bg-rose-50 border-rose-200 text-rose-700' },
+            ]).map(item => {
+              const count = result?.days?.filter(d => d.statusHari === item.key).length ?? 0
+              const checked = printFilter.has(item.key)
+              return (
+                <label
+                  key={item.key}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all select-none ${
+                    checked
+                      ? `${item.cls} shadow-sm`
+                      : 'bg-surface border-surface text-slate-400 opacity-60'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => togglePrintFilter(item.key)}
+                    className="h-4 w-4 rounded shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold leading-none">{item.label}</p>
+                    <p className="text-[11px] mt-0.5 opacity-75">{item.desc}</p>
+                  </div>
+                  <span className="text-xl font-black shrink-0 w-8 text-right">{count}</span>
+                </label>
+              )
+            })}
+
+            <div className="pt-3 border-t border-surface-2 text-xs text-slate-500 flex justify-between items-center">
+              <span>Total hari yang akan dicetak:</span>
+              <strong className="text-sm text-slate-700 dark:text-slate-200">
+                {result?.days?.filter(d => printFilter.has(d.statusHari as StatusKey)).length ?? 0} hari
+              </strong>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 flex-row justify-end pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPrintDialog(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              disabled={printFilter.size === 0}
+              onClick={() => handlePrint(printFilter)}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white gap-2"
+            >
+              <Printer className="h-4 w-4" /> Cetak Sekarang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
