@@ -286,7 +286,26 @@ export function MonitoringClient({
                           </span>
                           {r.is_pulang_cepat ? <span className="block text-[8px] text-orange-500 font-bold">CEPAT</span> : null}
                         </TableCell>
+                        <TableCell className="text-center">
+                          {r.status === 'hadir' ? (
+                            <div className="flex items-center justify-center gap-1">
+                              {r.jam_masuk && (
+                                <button onClick={() => setViewPhoto({ url: `${r2PublicUrl}/presensi/${r.tanggal}/${r.user_id}_masuk.jpg`, title: `Foto Masuk - ${r.nama_lengkap}` })} className="p-1 rounded text-emerald-600 hover:bg-emerald-100" title="Foto Masuk">
+                                  <Camera className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              {r.jam_pulang && (
+                                <button onClick={() => setViewPhoto({ url: `${r2PublicUrl}/presensi/${r.tanggal}/${r.user_id}_pulang.jpg`, title: `Foto Pulang - ${r.nama_lengkap}` })} className="p-1 rounded text-rose-500 hover:bg-rose-100" title="Foto Pulang">
+                                  <Eye className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-[10px] text-slate-400 truncate max-w-[100px]">{r.catatan || ''}</TableCell>
+
                       </TableRow>
                     ))}
                     {belumAbsen.map((p, i) => (
@@ -389,7 +408,26 @@ export function MonitoringClient({
                           <span className={cn("text-xs font-mono", r.is_pulang_cepat ? 'text-orange-600 font-bold' : 'text-slate-600')}>{r.jam_pulang || '—'}</span>
                           {r.is_pulang_cepat ? <span className="block text-[8px] text-orange-500 font-bold">CEPAT</span> : null}
                         </TableCell>
+                        <TableCell className="text-center">
+                          {r.status === 'hadir' ? (
+                            <div className="flex items-center justify-center gap-1">
+                              {r.jam_masuk && (
+                                <button onClick={() => setViewPhoto({ url: `${r2PublicUrl}/presensi/${r.tanggal}/${r.user_id}_masuk.jpg`, title: `Foto Masuk - ${r.nama_lengkap} (${r.tanggal})` })} className="p-1 rounded text-emerald-600 hover:bg-emerald-100" title="Foto Masuk">
+                                  <Camera className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              {r.jam_pulang && (
+                                <button onClick={() => setViewPhoto({ url: `${r2PublicUrl}/presensi/${r.tanggal}/${r.user_id}_pulang.jpg`, title: `Foto Pulang - ${r.nama_lengkap} (${r.tanggal})` })} className="p-1 rounded text-rose-500 hover:bg-rose-100" title="Foto Pulang">
+                                  <Eye className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-[10px] text-slate-400 truncate max-w-[100px]">{r.catatan || ''}</TableCell>
+
                       </TableRow>
                     ))}
                   </TableBody>
