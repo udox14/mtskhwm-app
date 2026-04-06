@@ -4,6 +4,8 @@ import { useRef, useState, useEffect } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Camera, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
 
 export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) => void, onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -60,14 +62,17 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
   const capturePhoto = () => {
     const video = videoRef.current
     const canvas = canvasRef.current
-    if (!video || !canvas || captured) return
+    if (!video || !canvas || captured || !isVideoReady) return
+
     
     // Safety check: video must have dimensions
     if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.warn("Video not ready for capture, retrying in 500ms...")
-      setTimeout(capturePhoto, 500)
+      console.warn("Video not ready for capture, dimensions 0")
+      // Force ready state to try capturing anyway after a slight delay
+      setTimeout(capturePhoto, 300)
       return
     }
+
 
     setCaptured(true)
     
@@ -79,29 +84,35 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
     canvas.width = targetWidth
     canvas.height = targetHeight
 
-
     const ctx = canvas.getContext('2d')
     if (ctx) {
-      // Mirror horizontal to match preview
-      ctx.translate(canvas.width, 0)
-      ctx.scale(-1, 1)
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], `presensi_${Date.now()}.jpg`, { type: 'image/jpeg' })
-          onCapture(file)
-        } else {
-          console.error("Canvas toBlob returned null")
-          setError("Gagal memproses foto. Silakan coba lagi.")
-          setCaptured(false)
-        }
-      }, 'image/jpeg', 0.85) // 85% quality for "sedikit lebih bagus"
+      try {
+        // Mirror horizontal to match preview
+        ctx.translate(canvas.width, 0)
+        ctx.scale(-1, 1)
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `presensi_${Date.now()}.jpg`, { type: 'image/jpeg' })
+            onCapture(file)
+          } else {
+            console.error("Canvas toBlob returned null")
+            setError("Gagal memproses foto. Silakan coba lagi.")
+            setCaptured(false)
+          }
+        }, 'image/jpeg', 0.85) // 85% quality for "sedikit lebih bagus"
+      } catch (err: any) {
+        console.error("Canvas draw error:", err)
+        setError("Gagal merender foto. Silakan coba lagi.")
+        setCaptured(false)
+      }
     } else {
       setError("Gagal menginisialisasi context kamera.")
       setCaptured(false)
     }
   }
+
 
 
   return (
@@ -122,33 +133,44 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
                 Ganti Metode / Tutup
               </Button>
             </div>
-          ) : !stream ? (
-            <div className="flex flex-col items-center gap-4 text-white font-sans">
-              <div className="relative">
-                <Loader2 className="h-10 w-10 animate-spin text-teal-400/50" />
-                <Camera className="h-4 w-4 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-teal-400" />
-              </div>
-              <div className="text-center font-sans">
-                <p className="text-xs font-semibold text-teal-400/80 uppercase tracking-widest animate-pulse">Initializing</p>
-                <p className="text-[10px] text-slate-500 italic mt-0.5">Membuka kamera depan...</p>
-              </div>
-            </div>
           ) : (
             <>
-              {/* LIVE PREVIEW */}
+              {/* LIVE PREVIEW (Always Rendered Behind Loading State) */}
               <video 
                 ref={videoRef} 
                 autoPlay 
                 playsInline 
                 muted 
                 onLoadedMetadata={() => {
-                  console.log("Video metadata loaded:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)
+                  console.log("Video metadata loaded")
                   setIsVideoReady(true)
                 }}
-                className="w-full h-full object-cover -scale-x-100" 
+                onCanPlay={() => {
+                  console.log("Video can play")
+                  setIsVideoReady(true)
+                }}
+
+                className={cn(
+                  "absolute inset-0 w-full h-full object-cover -scale-x-100 transition-opacity duration-300",
+                  isVideoReady ? "opacity-100" : "opacity-0"
+                )}
               />
+
+              {!isVideoReady && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-white font-sans bg-slate-900 z-10">
+                  <div className="relative">
+                    <Loader2 className="h-10 w-10 animate-spin text-teal-400/50" />
+                    <Camera className="h-4 w-4 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-teal-400" />
+                  </div>
+                  <div className="text-center font-sans">
+                    <p className="text-xs font-semibold text-teal-400/80 uppercase tracking-widest animate-pulse">Initializing</p>
+                    <p className="text-[10px] text-slate-500 italic mt-0.5">Membuka kamera depan...</p>
+                  </div>
+                </div>
+              )}
               
               {/* OVERLAY: SCANNING EFFECT */}
+
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute inset-[10%] border-2 border-white/20 rounded-3xl" />
                 <div className="absolute top-[20px] left-1/2 -translate-x-1/2 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-1.5 whitespace-nowrap">
@@ -158,8 +180,8 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
               </div>
 
               {/* COUNTDOWN OVERLAY */}
-              {countdown !== null && countdown > 0 && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10 backdrop-blur-[2px] transition-all">
+              {isVideoReady && countdown !== null && countdown > 0 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/10 backdrop-blur-[2px] transition-all z-20">
                   <div className="relative flex items-center justify-center h-32 w-32">
                     <div className="absolute inset-0 border-4 border-teal-400/30 rounded-full animate-ping" />
                     <div className="absolute inset-4 border-2 border-teal-400/40 rounded-full animate-ping [animation-delay:200ms]" />
@@ -171,12 +193,14 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
                 </div>
               )}
 
+
               {/* UPLOADING STATE */}
               {captured && (
-                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center gap-4 animate-in fade-in duration-500">
+                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center gap-4 animate-in fade-in duration-500 z-30">
                   <div className="relative">
                     <div className="h-16 w-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin" />
                     <Camera className="h-6 w-6 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-teal-400" />
+
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-bold text-white tracking-wide">Processing Photo</p>
