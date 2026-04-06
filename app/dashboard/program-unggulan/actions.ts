@@ -77,13 +77,13 @@ export async function getKelasUnggulanGuru(guruId: string, dateOverride?: string
 // ============================================================
 export async function getSiswaTesList(puKelasId: string, guruId: string, jamMengajar: number, dateOverride?: string) {
   const db = await getDB()
-  
+
   let today = todayWIB()
   const resolvedDate = dateOverride || (await getActAsDate()) || null
   if (resolvedDate && /^\d{4}-\d{2}-\d{2}$/.test(resolvedDate)) {
     today = resolvedDate
   }
-  
+
   const jumlahSiswa = JAM_TO_SISWA[jamMengajar] ?? 3
 
   // Cek apakah sudah ada assignment untuk guru ini hari ini di kelas ini
@@ -240,7 +240,7 @@ export async function resetStatusTes(hasilId: string) {
 // ============================================================
 export async function getMateriTes(puKelasId: string) {
   const db = await getDB()
-  
+
   // Ambil materi mingguan aktif (urut dari yang terbaru)
   const result = await db.prepare(`
     SELECT m.id, m.program, m.minggu_mulai, m.konten
@@ -257,7 +257,7 @@ export async function getMateriTes(puKelasId: string) {
     let html = ''
     try {
       const data = JSON.parse(row.konten)
-      
+
       if (row.program === 'tahfidz') {
         judul = `Tahfidz: Surah ${data.surat || ''} (${data.nama_arab || ''})`
         let tableHtml = '<table class="w-full text-sm"><thead><tr><th>Hari</th><th>Ayat</th><th>Teks</th></tr></thead><tbody>'
@@ -273,7 +273,7 @@ export async function getMateriTes(puKelasId: string) {
         }
         tableHtml += '</tbody></table>'
         html = tableHtml
-      } 
+      }
       else if (row.program === 'bahasa_arab') {
         let listHtml = '<div class="space-y-4">'
         for (let i = 1; i <= 6; i++) {
@@ -292,7 +292,7 @@ export async function getMateriTes(puKelasId: string) {
         }
         listHtml += '</div>'
         html = listHtml
-      } 
+      }
       else if (row.program === 'bahasa_inggris') {
         let contentHtml = '<div class="space-y-4">'
         for (let i = 1; i <= 6; i++) {
@@ -309,10 +309,10 @@ export async function getMateriTes(puKelasId: string) {
             const { vocab, phrasal } = dayData
             let hasVocab = vocab && vocab.length > 0 && vocab.some((v: any) => v.word)
             let hasPhrasal = phrasal && (phrasal.verb || phrasal.arti || phrasal.contoh)
-            
+
             if (hasVocab || hasPhrasal) {
               contentHtml += `<div class="border rounded px-3 py-2"><h4 class="font-bold text-violet-600 mb-2 pb-1 border-b">${HARI_NAMES[i]}</h4>`
-              
+
               if (hasVocab) {
                 contentHtml += `<table class="w-full text-xs text-left mb-3">
                   <thead class="bg-gray-100">
@@ -334,7 +334,7 @@ export async function getMateriTes(puKelasId: string) {
               if (hasPhrasal) {
                 contentHtml += `<table class="w-full text-xs text-left">
                   <thead class="bg-gray-100">
-                    <tr><th class="p-1 w-1/4">Phrasal Verb</th><th class="p-1 w-1/4">Arti</th><th class="p-1">Contoh</th></tr>
+                    <tr><th class="p-1 w-1/4">PV</th><th class="p-1 w-1/4">Arti</th><th class="p-1">Contoh</th></tr>
                   </thead>
                   <tbody>
                     <tr class="border-b">
