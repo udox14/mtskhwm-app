@@ -128,3 +128,13 @@ export function getPresensiPhotoUrl(userId: string, action: string, tanggal: str
   return `/api/media/presensi/${tanggal}/${userId}_${action}.jpg`
 }
 
+// Upload foto sarpras — nama unik, perlu hapus manual saat delete/edit
+export async function uploadFotoSarpras(file: File) {
+  const validationError = validateImageFile(file)
+  if (validationError) return { url: null, error: validationError }
+
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+  const fileName = `aset_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
+  return uploadToR2(file, 'sarpras', fileName)
+}
+

@@ -22,6 +22,7 @@ import {
   ClipboardList,
   FileText,
   SlidersHorizontal,
+  PackageSearch
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -137,6 +138,13 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/kedisiplinan',
     icon: AlertTriangle,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru_bk', 'guru_piket', 'resepsionis', 'guru_ppl', 'wali_kelas']
+  },
+  {
+    id: 'sarpras',
+    title: 'Sarana Prasarana',
+    href: '/dashboard/sarpras',
+    icon: PackageSearch,
+    roles: ['super_admin', 'admin_tu']
   },
   {
     id: 'bk',

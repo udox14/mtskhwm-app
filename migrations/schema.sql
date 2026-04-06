@@ -272,3 +272,32 @@ CREATE INDEX IF NOT EXISTS idx_session_userId          ON session(userId);
 -- SEED DATA
 -- ============================================================
 INSERT OR IGNORE INTO pengaturan_akademik (id) VALUES ('global');
+
+-- ============================================================
+-- TABEL SARPRAS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS sarpras_kategori (
+  id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  nama        TEXT NOT NULL UNIQUE,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sarpras_aset (
+  id                 TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  tanggal_pembukuan  TEXT NOT NULL,
+  kategori_id        TEXT NOT NULL REFERENCES sarpras_kategori(id),
+  nama_barang        TEXT NOT NULL,
+  merek              TEXT,
+  kuantitas          INTEGER NOT NULL DEFAULT 1,
+  tahun_pembuatan    TEXT,
+  asal_anggaran      TEXT,
+  keadaan_barang     TEXT,
+  harga              INTEGER,
+  foto_url           TEXT,
+  keterangan         TEXT,
+  diinput_oleh       TEXT REFERENCES "user"(id),
+  created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at         TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sarpras_aset_kategori ON sarpras_aset(kategori_id);
