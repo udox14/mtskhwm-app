@@ -15,8 +15,8 @@ import { ActAsBanner } from '@/components/layout/act-as-banner'
 export const metadata = { title: 'Program Unggulan - MTSKHWM App' }
 export const dynamic = 'force-dynamic'
 
-async function DataFetcher({ effectiveUserId, namaLengkap }: { effectiveUserId: string; namaLengkap: string }) {
-  const { data, error } = await getKelasUnggulanGuru(effectiveUserId)
+async function DataFetcher({ effectiveUserId, namaLengkap, dateOverride }: { effectiveUserId: string; namaLengkap: string; dateOverride?: string | null }) {
+  const { data, error } = await getKelasUnggulanGuru(effectiveUserId, dateOverride || undefined)
   if (error) {
     return (
       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -42,6 +42,12 @@ export default async function ProgramUnggulanPage() {
   const effective = await getEffectiveUser()
   const effectiveUserId = effective?.effectiveUserId || user.id
 
+  // Ambil daftar guru hanya jika super admin
+  const actAsUsers = isSuperAdmin ? await getActAsUserList() : []
+
+  // Ambil tanggal override jika sedang Act As
+  const actAsDate = (isSuperAdmin && effective?.isActingAs) ? await getActAsDate() : null
+
   // Nama yang tampil: jika act-as, pakai nama guru target
   const namaLengkap = effective?.isActingAs
     ? (effective.actAsName ?? '')
@@ -53,12 +59,6 @@ export default async function ProgramUnggulanPage() {
     // Uncomment baris di bawah jika ingin redirect otomatis:
     // redirect('/dashboard/program-unggulan/kelola')
   }
-
-  // Ambil daftar guru hanya jika super admin
-  const actAsUsers = isSuperAdmin ? await getActAsUserList() : []
-
-  // Ambil tanggal override jika sedang Act As
-  const actAsDate = (isSuperAdmin && effective?.isActingAs) ? await getActAsDate() : null
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12 max-w-lg mx-auto">
@@ -82,7 +82,7 @@ export default async function ProgramUnggulanPage() {
       )}
 
       <Suspense fallback={<PageLoading text="Memuat program unggulan..." />}>
-        <DataFetcher effectiveUserId={effectiveUserId} namaLengkap={namaLengkap} />
+        <DataFetcher effectiveUserId={effectiveUserId} namaLengkap={namaLengkap} dateOverride={actAsDate} />
       </Suspense>
     </div>
   )

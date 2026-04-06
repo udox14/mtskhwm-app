@@ -34,24 +34,38 @@ const JAM_TO_SISWA: Record<number, number> = { 1: 1, 2: 3, 3: 4, 4: 5 }
 // ============================================================
 // 1. GET KELAS UNGGULAN UNTUK GURU
 // ============================================================
-export async function getKelasUnggulanGuru(guruId: string) {
+export async function getKelasUnggulanGuru(guruId: string, dateOverride?: string) {
   const db = await getDB()
   const ta = await db.prepare('SELECT id FROM tahun_ajaran WHERE is_active = 1 LIMIT 1').first<{ id: string }>()
   if (!ta) return { data: [], error: 'Tahun ajaran aktif belum diatur' }
 
+  let todayStr = todayWIB()
+  const resolvedDate = dateOverride || (await getActAsDate()) || null
+  if (resolvedDate && /^\d{4}-\d{2}-\d{2}$/.test(resolvedDate)) {
+    todayStr = resolvedDate
+  }
+
+  // Cari hari dari hari di sistem (1=Senin ... 6=Sabtu, 0=Minggu)
+  const dateObj = new Date(todayStr + 'T00:00:00+07:00')
+  let hari = dateObj.getDay()
+  if (hari === 0) hari = 7
+
+  // Ambil kelas unggulan yang diajar oleh guru ini PADA HARI INI berdasarkan jadwal nyata
   const result = await db.prepare(`
     SELECT
       pk.id       AS pu_kelas_id,
       k.id        AS kelas_id,
       k.tingkat, k.nomor_kelas, k.kelompok,
-      pg.jam_mengajar,
-      pg.id       AS pu_guru_kelas_id
-    FROM pu_guru_kelas pg
-    JOIN pu_kelas_unggulan pk ON pg.pu_kelas_id = pk.id
-    JOIN kelas k ON pk.kelas_id = k.id
-    WHERE pg.guru_id = ? AND pk.tahun_ajaran_id = ?
+      COUNT(jm.jam_ke) AS jam_mengajar,
+      'legacy'    AS pu_guru_kelas_id
+    FROM penugasan_mengajar pm
+    JOIN jadwal_mengajar jm ON jm.penugasan_id = pm.id
+    JOIN pu_kelas_unggulan pk ON pk.kelas_id = pm.kelas_id
+    JOIN kelas k ON pm.kelas_id = k.id
+    WHERE pm.guru_id = ? AND pm.tahun_ajaran_id = ? AND jm.hari = ?
+    GROUP BY pk.id, k.id, k.tingkat, k.nomor_kelas, k.kelompok
     ORDER BY k.tingkat, k.kelompok, k.nomor_kelas
-  `).bind(guruId, ta.id).all<PuKelasGuru>()
+  `).bind(guruId, ta.id, hari).all<PuKelasGuru>()
 
   return { data: result.results || [], error: null }
 }
