@@ -20,6 +20,14 @@ const ACCENT_COLORS = [
 
 type AccentKey = typeof ACCENT_COLORS[number]['id']
 
+const getAccentHex = (id: AccentKey) => {
+  const map: Record<string, string> = {
+    emerald: '#10b981', blue: '#3b82f6', violet: '#8b5cf6',
+    rose: '#f43f5e', amber: '#f59e0b', cyan: '#06b6d4'
+  }
+  return map[id as string] || '#cbd5e1'
+}
+
 const MENU_GROUPS = [
   { label: 'Utama',     hrefs: ['/dashboard'] },
   { label: 'Kesiswaan & Kelas', hrefs: ['/dashboard/siswa', '/dashboard/kelas', '/dashboard/plotting', '/dashboard/kehadiran', '/dashboard/rekap-absensi'] },
@@ -121,7 +129,7 @@ export function Sidebar({
   const roleDisplay = primaryRole.replace(/_/g, ' ')
   const extraRoleCount = userRoles.length > 1 ? userRoles.length - 1 : 0
 
-  const NavContent = ({ mobile = false }: { mobile?: boolean }) => {
+  const renderNavContent = (mobile = false) => {
     const collapsed = !mobile && isCollapsed
     return (
       <div className="flex flex-col h-full">
@@ -154,9 +162,8 @@ export function Sidebar({
           <style>{`
             .custom-scrollbar::-webkit-scrollbar { width: 5px; }
             .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background-color: ${getAccentHex(accentId)}80; border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: ${getAccentHex(accentId)}; }
           `}</style>
           {MENU_GROUPS.map((group, gi) => {
             const groupItems = group.hrefs
@@ -294,7 +301,7 @@ export function Sidebar({
         'hidden lg:flex flex-col h-[100dvh] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700/60 shrink-0 sticky top-0 transition-all duration-300 relative',
         isCollapsed ? 'w-[52px]' : 'w-52'
       )}>
-        <NavContent />
+        {renderNavContent()}
         <button onClick={toggleCollapse}
           className="absolute -right-3 top-[24px] z-10 h-5 w-5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-sm flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
         >
@@ -307,7 +314,7 @@ export function Sidebar({
         'fixed top-0 left-0 z-50 h-[100dvh] w-56 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700/60 flex flex-col lg:hidden transition-transform duration-300 ease-in-out shadow-xl',
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
-        <NavContent mobile />
+        {renderNavContent(true)}
       </aside>
 
       <button id="mobile-sidebar-trigger" onClick={() => setIsOpen(true)} className="hidden" aria-label="Buka menu" />
