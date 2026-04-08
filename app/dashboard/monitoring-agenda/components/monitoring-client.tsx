@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Search, Loader2, Eye, Edit3, CheckCircle2, Clock, XCircle,
   AlertTriangle, Calendar, BarChart3, Printer,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Send,
 } from 'lucide-react'
 import {
   getMonitoringHarian, getRekapKehadiranGuru,
@@ -32,12 +32,13 @@ interface MonitoringClientProps {
 const STATUS_STYLE: Record<string, { bg: string; text: string; icon: any; label: string; dot: string }> = {
   TEPAT_WAKTU: { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: CheckCircle2, label: 'Tepat Waktu', dot: 'bg-emerald-500' },
   TELAT:       { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700', icon: Clock, label: 'Telat', dot: 'bg-amber-500' },
+  TUGAS:       { bg: 'bg-violet-50 border-violet-200', text: 'text-violet-700', icon: Send, label: 'Tugas', dot: 'bg-violet-500' },
   ALFA:        { bg: 'bg-red-50 border-red-200', text: 'text-red-700', icon: XCircle, label: 'Alfa', dot: 'bg-red-500' },
   SAKIT:       { bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700', icon: AlertTriangle, label: 'Sakit', dot: 'bg-blue-500' },
   IZIN:        { bg: 'bg-sky-50 border-sky-200', text: 'text-sky-700', icon: AlertTriangle, label: 'Izin', dot: 'bg-sky-500' },
 }
 
-const STATUS_OPTIONS = ['TEPAT_WAKTU', 'TELAT', 'ALFA', 'SAKIT', 'IZIN']
+const STATUS_OPTIONS = ['TEPAT_WAKTU', 'TELAT', 'TUGAS', 'ALFA', 'SAKIT', 'IZIN']
 const HARI_NAMA = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 
 function formatTanggal(tgl: string) {
@@ -231,6 +232,9 @@ function TabHarian({ filterOptions }: { filterOptions: MonitoringClientProps['fi
                       <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${style.bg} ${style.text}`}>
                         <StatusIcon className="h-3 w-3" />{style.label}
                       </span>
+                      {item.status === 'TUGAS' && item.pelaksana_nama && (
+                        <p className="text-[10px] text-violet-500 mt-0.5">Pelaksana: {item.pelaksana_nama}</p>
+                      )}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       {item.agenda_id && (
@@ -426,6 +430,7 @@ function TabRekap({ filterOptions }: { filterOptions: MonitoringClientProps['fil
                 <TableHead className="text-xs text-center">Total Blok</TableHead>
                 <TableHead className="text-xs text-center">Tepat</TableHead>
                 <TableHead className="text-xs text-center">Telat</TableHead>
+                <TableHead className="text-xs text-center">Tugas</TableHead>
                 <TableHead className="text-xs text-center">Alfa</TableHead>
                 <TableHead className="text-xs text-center">Sakit</TableHead>
                 <TableHead className="text-xs text-center">Izin</TableHead>
@@ -444,6 +449,7 @@ function TabRekap({ filterOptions }: { filterOptions: MonitoringClientProps['fil
                     <TableCell className="text-xs text-center text-slate-600">{item.total_blok}</TableCell>
                     <TableCell className="text-xs text-center text-emerald-600 font-medium">{item.tepat_waktu}</TableCell>
                     <TableCell className="text-xs text-center text-amber-600 font-medium">{item.telat}</TableCell>
+                    <TableCell className="text-xs text-center text-violet-600 font-medium">{item.tugas || 0}</TableCell>
                     <TableCell className="text-xs text-center text-red-600 font-medium">{item.alfa}</TableCell>
                     <TableCell className="text-xs text-center text-blue-600 font-medium">{item.sakit}</TableCell>
                     <TableCell className="text-xs text-center text-sky-600 font-medium">{item.izin}</TableCell>
