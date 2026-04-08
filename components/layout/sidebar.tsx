@@ -21,11 +21,13 @@ const ACCENT_COLORS = [
 type AccentKey = typeof ACCENT_COLORS[number]['id']
 
 const MENU_GROUPS = [
-  { label: 'Utama',     hrefs: ['/dashboard', '/dashboard/siswa', '/dashboard/kelas', '/dashboard/plotting'] },
-  { label: 'Akademik',  hrefs: ['/dashboard/akademik', '/dashboard/akademik/nilai', '/dashboard/program-unggulan', '/dashboard/program-unggulan/kelola', '/dashboard/guru', '/dashboard/kehadiran', '/dashboard/rekap-absensi', '/dashboard/agenda', '/dashboard/penugasan', '/dashboard/presensi', '/dashboard/monitoring-presensi', '/dashboard/monitoring-agenda'] },
-  { label: 'Kesiswaan', hrefs: ['/dashboard/izin', '/dashboard/kedisiplinan', '/dashboard/bk', '/dashboard/psikotes'] },
-  { label: 'Administrasi', hrefs: ['/dashboard/surat'] },
-  { label: 'Fasilitas', hrefs: ['/dashboard/sarpras'] },
+  { label: 'Utama',     hrefs: ['/dashboard'] },
+  { label: 'Kesiswaan & Kelas', hrefs: ['/dashboard/siswa', '/dashboard/kelas', '/dashboard/plotting', '/dashboard/kehadiran', '/dashboard/rekap-absensi'] },
+  { label: 'Akademik & Belajar',  hrefs: ['/dashboard/akademik', '/dashboard/akademik/nilai', '/dashboard/program-unggulan', '/dashboard/program-unggulan/kelola'] },
+  { label: 'Tugas & Agenda Guru', hrefs: ['/dashboard/agenda', '/dashboard/monitoring-agenda', '/dashboard/penugasan'] },
+  { label: 'Kepegawaian (HR)', hrefs: ['/dashboard/guru', '/dashboard/presensi', '/dashboard/monitoring-presensi'] },
+  { label: 'Kedisiplinan & BK', hrefs: ['/dashboard/kedisiplinan', '/dashboard/izin', '/dashboard/bk', '/dashboard/psikotes'] },
+  { label: 'Operasional', hrefs: ['/dashboard/sarpras', '/dashboard/surat'] },
   { label: 'Sistem',    hrefs: ['/dashboard/settings', '/dashboard/settings/fitur'] },
 ]
 
@@ -148,7 +150,14 @@ export function Sidebar({
         </div>
 
         {/* ── NAV ── */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2">
+        <nav className="flex-1 overflow-y-auto py-3 px-3 custom-scrollbar">
+          <style>{`
+            .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+          `}</style>
           {MENU_GROUPS.map((group, gi) => {
             const groupItems = group.hrefs
               .map(href => allowedMenus.find(m => m.href === href))
@@ -156,18 +165,18 @@ export function Sidebar({
             if (groupItems.length === 0) return null
 
             return (
-              <div key={group.label} className={cn(gi > 0 && 'mt-1')}>
+              <div key={group.label} className={cn(gi > 0 && 'mt-4')}>
                 {/* Section label */}
                 {!collapsed && (
-                  <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-600 select-none">
+                  <p className="px-3 pt-1 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400/80 dark:text-slate-500 select-none">
                     {group.label}
                   </p>
                 )}
                 {/* Divider tipis antar grup saat collapsed */}
                 {collapsed && gi > 0 && (
-                  <div className="h-px bg-slate-100 dark:bg-slate-700/60 mx-2 my-1.5" />
+                  <div className="h-px bg-slate-100 dark:bg-slate-700/60 mx-2 my-2.5" />
                 )}
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {groupItems.map(item => {
                     const isActive = activeHref === item.href
                     const Icon = item.icon
@@ -177,14 +186,14 @@ export function Sidebar({
                         href={item.href}
                         title={collapsed ? item.title : undefined}
                         className={cn(
-                          'flex items-center rounded-lg text-[13px] transition-all duration-150',
-                          collapsed ? 'justify-center p-2.5' : 'gap-2.5 px-3 py-[7px]',
+                          'group flex items-center rounded-xl text-[13px] transition-all duration-200',
+                          collapsed ? 'justify-center p-2.5 mx-auto w-10 h-10' : 'gap-3 px-3 py-[9px]',
                           isActive
-                            ? cn(accent.bg, accent.text, 'font-semibold')
-                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100'
+                            ? cn(accent.bg, accent.text, 'font-semibold shadow-sm ring-1 ring-black/5 dark:ring-white/5')
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-0.5'
                         )}
                       >
-                        <Icon className={cn('h-[15px] w-[15px] shrink-0', !isActive && 'opacity-70')} />
+                        <Icon className={cn('h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110', !isActive && 'opacity-70')} />
                         {!collapsed && <span className="truncate leading-snug">{item.title}</span>}
                       </Link>
                     )

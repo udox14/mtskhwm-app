@@ -44,14 +44,14 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'siswa',
-    title: 'Data Siswa',
+    title: 'Siswa',
     href: '/dashboard/siswa',
     icon: Users,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'guru_bk', 'wali_kelas']
   },
   {
     id: 'kelas',
-    title: 'Manajemen Kelas',
+    title: 'Kelas',
     href: '/dashboard/kelas',
     icon: Library,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
@@ -191,7 +191,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'settings',
-    title: 'Pengaturan',
+    title: 'Pengaturan Aplikasi',
     href: '/dashboard/settings',
     icon: Settings,
     roles: ['super_admin', 'kepsek', 'admin_tu']
