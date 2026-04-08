@@ -60,7 +60,7 @@ export async function getKelasUnggulanGuru(guruId: string, dateOverride?: string
       'legacy'    AS pu_guru_kelas_id
     FROM penugasan_mengajar pm
     JOIN jadwal_mengajar jm ON jm.penugasan_id = pm.id
-    JOIN pu_kelas_unggulan pk ON pk.kelas_id = pm.kelas_id
+    JOIN pu_kelas_unggulan pk ON pk.kelas_id = pm.kelas_id AND pk.tahun_ajaran_id = pm.tahun_ajaran_id
     JOIN kelas k ON pm.kelas_id = k.id
     WHERE pm.guru_id = ? AND pm.tahun_ajaran_id = ? AND jm.hari = ?
     GROUP BY pk.id, k.id, k.tingkat, k.nomor_kelas, k.kelompok

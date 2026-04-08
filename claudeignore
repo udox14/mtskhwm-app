@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+.open-next/
+.wrangler/
+dist/
+out/
+
+# Lock files & generated
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Static assets
+public/
+app/fonts/
+
+# Env files
+.env
+.env.local
+.env.*
+
+# Logs
+*.log
+
+# DB snapshots (wrangler local dev)
+.wrangler/state/
