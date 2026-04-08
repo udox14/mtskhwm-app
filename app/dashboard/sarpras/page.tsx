@@ -2,6 +2,8 @@ import { PageHeader } from '@/components/layout/page-header'
 import { getAsetList, getKategoriList, getSarprasOptions } from './actions'
 import { SarprasClient } from './sarpras-client'
 
+export const dynamic = 'force-dynamic' // ← tambah ini
+
 export const metadata = { title: 'Sarana Prasarana | MTSKHWM' }
 
 export default async function SarprasPage() {
@@ -10,7 +12,6 @@ export default async function SarprasPage() {
     getKategoriList(),
     getSarprasOptions()
   ])
-
   return (
     <div className="flex-1 flex flex-col h-[100dvh] bg-slate-50 dark:bg-slate-900/50">
       <PageHeader 
