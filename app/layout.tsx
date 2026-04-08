@@ -4,13 +4,17 @@ import "./globals.css"
 import { GlobalAlertProvider } from '@/components/ui/global-alert'
 
 export const metadata: Metadata = {
-  title: "MTSKHWM ERP",
-  description: "Sistem Informasi Manajemen Terpadu MTs KH. A. Wahab Muhsin Sukahideng",
+  title: "MSS",
+  description: "Muhsin Smart System - Madrasah Management Application",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/logomts.png",
+    apple: "/apple-touch-icon.png"
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "MTSKHWM",
+    title: "MSS",
   },
   formatDetection: {
     telephone: false,

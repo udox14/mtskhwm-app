@@ -1,7 +1,7 @@
 {
-  "name": "MTSKHWM — MTs KH. A. Wahab Muhsin Sukahideng",
-  "short_name": "MTSKHWM",
-  "description": "Sistem Informasi Manajemen Terpadu MTs KH. A. Wahab Muhsin Sukahideng",
+  "name": "MSS — Muhsin Smart System",
+  "short_name": "MSS",
+  "description": "Muhsin Smart System - Madrasah Management Application",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

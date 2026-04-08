@@ -131,12 +131,12 @@ export function Sidebar({
         )}>
           <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="relative w-6 h-6 shrink-0">
-              <Image src="/logomts.png" alt="MTSKHWM" fill className="object-contain" />
+              <Image src="/logo-mss.png" alt="MSS" fill className="object-contain" />
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-[13px] font-bold text-slate-900 dark:text-slate-100 leading-tight tracking-tight">MTSKHWM</p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">MTs KH. A. Wahab Muhsin Sukahideng</p>
+                <p className="text-[13px] font-bold text-slate-900 dark:text-slate-100 leading-tight tracking-tight">MSS</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">Muhsin Smart System</p>
               </div>
             )}
           </Link>

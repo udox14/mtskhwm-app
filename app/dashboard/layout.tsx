@@ -7,7 +7,7 @@ import { Header } from '@/components/layout/header'
 import { getUserAllowedFeatures, getUserRoles, getPrimaryRole } from '@/lib/features'
 
 export const metadata = {
-  title: 'Dashboard - MTSKHWM App',
+  title: 'Dashboard - MSS',
 }
 
 export default async function DashboardLayout({
@@ -35,7 +35,7 @@ export default async function DashboardLayout({
   ])
 
   const primaryRole = freshUser?.role || (user as any).role || 'guru'
-  const userName = freshUser?.nama_lengkap || (user as any).nama_lengkap || user.name || 'User MTSKHWM'
+  const userName = freshUser?.nama_lengkap || (user as any).nama_lengkap || user.name || 'User MSS'
   const avatarUrl = freshUser?.avatar_url || null
 
   return (
