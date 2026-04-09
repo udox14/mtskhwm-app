@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/utils/auth/server'
 import { revalidatePath } from 'next/cache'
 import { formatNamaKelas } from '@/lib/utils'
 import { nowWIB } from '@/lib/time'
+import { sendPushNotification } from '@/lib/web-push'
 import type { PolaJam, SlotJam } from '@/app/dashboard/settings/types'
 
 // ============================================================
@@ -237,6 +238,21 @@ export async function kirimDelegasiTugas(
     }
   } catch (e: any) {
     return { error: e.message }
+  }
+
+  // Trigger Push Notification
+  try {
+    const jumlahSesi = items.length;
+    await sendPushNotification(
+      {
+        title: 'Tugas Baru Masuk!',
+        body: `Anda mendapat penugasan piket dari ${user.name || 'Guru'} untuk ${jumlahSesi} sesi kelas pada tanggal ${tanggal}. Segera periksa di aplikasi.`,
+        url: '/dashboard/penugasan'
+      },
+      { userId: kepada_user_id }
+    );
+  } catch (pushErr) {
+    console.error("Gagal mengirim push alert ke guru piket:", pushErr);
   }
 
   revalidatePath('/dashboard/penugasan')

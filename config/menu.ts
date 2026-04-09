@@ -26,6 +26,7 @@ import {
   Send,
   Eye,
   Calendar,
+  Megaphone,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -141,6 +142,13 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/monitoring-penugasan',
     icon: Eye,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
+  },
+  {
+    id: 'rapat',
+    title: 'Undangan Rapat',
+    href: '/dashboard/rapat',
+    icon: Megaphone,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas', 'guru_bk', 'guru_piket', 'guru_ppl', 'resepsionis']
   },
   {
     id: 'jadwal-piket',

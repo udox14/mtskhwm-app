@@ -58,3 +58,18 @@ export function dateToWIBString(isoString: string): string {
   const d = new Date(new Date(isoString).getTime() + WIB_OFFSET_MS)
   return d.toISOString().split('T')[0]
 }
+
+/**
+ * Format tanggal dari "2024-05-12" menjadi "12 Mei 2024" (Bahasa Indonesia)
+ */
+export function formatTanggalPanjang(dateString: string): string {
+  if (!dateString) return ''
+  const tgl = new Date(dateString)
+  if (isNaN(tgl.getTime())) return dateString
+  
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(tgl)
+}
