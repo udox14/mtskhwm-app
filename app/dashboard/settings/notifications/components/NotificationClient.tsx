@@ -55,10 +55,9 @@ export function NotificationClient({ roles = [], diagnostics }: {
           <Label className="text-sm font-medium">Isi Pesan / Body</Label>
           <Textarea name="body" required rows={3} placeholder="Contoh: Diharapkan bagi seluruh guru untuk hadir di ruang guru pada jam istirahat..." className="resize-none" />
         </div>
-
         <div className="space-y-2">
           <Label className="text-sm font-medium">URL Tujuan (Opsional)</Label>
-          <Input name="url" defaultValue="/" placeholder="/dashboard atau URL lengkap" className="h-10" />
+          <Input name="url" defaultValue="/dashboard" placeholder="/dashboard atau URL lengkap" className="h-10" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

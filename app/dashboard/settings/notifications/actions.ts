@@ -21,7 +21,7 @@ export async function sendCustomNotification(
 
   const title = formData.get('title') as string
   const body = formData.get('body') as string
-  const url = (formData.get('url') as string) || '/'
+  const url = (formData.get('url') as string) || '/dashboard'
   const targetType = formData.get('targetType') as string // 'all', 'role'
   const targetRole = formData.get('targetRole') as string
 
