@@ -32,11 +32,11 @@ const MENU_GROUPS = [
   { label: 'Utama',     hrefs: ['/dashboard'] },
   { label: 'Kesiswaan & Kelas', hrefs: ['/dashboard/siswa', '/dashboard/kelas', '/dashboard/plotting', '/dashboard/kehadiran', '/dashboard/rekap-absensi'] },
   { label: 'Akademik & Belajar',  hrefs: ['/dashboard/akademik', '/dashboard/akademik/nilai', '/dashboard/program-unggulan', '/dashboard/program-unggulan/kelola'] },
-  { label: 'Tugas & Agenda Guru', hrefs: ['/dashboard/agenda', '/dashboard/monitoring-agenda', '/dashboard/penugasan'] },
-  { label: 'Kepegawaian (HR)', hrefs: ['/dashboard/guru', '/dashboard/presensi', '/dashboard/monitoring-presensi'] },
+  { label: 'Tugas & Agenda Guru', hrefs: ['/dashboard/agenda', '/dashboard/monitoring-agenda', '/dashboard/penugasan', '/dashboard/rapat'] },
+  { label: 'Kepegawaian (HR)', hrefs: ['/dashboard/guru', '/dashboard/jadwal-piket', '/dashboard/presensi', '/dashboard/monitoring-presensi'] },
   { label: 'Kedisiplinan & BK', hrefs: ['/dashboard/kedisiplinan', '/dashboard/izin', '/dashboard/bk', '/dashboard/psikotes'] },
   { label: 'Operasional', hrefs: ['/dashboard/sarpras', '/dashboard/surat'] },
-  { label: 'Sistem',    hrefs: ['/dashboard/settings', '/dashboard/settings/fitur'] },
+  { label: 'Sistem',    hrefs: ['/dashboard/settings', '/dashboard/settings/notifications', '/dashboard/settings/fitur'] },
 ]
 
 function getActiveMenu(pathname: string, menuItems: typeof MENU_ITEMS) {
