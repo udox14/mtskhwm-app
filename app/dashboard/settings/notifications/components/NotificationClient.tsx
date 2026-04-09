@@ -21,7 +21,7 @@ function SubmitBtn() {
   )
 }
 
-export function NotificationClient({ roles = [] }: { roles: any[] }) {
+export function NotificationClient({ roles = [], diagnostics }: { roles: any[], diagnostics?: { totalDevices: number, vapidKey: string } }) {
   const [state, action] = useActionState(sendCustomNotification, initialState)
   const [targetType, setTargetType] = useState('role')
 
@@ -85,6 +85,33 @@ export function NotificationClient({ roles = [] }: { roles: any[] }) {
 
         <SubmitBtn />
       </form>
+
+      {diagnostics && (
+        <div className="mt-8 p-4 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-800">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-blue-500" />
+            Status Sistem (Diagnostik)
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-3 bg-white dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Total Perangkat Terdaftar</p>
+              <p className="text-2xl font-black text-slate-900 dark:text-white">
+                {diagnostics.totalDevices} <span className="text-xs font-normal text-slate-500">perangkat</span>
+              </p>
+            </div>
+            <div className="p-3 bg-white dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">VAPID Public Key (Server)</p>
+              <p className="text-[10px] font-mono break-all text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 p-1.5 rounded">
+                {diagnostics.vapidKey}
+              </p>
+            </div>
+          </div>
+          <p className="mt-3 text-[10px] text-slate-400 leading-relaxed italic">
+            *Jika angka di atas 0 tapi pengiriman tetap 0, berarti ada ketidakcocokan Role atau User ID.
+            Jika angka 0, berarti belum ada user yang mengklik tombol "Aktifkan" di profil mereka (cek koneksi DB).
+          </p>
+        </div>
+      )}
     </div>
   )
 }

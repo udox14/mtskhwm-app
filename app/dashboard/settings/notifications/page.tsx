@@ -18,6 +18,13 @@ export default async function AdminNotificationsPage() {
     redirect('/dashboard');
   }
 
+  // DIAGNOSTIK: Cek jumlah langganan di DB
+  const stats = await db.prepare(
+    'SELECT COUNT(*) as total FROM web_push_subscriptions'
+  ).first<{ total: number }>();
+
+  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'N/A';
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
@@ -29,7 +36,13 @@ export default async function AdminNotificationsPage() {
         </p>
       </div>
 
-      <NotificationClient roles={[...ALL_ROLES]} />
+      <NotificationClient 
+        roles={[...ALL_ROLES]} 
+        diagnostics={{
+          totalDevices: stats?.total || 0,
+          vapidKey: vapidKey
+        }}
+      />
     </div>
   );
 }
