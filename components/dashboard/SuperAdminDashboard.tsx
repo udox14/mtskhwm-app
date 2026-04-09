@@ -69,6 +69,8 @@ export async function SuperAdminDashboard({ userId, nama, namaDepan, avatarUrl, 
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
 
+      <KehadiranPribadiCard userId={userId} />
+
       {/* Stat Cards */}
       <div className="grid grid-cols-3 gap-3">
         <StatCard title="Siswa Aktif" value={counts?.siswa ?? 0}
@@ -230,8 +232,6 @@ export async function SuperAdminDashboard({ userId, nama, namaDepan, avatarUrl, 
         </div>
       </div>
 
-      {/* Kehadiran Pribadi Bulanan */}
-      <KehadiranPribadiCard userId={userId} />
     </div>
   )
 }

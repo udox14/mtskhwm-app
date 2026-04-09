@@ -110,6 +110,8 @@ export async function WaliKelasDashboard({ userId, nama, namaDepan, avatarUrl, r
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
 
+      <KehadiranPribadiCard userId={userId} />
+
       <JadwalMengajarToday userId={userId} taAktif={taAktif} />
 
       {/* Profil Kelas */}
@@ -265,9 +267,6 @@ export async function WaliKelasDashboard({ userId, nama, namaDepan, avatarUrl, r
 
       {/* Shortcut Dinamis */}
       <FeatureShortcuts userId={userId} />
-
-      {/* Kehadiran Pribadi */}
-      <KehadiranPribadiCard userId={userId} />
     </div>
   )
 }

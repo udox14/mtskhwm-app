@@ -70,6 +70,8 @@ export async function WakamadDashboard({ userId, nama, namaDepan, avatarUrl, rol
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
 
+      <KehadiranPribadiCard userId={userId} />
+
       <JadwalMengajarToday userId={userId} taAktif={taAktif} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -194,9 +196,6 @@ export async function WakamadDashboard({ userId, nama, namaDepan, avatarUrl, rol
 
       {/* Shortcut Dinamis */}
       <FeatureShortcuts userId={userId} />
-
-      {/* Kehadiran Pribadi */}
-      <KehadiranPribadiCard userId={userId} />
     </div>
   )
 }

@@ -62,6 +62,8 @@ export async function ResepsionisDashboard({ userId, nama, namaDepan, avatarUrl,
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
 
+      <KehadiranPribadiCard userId={userId} />
+
       <JadwalMengajarToday userId={userId} taAktif={taAktif} />
 
       {/* Live Counter */}
@@ -191,9 +193,6 @@ export async function ResepsionisDashboard({ userId, nama, namaDepan, avatarUrl,
 
       {/* Shortcut Dinamis */}
       <FeatureShortcuts userId={userId} />
-
-      {/* Kehadiran Pribadi */}
-      <KehadiranPribadiCard userId={userId} />
     </div>
   )
 }

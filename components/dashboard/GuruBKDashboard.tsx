@@ -74,6 +74,8 @@ export async function GuruBKDashboard({ userId, nama, namaDepan, avatarUrl, role
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
 
+      <KehadiranPribadiCard userId={userId} />
+
       <JadwalMengajarToday userId={userId} taAktif={taAktif} />
 
       {/* Summary Hari Ini */}
@@ -216,9 +218,6 @@ export async function GuruBKDashboard({ userId, nama, namaDepan, avatarUrl, role
 
       {/* Shortcut Dinamis */}
       <FeatureShortcuts userId={userId} />
-
-      {/* Kehadiran Pribadi */}
-      <KehadiranPribadiCard userId={userId} />
     </div>
   )
 }

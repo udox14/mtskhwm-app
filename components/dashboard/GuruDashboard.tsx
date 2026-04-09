@@ -43,6 +43,8 @@ export async function GuruDashboard({ userId, nama, namaDepan, avatarUrl, roleLa
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
 
+      <KehadiranPribadiCard userId={userId} />
+
       {/* Jadwal via Shared Component */}
       <JadwalMengajarToday userId={userId} taAktif={taAktif} />
 
@@ -108,9 +110,6 @@ export async function GuruDashboard({ userId, nama, namaDepan, avatarUrl, roleLa
 
       {/* Shortcut Dinamis */}
       <FeatureShortcuts userId={userId} />
-
-      {/* Kehadiran Pribadi */}
-      <KehadiranPribadiCard userId={userId} />
     </div>
   )
 }
