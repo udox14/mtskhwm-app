@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { NotificationClient } from './components/NotificationClient';
 import { checkFeatureAccess } from '@/lib/features';
 import { getDB } from '@/utils/db';
+import { ALL_ROLES } from '@/config/menu';
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +29,7 @@ export default async function AdminNotificationsPage() {
         </p>
       </div>
 
-      <NotificationClient />
+      <NotificationClient roles={[...ALL_ROLES]} />
     </div>
   );
 }

@@ -38,7 +38,7 @@ export async function buatUndanganRapat(
   if (targetType === 'all') {
     targetUsers = (await db.prepare('SELECT id FROM "user" WHERE banned = 0 AND id != ?').bind(user.id).all()).results || []
   } else if (targetType === 'role' && targetRole) {
-    targetUsers = (await db.prepare('SELECT id FROM "user" WHERE role = ? AND banned = 0 AND id != ?').bind(targetRole, user.id).all()).results || []
+    targetUsers = (await db.prepare('SELECT id FROM "user" WHERE (id IN (SELECT user_id FROM user_roles WHERE role = ?) OR role = ?) AND banned = 0 AND id != ?').bind(targetRole, targetRole, user.id).all()).results || []
   }
 
   if (targetUsers.length === 0) {

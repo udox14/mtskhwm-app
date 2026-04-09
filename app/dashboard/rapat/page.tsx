@@ -3,6 +3,7 @@ import { getDB } from '@/utils/db'
 import { RapatClient } from './components/RapatClient'
 import { formatTanggalPanjang } from '@/lib/time'
 import { getUserRoles } from '@/lib/features'
+import { ALL_ROLES } from '@/config/menu'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +70,7 @@ export default async function RapatPage() {
         undanganMasuk={undanganMasuk} 
         rapatDibuat={rapatDibuat}
         canCreate={canCreate}
+        roles={[...ALL_ROLES]}
       />
     </div>
   )

@@ -21,7 +21,7 @@ function SubmitBtn() {
   )
 }
 
-export function NotificationClient() {
+export function NotificationClient({ roles = [] }: { roles: any[] }) {
   const [state, action] = useActionState(sendCustomNotification, initialState)
   const [targetType, setTargetType] = useState('role')
 
@@ -75,10 +75,9 @@ export function NotificationClient() {
                 name="targetRole"
                 className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="guru">Guru</option>
-                <option value="guru_piket">Guru Piket</option>
-                <option value="wali_kelas">Wali Kelas</option>
-                <option value="siswa">Siswa</option>
+                {roles.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
               </select>
             </div>
           )}

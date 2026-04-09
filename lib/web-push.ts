@@ -43,8 +43,8 @@ export async function sendPushNotification(
       query += ` AND u.id = ?`;
       bindings.push(target.userId);
     } else if (target.role) {
-      query += ` AND u.role = ?`;
-      bindings.push(target.role);
+      query += ` AND (u.id IN (SELECT user_id FROM user_roles WHERE role = ?) OR u.role = ?)`;
+      bindings.push(target.role, target.role);
     } else if (!target.all) {
       return { success: false, message: "No target specified" };
     }

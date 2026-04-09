@@ -2,14 +2,21 @@
 
 import { getCurrentUser } from '@/utils/auth/server'
 import { sendPushNotification } from '@/lib/web-push'
+import { checkFeatureAccess } from '@/lib/features'
+import { getDB } from '@/utils/db'
 
 export async function sendCustomNotification(
   prevState: any,
   formData: FormData
 ) {
   const user = await getCurrentUser()
-  if (!user || user.role !== 'admin') {
-    return { error: 'Anda harus berstatus Admin untuk mengirim notifikasi broadcast.' }
+  if (!user) return { error: 'Unauthorized' }
+
+  const db = await getDB()
+  const allowed = await checkFeatureAccess(db, user.id, 'settings-notifications')
+  
+  if (!allowed) {
+    return { error: 'Anda tidak memiliki hak akses untuk mengirim notifikasi broadcast.' }
   }
 
   const title = formData.get('title') as string

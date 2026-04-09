@@ -25,7 +25,7 @@ function SubmitBuatRapatBtn() {
   )
 }
 
-export function RapatClient({ undanganMasuk, rapatDibuat, canCreate }: { undanganMasuk: any[], rapatDibuat: any[], canCreate: boolean }) {
+export function RapatClient({ undanganMasuk, rapatDibuat, canCreate, roles = [] }: { undanganMasuk: any[], rapatDibuat: any[], canCreate: boolean, roles: any[] }) {
   const [activeTab, setActiveTab] = useState('masuk')
   const [createState, createAction] = useActionState(buatUndanganRapat, initialState)
   const [targetType, setTargetType] = useState('all')
@@ -116,9 +116,9 @@ export function RapatClient({ undanganMasuk, rapatDibuat, canCreate }: { undanga
                   <div className="space-y-1.5">
                     <Label>Pilih Role</Label>
                     <select name="targetRole" className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                      <option value="guru">Guru</option>
-                      <option value="guru_piket">Guru Piket</option>
-                      <option value="wali_kelas">Wali Kelas</option>
+                      {roles.map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
                     </select>
                   </div>
                 )}
