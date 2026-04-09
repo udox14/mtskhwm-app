@@ -1,11 +1,11 @@
-import { getSession } from "@/lib/auth";
-import { getDB } from "@/lib/db";
+import { getCurrentUser } from "@/utils/auth/server";
+import { getDB } from "@/utils/db";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session || !session.user) {
+    const user = await getCurrentUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -30,13 +30,13 @@ export async function POST(req: NextRequest) {
       // Update jika diperlukan (misalnya auth keys berubah atau ganti akun)
       await db
         .prepare('UPDATE web_push_subscriptions SET user_id = ?, p256dh = ?, auth = ?, user_agent = ?, updated_at = datetime("now") WHERE endpoint = ?')
-        .bind(session.user.id, p256dh, auth, userAgent, endpoint)
+        .bind(user.id, p256dh, auth, userAgent, endpoint)
         .run();
     } else {
       // Insert baru
       await db
         .prepare('INSERT INTO web_push_subscriptions (user_id, endpoint, p256dh, auth, user_agent) VALUES (?, ?, ?, ?, ?)')
-        .bind(session.user.id, endpoint, p256dh, auth, userAgent)
+        .bind(user.id, endpoint, p256dh, auth, userAgent)
         .run();
     }
 
@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session || !session.user) {
+    const user = await getCurrentUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -60,10 +60,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "No endpoint provided" }, { status: 400 });
     }
 
-    const db = getDB();
+    const db = await getDB();
     await db
       .prepare('DELETE FROM web_push_subscriptions WHERE endpoint = ? AND user_id = ?')
-      .bind(endpoint, session.user.id)
+      .bind(endpoint, user.id)
       .run();
 
     return NextResponse.json({ success: true, message: "Subscription removed!" });

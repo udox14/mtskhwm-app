@@ -1,5 +1,5 @@
 import webpush from 'web-push';
-import { getDB } from './db';
+import { getDB } from '@/utils/db';
 
 const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
@@ -27,7 +27,7 @@ export async function sendPushNotification(
   target: PushTarget
 ) {
   try {
-    const db = getDB();
+    const db = await getDB();
     let stmt;
     let bindings: any[] = [];
 

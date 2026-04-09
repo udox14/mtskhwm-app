@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
+import { getDB } from '@/utils/db';
 import { sendPushNotification } from '@/lib/web-push';
 import { nowWIB } from '@/lib/time';
 
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const db = getDB();
+    const db = await getDB();
     const today = nowWIB();
     let hariIni = today.getDay();
     if (hariIni === 0) hariIni = 7; // Minggu = 7
