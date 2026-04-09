@@ -100,25 +100,26 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
   return (
     <div className="p-4 sm:p-6 space-y-4">
       {/* TOOLBAR */}
-      <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
-        <div className="flex flex-wrap gap-3 items-center w-full xl:w-auto">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+      {/* TOOLBAR */}
+      <div className="flex flex-col gap-4">
+        {/* Search and Filters Row */}
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+          <div className="relative flex-1 md:max-w-xs">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input 
               type="text" 
               placeholder="Cari barang / merek..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 w-[220px]"
+              className="pl-9 h-11 md:h-10"
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground hidden sm:block" />
+          <div className="grid grid-cols-2 lg:flex items-center gap-2">
             <select 
               value={filterKategori} 
               onChange={e => setFilterKategori(e.target.value)}
-              className={selectStyle}
+              className="flex h-11 md:h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Semua Kategori</option>
               {kategori.map(k => <option key={k.id} value={k.id}>{k.nama}</option>)}
@@ -126,7 +127,7 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
             <select 
               value={filterKeadaan} 
               onChange={e => setFilterKeadaan(e.target.value)}
-              className={selectStyle}
+              className="flex h-11 md:h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Semua Kondisi</option>
               <option value="BAIK">Baik</option>
@@ -134,45 +135,49 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
               <option value="RUSAK">Rusak</option>
             </select>
           </div>
-
-          <div className="flex items-center gap-2 rounded-md border px-3 h-10 bg-background text-sm ring-offset-background">
-             <span className="text-muted-foreground font-medium hidden sm:inline">Periode:</span>
-             <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="bg-transparent outline-none cursor-pointer" title="Dari Tanggal" />
-             <span className="text-muted-foreground">-</span>
-             <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="bg-transparent outline-none cursor-pointer" title="Sampai Tanggal" />
-          </div>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <Button variant="outline" onClick={handlePrint} className="gap-2">
-            <Printer className="w-4 h-4" /> Cetak PDF
-          </Button>
-          <Button onClick={() => { setEditingAset(null); setIsFormOpen(true) }} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="w-4 h-4" /> Tambah Aset
-          </Button>
+
+        {/* Date and Actions Row */}
+        <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
+          <div className="flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-800 px-3 h-11 md:h-10 bg-slate-50 dark:bg-slate-900/50 text-[13px] w-full md:w-auto">
+             <span className="text-muted-foreground font-medium whitespace-nowrap">Periode:</span>
+             <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="bg-transparent outline-none cursor-pointer flex-1" title="Dari Tanggal" />
+             <span className="text-muted-foreground">-</span>
+             <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="bg-transparent outline-none cursor-pointer flex-1" title="Sampai Tanggal" />
+          </div>
+
+          <div className="grid grid-cols-2 md:flex items-center gap-2">
+            <Button variant="outline" onClick={handlePrint} className="h-11 md:h-10 gap-2 border-slate-200 dark:border-slate-800">
+              <Printer className="w-4 h-4" /> Cetak PDF
+            </Button>
+            <Button onClick={() => { setEditingAset(null); setIsFormOpen(true) }} className="h-11 md:h-10 gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus className="w-4 h-4" /> Tambah Aset
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* TABLE */}
-      <div className="border rounded-xl bg-white shadow-sm relative min-h-[400px]">
+      <div className="border rounded-xl bg-white dark:bg-slate-950 shadow-sm relative min-h-[400px] overflow-hidden">
         {isPending && (
-          <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center backdrop-blur-sm rounded-xl">
+          <div className="absolute inset-0 bg-white/60 dark:bg-slate-950/60 z-10 flex items-center justify-center backdrop-blur-sm rounded-xl">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
         )}
-        <Table>
-          <TableHeader className="bg-slate-50/80">
-            <TableRow>
-              <TableHead className="w-12 text-center">No</TableHead>
-              <TableHead>Nama & Merek</TableHead>
-              <TableHead>Kuantitas</TableHead>
-              <TableHead>Tahun & Lapor</TableHead>
-              <TableHead>Sumber Dana</TableHead>
-              <TableHead>Kondisi</TableHead>
-              <TableHead>Harga</TableHead>
-              <TableHead className="text-center">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-slate-50/80 dark:bg-slate-900/80">
+              <TableRow>
+                <TableHead className="w-12 text-center whitespace-nowrap">No</TableHead>
+                <TableHead className="whitespace-nowrap">Nama & Merek</TableHead>
+                <TableHead className="whitespace-nowrap text-center">Qty</TableHead>
+                <TableHead className="whitespace-nowrap">Tahun & Pembukuan</TableHead>
+                <TableHead className="whitespace-nowrap">Sumber Dana</TableHead>
+                <TableHead className="whitespace-nowrap">Kondisi</TableHead>
+                <TableHead className="whitespace-nowrap">Harga</TableHead>
+                <TableHead className="text-center whitespace-nowrap">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {Object.keys(groupedData).length === 0 ? (
               <TableRow>
@@ -248,6 +253,7 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* HIDDEN PRINT CONTENT */}

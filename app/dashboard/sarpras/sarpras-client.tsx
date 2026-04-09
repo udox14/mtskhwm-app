@@ -26,22 +26,22 @@ export function SarprasClient({ initialAset, initialKategori, options }: Sarpras
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4">
-            <TabsList className="grid w-full sm:w-auto grid-cols-2 lg:w-[400px]">
-              <TabsTrigger value="data" className="flex items-center gap-2">
-                <Package className="w-4 h-4" /> Data Aset
-              </TabsTrigger>
-              <TabsTrigger value="statistik" className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" /> Statistik
-              </TabsTrigger>
-            </TabsList>
+        <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between mb-4">
+          <TabsList className="grid w-full md:w-auto grid-cols-2 lg:w-[400px]">
+            <TabsTrigger value="data" className="flex items-center gap-2">
+              <Package className="w-4 h-4" /> Data Aset
+            </TabsTrigger>
+            <TabsTrigger value="statistik" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" /> Statistik
+            </TabsTrigger>
+          </TabsList>
 
           {activeTab === 'data' && (
             <button 
               onClick={() => setIsKategoriOpen(true)}
-              className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors bg-white border px-3 py-1.5 rounded-md shadow-sm"
+              className="flex items-center justify-center gap-2 text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-all bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-lg shadow-sm w-full md:w-auto"
             >
-              <Settings className="w-4 h-4" /> Kelola Kategori
+              <Settings className="w-4 h-4 text-slate-400" /> Kelola Kategori
             </button>
           )}
         </div>

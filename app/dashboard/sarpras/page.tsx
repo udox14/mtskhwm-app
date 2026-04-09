@@ -17,6 +17,7 @@ export default async function SarprasPage() {
       <PageHeader 
         title="Sarana Prasarana" 
         description="Manajemen inventaris dan aset fasilitas madrasah"
+        className="px-4 lg:px-6 pt-4 lg:pt-6"
       />
       <div className="flex-1 overflow-auto p-4 lg:p-6">
          <SarprasClient 
