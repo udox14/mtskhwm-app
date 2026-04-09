@@ -26,18 +26,18 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <div className={cn(
-      "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 lg:px-6 pt-4 lg:pt-6", 
+      "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1 lg:pt-2", 
       className
     )}>
       <div className="flex items-center gap-2.5 min-w-0">
         {/* Icon dihilangkan sesuai permintaan user untuk semua fitur */}
         {/* {Icon && <Icon className={cn("h-5 w-5 shrink-0", iconColor)} />} */}
         <div className="min-w-0">
-          <h1 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-50 leading-tight tracking-tight truncate">
+          <h1 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-50 leading-tight tracking-tight">
             {title}
           </h1>
           {description && (
-            <p className="text-[12px] text-slate-500 dark:text-slate-400 dark:text-slate-500 leading-tight mt-0.5 truncate">
+            <p className="text-[12px] text-slate-500 dark:text-slate-400 dark:text-slate-500 leading-tight mt-0.5">
               {description}
             </p>
           )}
