@@ -4,6 +4,7 @@ import { RapatClient } from './components/RapatClient'
 import { formatTanggalPanjang } from '@/lib/time'
 import { getUserRoles } from '@/lib/features'
 import { ALL_ROLES } from '@/config/menu'
+import { PageHeader } from '@/components/layout/page-header'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,15 +57,11 @@ export default async function RapatPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">
-          Undangan Rapat
-        </h1>
-        <p className="text-sm text-slate-500">
-          Kelola jadwal pertemuan, undangan rapat dinas, dan konfirmasi kehadiran.
-        </p>
-      </div>
+    <div className="space-y-4 animate-in fade-in duration-500 pb-12">
+      <PageHeader
+        title="Undangan Rapat"
+        description="Kelola jadwal pertemuan, undangan rapat dinas, dan konfirmasi kehadiran."
+      />
 
       <RapatClient 
         undanganMasuk={undanganMasuk} 

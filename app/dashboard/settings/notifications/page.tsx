@@ -4,6 +4,7 @@ import { NotificationClient } from './components/NotificationClient';
 import { checkFeatureAccess } from '@/lib/features';
 import { getDB } from '@/utils/db';
 import { ALL_ROLES } from '@/config/menu';
+import { PageHeader } from '@/components/layout/page-header';
 
 export const dynamic = 'force-dynamic'
 
@@ -33,15 +34,11 @@ export default async function AdminNotificationsPage() {
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'N/A';
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-1">
-          Pusat Notifikasi (Admin)
-        </h1>
-        <p className="text-sm text-slate-500">
-          Kirim pemberitahuan push langsung ke perangkat pengguna (Broadcasting).
-        </p>
-      </div>
+    <div className="space-y-4 animate-in fade-in duration-500 pb-12">
+      <PageHeader
+        title="Pusat Notifikasi (Admin)"
+        description="Kirim pemberitahuan push langsung ke perangkat pengguna (Broadcasting)."
+      />
 
       <NotificationClient 
         roles={[...ALL_ROLES]} 
