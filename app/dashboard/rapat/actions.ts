@@ -3,6 +3,7 @@
 import { getDB, dbInsert, dbUpdate } from '@/utils/db'
 import { getCurrentUser } from '@/utils/auth/server'
 import { revalidatePath } from 'next/cache'
+import { getUserRoles } from '@/lib/features'
 import { sendPushNotification } from '@/lib/web-push'
 import { nowWIB } from '@/lib/time'
 
@@ -12,7 +13,11 @@ export async function buatUndanganRapat(
   formData: FormData
 ) {
   const user = await getCurrentUser()
-  if (!user || !['admin', 'tu', 'kepala_sekolah'].includes(user.role)) {
+  if (!user) return { error: 'Unauthorized' }
+  const db = await getDB()
+  
+  const roles = await getUserRoles(db, user.id)
+  if (!roles.some(r => ['super_admin', 'admin_tu', 'kepsek'].includes(r))) {
     return { error: 'Anda tidak memiliki akses untuk membuat undangan rapat.' }
   }
 
@@ -28,8 +33,6 @@ export async function buatUndanganRapat(
     return { error: 'Semua kolom wajib (Agenda, Tanggal, Waktu, Tempat) harus diisi.' }
   }
 
-  const db = await getDB()
-  
   // Ambil target user
   let targetUsers: any[] = []
   if (targetType === 'all') {

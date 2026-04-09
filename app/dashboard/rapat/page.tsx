@@ -2,6 +2,7 @@ import { getCurrentUser } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import { RapatClient } from './components/RapatClient'
 import { formatTanggalPanjang } from '@/lib/time'
+import { getUserRoles } from '@/lib/features'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,7 +32,8 @@ export default async function RapatPage() {
 
   // 2. Jika punya akses, ambil Undangan yang Dibuat (sebagai pengundang)
   let rapatDibuat: any[] = []
-  const canCreate = ['admin', 'tu', 'kepala_sekolah'].includes(user.role)
+  const roles = await getUserRoles(db, user.id)
+  const canCreate = roles.some(r => ['super_admin', 'admin_tu', 'kepsek'].includes(r))
 
   if (canCreate) {
     const rapatDibuatRaw = await db.prepare(`

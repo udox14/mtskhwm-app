@@ -27,6 +27,7 @@ import {
   Eye,
   Calendar,
   Megaphone,
+  Bell,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -225,6 +226,13 @@ export const MENU_ITEMS: MenuItem[] = [
     title: 'Manajemen Fitur',
     href: '/dashboard/settings/fitur',
     icon: SlidersHorizontal,
+    roles: ['super_admin']
+  },
+  {
+    id: 'settings-notifications',
+    title: 'Pusat Notifikasi',
+    href: '/dashboard/settings/notifications',
+    icon: Bell,
     roles: ['super_admin']
   }
 ]
