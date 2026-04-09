@@ -23,7 +23,7 @@ export async function GuruPiketDashboard({ userId, nama, namaDepan, avatarUrl, r
     db.prepare(`
       SELECT
         (SELECT COUNT(*) FROM izin_keluar_komplek WHERE status = 'BELUM KEMBALI') as di_luar,
-        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE tanggal = ?) as keluar_hari_ini,
+        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE DATE(waktu_keluar) = ?) as keluar_hari_ini,
         (SELECT COUNT(*) FROM izin_tidak_masuk_kelas WHERE tanggal = ?) as izin_kelas,
         (SELECT COUNT(*) FROM siswa_pelanggaran WHERE tanggal = ?) as pelanggaran_hari_ini
     `).bind(today, today, today).first<any>(),
@@ -31,11 +31,11 @@ export async function GuruPiketDashboard({ userId, nama, namaDepan, avatarUrl, r
     // Log izin keluar hari ini
     db.prepare(`
       SELECT ik.siswa_id, si.nama_lengkap, k.tingkat, k.nomor_kelas, k.kelompok,
-        ik.keperluan, ik.jam_keluar, ik.jam_kembali, ik.status
+        ik.keterangan, ik.waktu_keluar, ik.waktu_kembali, ik.status
       FROM izin_keluar_komplek ik
       JOIN siswa si ON ik.siswa_id = si.id
       JOIN kelas k ON si.kelas_id = k.id
-      WHERE ik.tanggal = ?
+      WHERE DATE(ik.waktu_keluar) = ?
       ORDER BY ik.created_at DESC LIMIT 8
     `).bind(today).all<any>().then(r => r.results ?? []),
 
@@ -158,13 +158,15 @@ export async function GuruPiketDashboard({ userId, nama, namaDepan, avatarUrl, r
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-slate-800 dark:text-slate-100 truncate">{r.nama_lengkap}</p>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
-                    {r.keperluan} · Kls {r.tingkat}{r.kelompok ?? ''}-{r.nomor_kelas}
+                    {r.keterangan || '-'} · Kls {r.tingkat}{r.kelompok ?? ''}-{r.nomor_kelas}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] font-medium text-slate-600 dark:text-slate-300">{r.jam_keluar?.substring(0, 5)}</p>
+                  <p className="text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                    {r.waktu_keluar ? new Date(r.waktu_keluar).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) : '-'}
+                  </p>
                   <p className={`text-[9px] font-medium ${r.status === 'BELUM KEMBALI' ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    {r.status === 'BELUM KEMBALI' ? 'Di luar' : r.jam_kembali?.substring(0, 5) ?? 'Kembali'}
+                    {r.status === 'BELUM KEMBALI' ? 'Di luar' : (r.waktu_kembali ? new Date(r.waktu_kembali).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) : 'Kembali')}
                   </p>
                 </div>
               </div>

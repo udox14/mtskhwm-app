@@ -45,13 +45,12 @@ export async function GuruBKDashboard({ userId, nama, namaDepan, avatarUrl, role
       ORDER BY sp.created_at DESC LIMIT 5
     `).all<any>().then(r => r.results ?? []),
 
-    // Izin hari ini (keluar + tidak masuk)
     db.prepare(`
       SELECT
-        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE tanggal = ?) as keluar,
-        (SELECT COUNT(*) FROM izin_tidak_masuk_kelas WHERE tanggal = ?) as tidak_masuk,
-        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE tanggal = ? AND status = 'BELUM KEMBALI') as belum_kembali
-    `).bind(today, today, today).first<any>(),
+        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE status = 'BELUM KEMBALI') as belum_kembali,
+        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE DATE(waktu_keluar) = ?) as keluar,
+        (SELECT COUNT(*) FROM izin_tidak_masuk_kelas WHERE tanggal = ?) as tidak_masuk
+    `).bind(today, today).first<any>(),
 
     // Tren pelanggaran per jenis 30 hari terakhir (top 5 jenis)
     db.prepare(`

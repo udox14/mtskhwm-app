@@ -9,7 +9,7 @@ import { KehadiranPribadiCard } from './shared/KehadiranPribadiCard'
 import {
   Users, UserCog, Library, CalendarCheck, Clock,
   Activity, BarChart3, ClipboardList, FileSpreadsheet,
-  Send, PackageSearch, Settings, SlidersHorizontal, ArrowRight,
+  Send, PackageSearch, Settings, ArrowRight,
 } from 'lucide-react'
 
 type Props = {
@@ -33,7 +33,8 @@ export async function SuperAdminDashboard({ userId, nama, namaDepan, avatarUrl, 
     db.prepare(`
       SELECT
         (SELECT COUNT(DISTINCT siswa_id) FROM izin_tidak_masuk_kelas WHERE tanggal = ?) as tidak_masuk,
-        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE tanggal = ? AND status = 'BELUM KEMBALI') as di_luar
+        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE status = 'BELUM KEMBALI') as di_luar,
+        (SELECT COUNT(*) FROM izin_keluar_komplek WHERE DATE(waktu_keluar) = ?) as keluar_hari_ini
     `).bind(today, today).first<any>(),
 
     db.prepare(`
