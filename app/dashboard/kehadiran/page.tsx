@@ -46,8 +46,6 @@ export default async function KehadiranPage() {
       <PageHeader
         title="Absensi Siswa"
         description="Absen siswa di kelas yang Anda ajar hari ini."
-        icon={CalendarCheck}
-        iconColor="text-emerald-500"
       />
 
       {/* Act As Banner — hanya untuk super admin */}

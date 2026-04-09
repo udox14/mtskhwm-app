@@ -74,8 +74,6 @@ export default async function MonitoringPage() {
       <PageHeader
         title="Monitoring Presensi"
         description="Pantau kehadiran, cetak rekap, kelola pengaturan & tunjangan."
-        icon={BarChart3}
-        iconColor="text-blue-500"
       />
       <Suspense fallback={<PageLoading text="Memuat monitoring..." />}>
         <MonitoringDataFetcher />

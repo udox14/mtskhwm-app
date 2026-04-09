@@ -31,8 +31,6 @@ export default async function RekapAbsensiPage() {
       <PageHeader
         title="Rekap Absensi Siswa"
         description="Monitoring kehadiran siswa per kelas, per siswa, dan per jam pelajaran."
-        icon={BarChart3}
-        iconColor="text-indigo-500"
       />
       <Suspense fallback={<PageLoading text="Menyiapkan data rekap..." />}>
         <RekapFetcher />

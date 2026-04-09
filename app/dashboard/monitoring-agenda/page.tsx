@@ -33,8 +33,6 @@ export default async function MonitoringAgendaPage() {
       <PageHeader
         title="Monitoring Agenda Guru"
         description="Pantau kepatuhan guru mengisi agenda, rekap kehadiran, dan cetak laporan."
-        icon={BarChart3}
-        iconColor="text-indigo-500"
       />
       <Suspense fallback={<PageLoading text="Menyiapkan monitoring..." />}>
         <MonitoringDataFetcher userId={user.id} role={role} />

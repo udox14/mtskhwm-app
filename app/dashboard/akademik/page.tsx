@@ -92,7 +92,7 @@ export default async function AkademikPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
-      <PageHeader title="Pusat Akademik" description="Kelola mata pelajaran, penugasan mengajar, dan jadwal." icon={BookOpen} iconColor="text-emerald-500" />
+      <PageHeader title="Pusat Akademik" description="Kelola mata pelajaran, penugasan mengajar, dan jadwal." />
       <Suspense fallback={<PageLoading text="Memuat pusat akademik..." />}>
         <AkademikDataFetcher userRole={userRole} />
       </Suspense>

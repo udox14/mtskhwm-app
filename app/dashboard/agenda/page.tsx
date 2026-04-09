@@ -49,8 +49,6 @@ export default async function AgendaPage() {
       <PageHeader
         title="Agenda Guru"
         description="Isi agenda mengajar sesuai jadwal pelajaran Anda hari ini."
-        icon={ClipboardPen}
-        iconColor="text-emerald-500"
       />
 
       {/* Act As Banner — hanya untuk super admin */}

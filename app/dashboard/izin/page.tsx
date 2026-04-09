@@ -66,7 +66,7 @@ export default async function IzinPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
-      <PageHeader title="Perizinan Siswa Harian" description="Posko pencatatan siswa keluar komplek dan izin meninggalkan jam pelajaran." icon={DoorOpen} iconColor="text-indigo-500" />
+      <PageHeader title="Perizinan Siswa Harian" description="Posko pencatatan siswa keluar komplek dan izin meninggalkan jam pelajaran." />
       <Suspense fallback={
 <PageLoading text="Memuat data perizinan..." />
       }>

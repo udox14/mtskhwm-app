@@ -62,8 +62,6 @@ export default async function PresensiPage() {
       <PageHeader
         title="Presensi Pegawai"
         description="Input presensi harian pejabat struktural & TU."
-        icon={ClipboardCheck}
-        iconColor="text-teal-500"
       />
       <Suspense fallback={<PageLoading text="Memuat data presensi..." />}>
         <PresensiDataFetcher currentUserId={user.id} />

@@ -60,8 +60,6 @@ export default async function SettingsPage() {
       <PageHeader
         title="Pengaturan Sistem"
         description="Kelola kalender akademik, jurusan, dan jam pelajaran."
-        icon={Settings}
-        iconColor="text-slate-500 dark:text-slate-400"
       />
       <SettingsClient taData={taData} />
     </div>

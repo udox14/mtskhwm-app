@@ -20,8 +20,6 @@ export default async function RekapNilaiPage() {
       <PageHeader
         title="Rekap Nilai Akademik"
         description="Import nilai rapor dari file Excel/RDM per semester. Data otomatis tersinkron ke halaman detail siswa."
-        icon={FileSpreadsheet}
-        iconColor="text-violet-500"
       />
       <NilaiClient ringkasan={ringkasan} />
     </div>

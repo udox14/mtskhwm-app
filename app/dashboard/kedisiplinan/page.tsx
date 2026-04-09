@@ -62,8 +62,6 @@ export default async function KedisiplinanPage() {
       <PageHeader
         title="Kedisiplinan & Tata Tertib"
         description="Catat pelanggaran siswa, pantau akumulasi poin, dan lampirkan bukti."
-        icon={ShieldAlert}
-        iconColor="text-rose-500"
       >
         <div className="flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-400 dark:text-slate-500 border border-slate-200 px-2.5 py-1 rounded-md bg-slate-50">
           <CalendarDays className="h-3.5 w-3.5" />

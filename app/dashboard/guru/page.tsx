@@ -73,7 +73,7 @@ export default async function GuruPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
-      <PageHeader title="Guru & Pegawai" description="Kelola data pendidik, hak akses, jabatan struktural, dan domisili." icon={GraduationCap} iconColor="text-indigo-500" />
+      <PageHeader title="Guru & Pegawai" description="Kelola data pendidik, hak akses, jabatan struktural, dan domisili." />
       <Suspense fallback={
 <PageLoading text="Memuat data kepegawaian..." />
       }>

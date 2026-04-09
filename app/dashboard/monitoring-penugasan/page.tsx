@@ -6,7 +6,7 @@ import { checkFeatureAccess } from '@/lib/features'
 import { Eye } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { PageLoading } from '@/components/layout/page-loading'
-import { MonitoringClient } from './components/monitoring-client'
+import { MonitoringClient } from '@/app/dashboard/monitoring-penugasan/components/monitoring-client'
 import { getMonitoringData } from './actions'
 import { todayWIB } from '@/lib/time'
 
@@ -39,8 +39,6 @@ export default async function MonitoringPenugasanPage({
       <PageHeader
         title="Monitoring Penugasan"
         description="Pantau seluruh pendelegasian tugas antar guru sekolah."
-        icon={Eye}
-        iconColor="text-violet-500"
       />
 
       <Suspense fallback={<PageLoading text="Memuat data monitoring..." />} key={tanggal}>

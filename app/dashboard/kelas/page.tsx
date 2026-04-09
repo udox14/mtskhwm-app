@@ -64,7 +64,7 @@ export default async function KelasPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
-      <PageHeader title="Manajemen Kelas" description="Kelola data kelas, kapasitas, dan penugasan Wali Kelas." icon={Library} iconColor="text-blue-500" />
+      <PageHeader title="Manajemen Kelas" description="Kelola data kelas, kapasitas, dan penugasan Wali Kelas." />
       <Suspense fallback={<PageLoading text="Memuat data kelas..." />}>
         <KelasDataFetcher userRole={userRole} />
       </Suspense>

@@ -6,7 +6,7 @@ import { checkFeatureAccess } from '@/lib/features'
 import { Calendar } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { PageLoading } from '@/components/layout/page-loading'
-import { JadwalPiketClient } from './components/jadwal-piket-client'
+import { JadwalPiketClient } from '@/app/dashboard/jadwal-piket/components/jadwal-piket-client'
 import { getJadwalPiketData, getDaftarGuruDropdown } from './actions'
 
 export const metadata = { title: 'Jadwal Guru Piket - MTSKHWM App' }
@@ -35,8 +35,6 @@ export default async function JadwalPiketPage() {
       <PageHeader
         title="Jadwal Guru Piket"
         description="Kelola jadwal tugas guru piket dan pengaturan shift hariannya."
-        icon={Calendar}
-        iconColor="text-violet-500"
       />
 
       <Suspense fallback={<PageLoading text="Memuat jadwal piket..." />}>

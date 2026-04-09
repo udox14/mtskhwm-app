@@ -55,8 +55,6 @@ export default async function PenugasanPage() {
       <PageHeader
         title="Penugasan"
         description="Titipkan tugas mengajar dan absensi ke guru lain."
-        icon={Send}
-        iconColor="text-violet-500"
       />
 
       <Suspense fallback={<PageLoading text="Memuat data penugasan..." />}>

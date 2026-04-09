@@ -29,8 +29,6 @@ export default async function PsikotesPage() {
       <PageHeader
         title="Psikotes & Minat"
         description="Data hasil tes psikologis, bakat, minat, dan rekomendasi jurusan siswa."
-        icon={Brain}
-        iconColor="text-violet-500"
       />
       <PsikotesClient
         mappingList={mappingList}

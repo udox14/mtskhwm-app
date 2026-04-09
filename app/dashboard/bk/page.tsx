@@ -31,8 +31,6 @@ export default async function BKPage() {
       <PageHeader
         title="Bimbingan Konseling"
         description="Rekam dan pantau layanan bimbingan konseling siswa."
-        icon={HeartHandshake}
-        iconColor="text-rose-500"
       />
       <BKClient
         currentUserId={user.id}

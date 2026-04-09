@@ -25,8 +25,6 @@ export default async function FiturPage() {
       <PageHeader
         title="Manajemen Fitur"
         description="Atur fitur mana saja yang bisa diakses oleh setiap role. Buat role baru sesuai kebutuhan."
-        icon={SlidersHorizontal}
-        iconColor="text-violet-500"
       />
       <FiturClient initialMatrix={matrix} initialRoles={roles} />
     </div>

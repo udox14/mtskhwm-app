@@ -100,8 +100,6 @@ export default async function SiswaPage() {
       <PageHeader
         title="Data Siswa"
         description={isAdmin ? 'Kelola data profil dan status siswa secara massal.' : 'Daftar siswa di kelas yang Anda ajar.'}
-        icon={Users}
-        iconColor="text-blue-500"
       />
       <Suspense fallback={<PageLoading text="Menyiapkan data siswa..." />}>
         <SiswaDataFetcher userId={user.id} isAdmin={isAdmin} allowedKelasIds={allowedKelasIds} />

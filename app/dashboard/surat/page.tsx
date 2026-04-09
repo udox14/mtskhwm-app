@@ -43,8 +43,6 @@ export default async function SuratPage() {
       <PageHeader
         title="Surat Keluar"
         description="Generate dan cetak surat resmi madrasah."
-        icon={FileText}
-        iconColor="text-amber-500"
       />
       <Suspense fallback={<PageLoading text="Menyiapkan data surat..." />}>
         <SuratDataFetcher userId={user.id} userName={userName} />

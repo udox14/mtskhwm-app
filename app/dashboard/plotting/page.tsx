@@ -134,8 +134,6 @@ export default async function PlottingPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Plotting & Kenaikan Kelas"
         description="Pusat kendali penyebaran siswa baru, penjurusan, pengacakan kelas, dan kelulusan."
-        icon={Network}
-        iconColor="text-blue-500"
       >
         {taAktif && (
           <div className="flex items-center gap-1.5 text-[12px] text-slate-500 border border-surface px-2.5 py-1 rounded-md bg-surface-2">

@@ -43,8 +43,6 @@ export default async function KelolaPage() {
       <PageHeader
         title="Kelola Program Unggulan"
         description="Atur kelas unggulan, kelola materi mingguan, dan pantau pengetesan"
-        icon={Star}
-        iconColor="text-amber-500"
       />
       <Suspense fallback={<PageLoading text="Memuat panel kelola..." />}>
         <DataFetcher currentUserId={user.id} />

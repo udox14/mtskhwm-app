@@ -65,8 +65,6 @@ export default async function ProgramUnggulanPage() {
       <PageHeader
         title="Program Unggulan"
         description="Pengetesan siswa kelas unggulan"
-        icon={Star}
-        iconColor="text-amber-500"
       />
 
       {/* Act As Banner — hanya untuk super admin */}
