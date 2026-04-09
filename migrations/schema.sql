@@ -239,8 +239,6 @@ CREATE TABLE IF NOT EXISTS pengaturan_akademik (
   bobot_rapor         INTEGER DEFAULT 60,
   bobot_um            INTEGER DEFAULT 40,
   daftar_jurusan      TEXT DEFAULT '["KEAGAMAAN","BAHASA ARAB","BAHASA INGGRIS","OLIMPIADE"]',
-  mobile_nav_enabled  INTEGER DEFAULT 1,
-  mobile_nav_links    TEXT DEFAULT '["dashboard", "kehadiran", "agenda", "kedisiplinan"]',
   updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

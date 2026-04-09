@@ -12,14 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   CalendarDays, Loader2, PlusCircle, CheckCircle2, AlertCircle,
-  Trash2, Power, X, Tags, Edit3, Clock, Copy, Plus, ChevronDown, ChevronUp,
-  Smartphone, LayoutPanelLeft
+  Trash2, Power, X, Tags, Edit3, Clock, Copy, Plus, ChevronDown, ChevronUp
 } from 'lucide-react'
 import {
   tambahTahunAjaran, setAktifTahunAjaran, hapusTahunAjaran,
-  simpanDaftarJurusan, simpanJamPelajaran, simpanPengaturanNavigasi
+  simpanDaftarJurusan, simpanJamPelajaran
 } from '../actions'
-import { MENU_ITEMS } from '@/config/menu'
 import { DEFAULT_POLA_JAM } from '../types'
 import type { PolaJam, SlotJam } from '../types'
 import { cn } from '@/lib/utils'
@@ -352,15 +350,10 @@ function PolaJamEditor({ value, onChange }: { value: PolaJam[]; onChange: (v: Po
 }
 
 // ── MAIN ────────────────────────────────────────────────────────────────
-export function SettingsClient({ taData, navEnabled, navLinks }: { taData: TAProps[], navEnabled: boolean, navLinks: string[] }) {
+export function SettingsClient({ taData }: { taData: TAProps[] }) {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [state, formAction] = useActionState(tambahTahunAjaran, initialState)
-
-  // Pengaturan Navigasi
-  const [mobileNavEnabled, setMobileNavEnabled] = useState(navEnabled)
-  const [mobileNavLinks, setMobileNavLinks] = useState<string[]>(navLinks)
-  const [isSavingNav, setIsSavingNav] = useState(false)
 
   // Form tambah TA
   const [tambahJurusanList, setTambahJurusanList] = useState<string[]>(defaultJurusan)
@@ -377,26 +370,6 @@ export function SettingsClient({ taData, navEnabled, navLinks }: { taData: TAPro
   const [editingJamTA, setEditingJamTA] = useState<TAProps | null>(null)
   const [editPolaJam, setEditPolaJam] = useState<PolaJam[]>([])
   const [isSavingJam, setIsSavingJam] = useState(false)
-
-  const handleSaveNav = async () => {
-    setIsSavingNav(true)
-    const res = await simpanPengaturanNavigasi(mobileNavEnabled, mobileNavLinks)
-    if (res?.error) alert(res.error)
-    else alert(res.success)
-    setIsSavingNav(false)
-  }
-
-  const addNavLink = (id: string) => {
-    if (mobileNavLinks.length >= 5) {
-      alert("Maksimal 5 menu navigasi agar tidak padat di layar mobile.")
-      return
-    }
-    if (!mobileNavLinks.includes(id)) setMobileNavLinks([...mobileNavLinks, id])
-  }
-
-  const removeNavLink = (id: string) => {
-    setMobileNavLinks(mobileNavLinks.filter(l => l !== id))
-  }
 
   const addJurusan = (isEdit: boolean) => {
     const input = isEdit ? editJurusanInput : tambahJurusanInput
@@ -720,94 +693,6 @@ export function SettingsClient({ taData, navEnabled, navLinks }: { taData: TAPro
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* ── PENGATURAN NAVIGASI MOBILE ── */}
-      <div className="rounded-xl border border-surface bg-surface shadow-sm overflow-hidden mt-6">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-2 bg-slate-50/50 dark:bg-slate-900/20">
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800">
-              <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Navigasi Bawah Layar (Mobile)</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Atur menu jalan pintas yang muncul di bagian bawah layar HP (maksimal 5 menu).</p>
-            </div>
-          </div>
-          
-          <button 
-            type="button" 
-            onClick={() => setMobileNavEnabled(!mobileNavEnabled)}
-            className={cn(
-              "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-              mobileNavEnabled ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-700"
-            )}
-          >
-            <span className="sr-only">Aktifkan Navbar</span>
-            <span
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                mobileNavEnabled ? "translate-x-4" : "translate-x-0"
-              )}
-            />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          <div className={cn("transition-opacity", !mobileNavEnabled && "opacity-50 pointer-events-none")}>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Urutan Menu Aktif</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {mobileNavLinks.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Belum ada menu yang dipilih.</p>
-              ) : (
-                mobileNavLinks.map((id, index) => {
-                  const mMenu = MENU_ITEMS.find(m => m.id === id)
-                  if (!mMenu) return null
-                  const Icon = mMenu.icon
-                  return (
-                    <div key={id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                      <span className="text-[10px] font-bold opacity-50 w-3">{index + 1}.</span>
-                      <Icon className="h-3.5 w-3.5" />
-                      <span className="text-xs font-medium">{mMenu.title}</span>
-                      <button onClick={() => removeNavLink(id)} className="ml-1 text-blue-400 hover:text-rose-500 transition-colors">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Tambahkan Menu</p>
-            <div className="flex gap-2">
-               <Select onValueChange={addNavLink} value="">
-                 <SelectTrigger className="w-[280px] h-9 text-xs bg-surface border-surface-2 rounded-lg">
-                   <div className="flex items-center gap-2 text-slate-500">
-                     <Plus className="h-3.5 w-3.5" /> Pilih menu dari daftar...
-                   </div>
-                 </SelectTrigger>
-                 <SelectContent>
-                   {MENU_ITEMS.filter(m => !mobileNavLinks.includes(m.id)).map(m => (
-                     <SelectItem key={m.id} value={m.id} className="text-xs">
-                       {m.title}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-            </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2">
-              Walaupun Anda menambahkan menu di sini, menu tetap akan disembunyikan bagi user yang tidak memiliki Hak Akses (Role) terkait.
-            </p>
-          </div>
-
-          <div className="flex justify-end pt-3 border-t border-surface-2 mt-4">
-             <Button onClick={handleSaveNav} disabled={isSavingNav}
-                className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-4 font-medium">
-                {isSavingNav ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Menyimpan...</> : 'Simpan Pengaturan Navigasi'}
-             </Button>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

@@ -45,9 +45,10 @@ export async function getKelasUnggulanGuru(guruId: string, dateOverride?: string
     todayStr = resolvedDate
   }
 
-  // Cari hari dari hari di sistem (1=Senin ... 6=Sabtu, 0=Minggu)
-  const dateObj = new Date(todayStr + 'T00:00:00+07:00')
-  let hari = dateObj.getDay()
+  // Cari hari dari string YYYY-MM-DD menggunakan Date UTC agar tidak tergeser zona waktu lokal
+  const [y, m, d] = todayStr.split('-').map(Number)
+  const dateObj = new Date(Date.UTC(y, m - 1, d))
+  let hari = dateObj.getUTCDay()
   if (hari === 0) hari = 7
 
   // Ambil kelas unggulan yang diajar oleh guru ini PADA HARI INI berdasarkan jadwal nyata

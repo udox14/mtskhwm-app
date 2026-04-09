@@ -35,25 +35,20 @@ export default async function DashboardLayout({
     getUserAllowedFeatures(db, user.id),
   ])
 
-  // Ambil pengaturan akademik global
-  let globalConfig = null
-  try {
-    globalConfig = await db.prepare("SELECT * FROM pengaturan_akademik WHERE id = 'global'").first<any>()
-  } catch(e) {}
-  
-  let navEnabled = true
-  let navLinks = ["dashboard", "kehadiran", "agenda", "kedisiplinan"]
-
-  if (globalConfig) {
-    if (globalConfig.mobile_nav_enabled !== undefined) navEnabled = globalConfig.mobile_nav_enabled === 1
-    if (globalConfig.mobile_nav_links) {
-      try { navLinks = JSON.parse(globalConfig.mobile_nav_links) } catch {}
-    }
-  }
-
   const primaryRole = freshUser?.role || (user as any).role || 'guru'
   const userName = freshUser?.nama_lengkap || (user as any).nama_lengkap || user.name || 'User MSS'
   const avatarUrl = freshUser?.avatar_url || null
+
+  // Ambil pengaturan navbar khusus untuk role utama user
+  let navLinks: string[] = []
+  try {
+    const roleConfig = await db.prepare("SELECT mobile_nav_links FROM master_roles WHERE value = ?").bind(primaryRole).first<any>()
+    if (roleConfig?.mobile_nav_links) {
+      navLinks = JSON.parse(roleConfig.mobile_nav_links)
+    }
+  } catch(e) {}
+  
+  const navEnabled = navLinks.length > 0;
 
   return (
     <div className="flex h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">

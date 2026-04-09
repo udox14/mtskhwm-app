@@ -129,33 +129,3 @@ export async function getPolaJamByTA(tahun_ajaran_id: string): Promise<PolaJam[]
   if (!row?.jam_pelajaran) return []
   try { return JSON.parse(row.jam_pelajaran) } catch { return [] }
 }
-
-// ============================================================
-// SIMPAN PENGATURAN NAVIGASI MOBILE
-// ============================================================
-export async function simpanPengaturanNavigasi(enabled: boolean, links: string[]) {
-  const db = await getDB()
-  try {
-    const linksJson = JSON.stringify(links)
-    const valEnabled = enabled ? 1 : 0
-    
-    // Pastikan table ada row 'global', insert jika belum ada
-    await db.prepare('INSERT OR IGNORE INTO pengaturan_akademik (id) VALUES (?)').bind('global').run()
-
-    try {
-      await db.prepare(
-        'UPDATE pengaturan_akademik SET mobile_nav_enabled = ?, mobile_nav_links = ? WHERE id = ?'
-      ).bind(valEnabled, linksJson, 'global').run()
-    } catch (e: any) {
-      if (e.message.includes('column')) {
-        return { error: 'Gagal: Kolom pengaturan_akademik belum di-migrate. Jalankan db:init.' }
-      }
-      throw e
-    }
-
-    revalidatePath('/', 'layout')
-    return { success: 'Pengaturan navigasi bar berhasil disimpan!' }
-  } catch (e: any) {
-    return { error: e?.message ?? 'Terjadi kesalahan tidak diketahui.' }
-  }
-}

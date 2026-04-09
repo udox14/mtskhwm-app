@@ -16,12 +16,12 @@ import { MENU_ITEMS } from '@/config/menu'
  */
 export async function getRoleFeatureMatrix(): Promise<{
   matrix: Record<string, string[]>
-  roles: { value: string; label: string; is_custom: number }[]
+  roles: { value: string; label: string; is_custom: number; mobile_nav_links: string }[]
 }> {
   const db = await getDB()
   const [featResult, rolesResult] = await Promise.all([
     db.prepare('SELECT role, feature_id FROM role_features ORDER BY role, feature_id').all<{ role: string; feature_id: string }>(),
-    db.prepare('SELECT value, label, is_custom FROM master_roles ORDER BY is_custom ASC, label ASC').all<{ value: string; label: string; is_custom: number }>(),
+    db.prepare('SELECT value, label, is_custom, mobile_nav_links FROM master_roles ORDER BY is_custom ASC, label ASC').all<{ value: string; label: string; is_custom: number; mobile_nav_links: string }>(),
   ])
 
   const roles = rolesResult.results ?? []
@@ -219,7 +219,7 @@ export async function setUserFeatureOverrides(
 // MASTER ROLES CRUD
 // ============================================================
 
-export type MasterRole = { value: string; label: string; is_custom: number }
+export type MasterRole = { value: string; label: string; is_custom: number; mobile_nav_links: string }
 
 /**
  * Get all roles from master_roles table
@@ -227,7 +227,7 @@ export type MasterRole = { value: string; label: string; is_custom: number }
 export async function getAllMasterRoles(): Promise<MasterRole[]> {
   const db = await getDB()
   const result = await db.prepare(
-    'SELECT value, label, is_custom FROM master_roles ORDER BY is_custom ASC, label ASC'
+    'SELECT value, label, is_custom, mobile_nav_links FROM master_roles ORDER BY is_custom ASC, label ASC'
   ).all<MasterRole>()
   return result.results ?? []
 }
@@ -311,5 +311,27 @@ export async function deleteCustomRole(value: string) {
 
   revalidatePath('/dashboard/settings/fitur')
   revalidatePath('/dashboard')
+  return { success: true }
+}
+
+/**
+ * Update mobile nav links for a role
+ */
+export async function setRoleMobileNav(value: string, navLinks: string[]) {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const db = await getDB()
+  const userRow = await db.prepare('SELECT role FROM "user" WHERE id = ?').bind(user.id).first<any>()
+  if (userRow?.role !== 'super_admin') return { error: 'Hanya Super Admin yang bisa mengedit role.' }
+
+  const jsonStr = JSON.stringify(navLinks)
+  await db.prepare(
+    'UPDATE master_roles SET mobile_nav_links = ? WHERE value = ?'
+  ).bind(jsonStr, value).run()
+
+  revalidatePath('/dashboard/settings/fitur')
+  revalidatePath('/dashboard')
+  revalidatePath('/', 'layout')
   return { success: true }
 }

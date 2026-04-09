@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS master_roles (
   value       TEXT PRIMARY KEY,  -- slug role: 'guru', 'admin_tu', dll
   label       TEXT NOT NULL,     -- nama tampil: 'Guru Mata Pelajaran'
   is_custom   INTEGER NOT NULL DEFAULT 0,  -- 1 = role custom buatan admin
+  mobile_nav_links TEXT DEFAULT '[]', -- Konfigurasi JSON array 5 fitur mobile navbar
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

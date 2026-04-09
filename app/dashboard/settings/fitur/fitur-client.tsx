@@ -2,17 +2,18 @@
 
 import { useState, useTransition, useCallback } from 'react'
 import { MENU_ITEMS } from '@/config/menu'
-import { toggleRoleFeature, createCustomRole, editCustomRole, deleteCustomRole } from './actions'
+import { toggleRoleFeature, createCustomRole, editCustomRole, deleteCustomRole, setRoleMobileNav } from './actions'
 import { cn } from '@/lib/utils'
 import {
   Shield, Layers, Check, Loader2, Search, Info,
-  PlusCircle, Pencil, Trash2, X, Tag, AlertCircle
+  PlusCircle, Pencil, Trash2, X, Tag, AlertCircle, Smartphone, Plus
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-type ViewMode = 'per-fitur' | 'per-role' | 'roles'
-type MasterRole = { value: string; label: string; is_custom: number }
+type ViewMode = 'per-fitur' | 'per-role' | 'roles' | 'navbar'
+type MasterRole = { value: string; label: string; is_custom: number; mobile_nav_links: string }
 
 const ROLE_COLORS_MAP: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   super_admin: { bg: 'bg-rose-50',    text: 'text-rose-700',    border: 'border-rose-200',    dot: 'bg-rose-500' },
@@ -104,6 +105,7 @@ export function FiturClient({ initialMatrix, initialRoles }: FiturClientProps) {
             { id: 'per-fitur', label: 'Per Fitur', icon: Layers },
             { id: 'per-role',  label: 'Per Role',  icon: Shield },
             { id: 'roles',     label: 'Kelola Role', icon: Tag },
+            { id: 'navbar',    label: 'Bottom Nav', icon: Smartphone },
           ] as const).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -143,6 +145,9 @@ export function FiturClient({ initialMatrix, initialRoles }: FiturClientProps) {
       )}
       {viewMode === 'roles' && (
         <RoleManagerView roles={roles} setRoles={setRoles} matrix={matrix} setMatrix={setMatrix} />
+      )}
+      {viewMode === 'navbar' && (
+        <NavbarView roles={roles} setRoles={setRoles} matrix={matrix} />
       )}
     </div>
   )
@@ -360,7 +365,7 @@ function RoleManagerView({ roles, setRoles, matrix, setMatrix }: {
     startTransition(async () => {
       const res = await createCustomRole(newLabel, newValue)
       if (res?.error) { setError(res.error); return }
-      const newRole: MasterRole = { value: res.slug!, label: newLabel.trim(), is_custom: 1 }
+      const newRole: MasterRole = { value: res.slug!, label: newLabel.trim(), is_custom: 1, mobile_nav_links: '[]' }
       setRoles(prev => [...prev, newRole])
       setMatrix(prev => ({ ...prev, [res.slug!]: [] }))
       setNewLabel(''); setNewValue('')
@@ -575,3 +580,142 @@ function RoleManagerView({ roles, setRoles, matrix, setMatrix }: {
     </div>
   )
 }
+
+// ════════════════════════════════════════════════════════
+// VIEW: Konfigurasi Bottom Nav (Mobile)
+// ════════════════════════════════════════════════════════
+function NavbarView({ roles, setRoles, matrix }: {
+  roles: MasterRole[]
+  setRoles: React.Dispatch<React.SetStateAction<MasterRole[]>>
+  matrix: Record<string, string[]>
+}) {
+  const [selectedRole, setSelectedRole] = useState<string>(roles[0]?.value ?? '')
+  const [isSaving, setIsSaving] = useState(false)
+
+  const selectedRoleData = roles.find(r => r.value === selectedRole)
+  const navLinksStr = selectedRoleData?.mobile_nav_links || '[]'
+  let currentNavLinks: string[] = []
+  try { currentNavLinks = JSON.parse(navLinksStr) } catch {}
+
+  const allowedFeatures = matrix[selectedRole] ?? []
+
+  const updateNavLinks = async (newLinks: string[]) => {
+    if (!selectedRoleData) return
+    setIsSaving(true)
+    const res = await setRoleMobileNav(selectedRole, newLinks)
+    setIsSaving(false)
+    if (res?.error) { alert(res.error); return }
+    const updatedStr = JSON.stringify(newLinks)
+    setRoles(prev => prev.map(r => r.value === selectedRole ? { ...r, mobile_nav_links: updatedStr } : r))
+  }
+
+  const addNavLink = (id: string) => {
+    if (currentNavLinks.length >= 5) {
+      alert("Maksimal 5 menu navigasi agar tidak padat di layar mobile.")
+      return
+    }
+    if (!currentNavLinks.includes(id)) {
+      updateNavLinks([...currentNavLinks, id])
+    }
+  }
+
+  const removeNavLink = (id: string) => {
+    updateNavLinks(currentNavLinks.filter(l => l !== id))
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Info */}
+      <div className="flex items-start gap-2 px-3 py-2.5 bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg">
+        <Info className="h-3.5 w-3.5 text-violet-500 shrink-0 mt-0.5" />
+        <p className="text-[11px] text-violet-700 dark:text-violet-300">
+          Atur jalan pintas (shortcut) untuk tampilan layar HP tiap peran/role (Maksimal 5). Pengguna ini hanya bisa melihat fitur yang diizinkan saja. Jika dikosongkan, Navbar tidak akan muncul sama sekali.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+        {/* Role Selector list */}
+        <div className="md:col-span-1 space-y-2">
+          {roles.map(role => {
+            const isSelected = selectedRole === role.value
+            return (
+              <button
+                key={role.value}
+                onClick={() => setSelectedRole(role.value)}
+                className={cn(
+                  'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all text-left',
+                  isSelected ? 'bg-violet-50 border-violet-300 ring-2 ring-violet-100' : 'bg-surface border-surface-2 hover:bg-slate-50'
+                )}
+              >
+                <span className={cn('text-xs font-semibold', isSelected ? 'text-violet-700' : 'text-slate-600')}>{role.label}</span>
+                {JSON.parse(role.mobile_nav_links || '[]').length > 0 && (
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Manager */}
+        {selectedRoleData && (
+          <div className="md:col-span-3 bg-surface border border-surface rounded-xl overflow-hidden p-5 space-y-4 relative">
+             {isSaving && (
+               <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-sm flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+               </div>
+             )}
+
+             <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Urutan Menu Aktif ({currentNavLinks.length}/5)</p>
+             <div className="flex flex-wrap gap-2 mb-4">
+               {currentNavLinks.length === 0 ? (
+                 <p className="text-xs text-slate-400 italic">Belum ada jalan pintas yang dipilih.</p>
+               ) : (
+                 currentNavLinks.map((id, index) => {
+                   const mMenu = MENU_ITEMS.find(m => m.id === id)
+                   // Jika admin revoke fitur padahal sebelumnya ada di nav, beri styling alert
+                   const isRevoked = !allowedFeatures.includes(id)
+
+                   return (
+                     <div key={id} className={cn("inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border", isRevoked ? "border-rose-200 bg-rose-50 text-rose-700" : "border-blue-200 bg-blue-50 text-blue-800")}>
+                       <span className="text-[10px] font-bold opacity-50 w-3">{index + 1}.</span>
+                       <span className="text-xs font-medium">{mMenu ? mMenu.title : id}</span>
+                       {isRevoked && <span title="Izin fitur dicabut"><AlertCircle className="h-3 w-3" /></span>}
+                       <button onClick={() => removeNavLink(id)} className="ml-1 text-slate-400 hover:text-rose-500">
+                         <X className="h-3 w-3" />
+                       </button>
+                     </div>
+                   )
+                 })
+               )}
+             </div>
+
+             <div className="pt-2 border-t border-surface-2 mt-4 space-y-2">
+               <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tambahkan Jalan Pintas</p>
+               <Select onValueChange={addNavLink} value="" disabled={currentNavLinks.length >= 5}>
+                 <SelectTrigger className="w-[300px] h-9 text-xs bg-surface border-surface-2 rounded-lg">
+                   <div className="flex items-center gap-2 text-slate-500">
+                     <Plus className="h-3.5 w-3.5" /> {currentNavLinks.length >= 5 ? "Kapasitas penuh (maks 5)" : "Pilih dari fitur yang diizinkan..."}
+                   </div>
+                 </SelectTrigger>
+                 <SelectContent>
+                   {MENU_ITEMS.filter(m => allowedFeatures.includes(m.id) && !currentNavLinks.includes(m.id)).map(m => (
+                     <SelectItem key={m.id} value={m.id} className="text-xs">
+                       {m.title}
+                     </SelectItem>
+                   ))}
+                   {MENU_ITEMS.filter(m => allowedFeatures.includes(m.id) && !currentNavLinks.includes(m.id)).length === 0 && (
+                     <SelectItem value="__empty" disabled className="text-xs text-slate-400">Tidak ada fitur tersisa yg bisa ditambah</SelectItem>
+                   )}
+                 </SelectContent>
+               </Select>
+               <p className="text-[10px] text-slate-400">
+                 Hanya fitur yang dicentang pada tab <strong>Per Role</strong> yang akan muncul di dropdown ini.
+               </p>
+             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
