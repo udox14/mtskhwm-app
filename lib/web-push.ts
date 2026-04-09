@@ -28,28 +28,36 @@ export async function sendPushNotification(
 ) {
   try {
     const db = await getDB();
-    let stmt;
+    // Query dasar: kita hanya butuh endpoint dan keys
+    let query = `SELECT endpoint, p256dh, auth FROM web_push_subscriptions`;
     let bindings: any[] = [];
-
-    // Query dasar
-    let query = `
-      SELECT wp.endpoint, wp.p256dh, wp.auth 
-      FROM web_push_subscriptions wp
-      JOIN "user" u ON wp.user_id = u.id
-      WHERE 1=1
-    `;
+    let conditions: string[] = [];
 
     if (target.userId) {
-      query += ` AND u.id = ?`;
+      conditions.push(`user_id = ?`);
       bindings.push(target.userId);
     } else if (target.role) {
-      query += ` AND (u.id IN (SELECT user_id FROM user_roles WHERE role = ?) OR u.role = ?)`;
+      // Jika filter role, kita harus JOIN ke user
+      query = `
+        SELECT wp.endpoint, wp.p256dh, wp.auth 
+        FROM web_push_subscriptions wp
+        JOIN "user" u ON wp.user_id = u.id
+        WHERE (u.id IN (SELECT user_id FROM user_roles WHERE role = ?) OR u.role = ?)
+      `;
       bindings.push(target.role, target.role);
-    } else if (!target.all) {
+    } else if (target.all) {
+      // Tidak butuh filter tambahan
+    } else {
       return { success: false, message: "No target specified" };
     }
 
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
+
+    console.log(`[PushService] Running query for target:`, target);
     const { results } = await db.prepare(query).bind(...bindings).all();
+    console.log(`[PushService] Found ${results?.length || 0} subscriptions in DB.`);
 
     if (!results || results.length === 0) {
       return { success: true, sent: 0, message: "No active subscriptions found for target" };
