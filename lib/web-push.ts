@@ -34,15 +34,15 @@ export async function sendPushNotification(
     let conditions: string[] = [];
 
     if (target.userId) {
-      conditions.push(`user_id = ?`);
+      conditions.push(`LOWER(user_id) = LOWER(?)`);
       bindings.push(target.userId);
     } else if (target.role) {
-      // Jika filter role, kita harus JOIN ke user
+      // Jika filter role, kita harus JOIN ke user dengan case-insensitive
       query = `
         SELECT wp.endpoint, wp.p256dh, wp.auth 
         FROM web_push_subscriptions wp
         JOIN "user" u ON wp.user_id = u.id
-        WHERE (u.id IN (SELECT user_id FROM user_roles WHERE role = ?) OR u.role = ?)
+        WHERE (u.id IN (SELECT user_id FROM user_roles WHERE LOWER(role) = LOWER(?)) OR LOWER(u.role) = LOWER(?))
       `;
       bindings.push(target.role, target.role);
     } else if (target.all) {
@@ -57,10 +57,15 @@ export async function sendPushNotification(
 
     console.log(`[PushService] SQL:`, query);
     console.log(`[PushService] BINDINGS:`, bindings);
-    const { results } = await db.prepare(query).bind(...bindings).all();
-    console.log(`[PushService] Found ${results?.length || 0} subscriptions in DB.`);
+    
+    const dbResult = await db.prepare(query).bind(...bindings).all();
+    console.log(`[PushService] Raw DB Result:`, JSON.stringify(dbResult));
 
-    if (!results || results.length === 0) {
+    // Robust parsing (handles both {results:[]} and directly [])
+    const results = (Array.isArray(dbResult) ? dbResult : (dbResult as any).results || []) as any[];
+    console.log(`[PushService] Parsed Results Count: ${results.length}`);
+
+    if (results.length === 0) {
       return { success: true, sent: 0, message: "No active subscriptions found for target" };
     }
 

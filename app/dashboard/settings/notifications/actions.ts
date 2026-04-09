@@ -39,6 +39,7 @@ export async function sendCustomNotification(
     return { error: 'Target tidak valid.' }
   }
 
+  console.log(`[Action] Sending notification: ${title}, Target:`, target);
   try {
     const act = await sendPushNotification(
       { title, body, url },
