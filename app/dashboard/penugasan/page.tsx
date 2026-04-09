@@ -15,7 +15,7 @@ export const metadata = { title: 'Penugasan - MTSKHWM App' }
 
 export const dynamic = 'force-dynamic'
 
-async function PenugasanDataFetcher({ userId, role, isGuruPiket }: { userId: string; role: string; isGuruPiket: boolean }) {
+async function PenugasanDataFetcher({ userId, isGuruPiket }: { userId: string; isGuruPiket: boolean }) {
   const tanggal = todayWIB()
   const [jadwal, users, tugasMasuk, terkirim] = await Promise.all([
     getJadwalUntukDelegasi(tanggal),
@@ -30,7 +30,6 @@ async function PenugasanDataFetcher({ userId, role, isGuruPiket }: { userId: str
       initialUsers={users}
       initialTugasMasuk={tugasMasuk}
       initialTerkirim={terkirim}
-      userRole={role}
       isGuruPiket={isGuruPiket}
       tanggalHariIni={tanggal}
     />
@@ -61,7 +60,7 @@ export default async function PenugasanPage() {
       />
 
       <Suspense fallback={<PageLoading text="Memuat data penugasan..." />}>
-        <PenugasanDataFetcher userId={user.id} role={role} isGuruPiket={isGuruPiket} />
+        <PenugasanDataFetcher userId={user.id} isGuruPiket={isGuruPiket} />
       </Suspense>
     </div>
   )
