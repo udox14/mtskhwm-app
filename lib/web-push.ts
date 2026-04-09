@@ -55,7 +55,8 @@ export async function sendPushNotification(
       query += ` WHERE ` + conditions.join(' AND ');
     }
 
-    console.log(`[PushService] Running query for target:`, target);
+    console.log(`[PushService] SQL:`, query);
+    console.log(`[PushService] BINDINGS:`, bindings);
     const { results } = await db.prepare(query).bind(...bindings).all();
     console.log(`[PushService] Found ${results?.length || 0} subscriptions in DB.`);
 

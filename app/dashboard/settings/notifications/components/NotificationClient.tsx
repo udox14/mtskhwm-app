@@ -21,7 +21,14 @@ function SubmitBtn() {
   )
 }
 
-export function NotificationClient({ roles = [], diagnostics }: { roles: any[], diagnostics?: { totalDevices: number, vapidKey: string } }) {
+export function NotificationClient({ roles = [], diagnostics }: { 
+  roles: any[], 
+  diagnostics?: { 
+    totalDevices: number, 
+    vapidKey: string,
+    deviceList: any[]
+  } 
+}) {
   const [state, action] = useActionState(sendCustomNotification, initialState)
   const [targetType, setTargetType] = useState('role')
 
@@ -106,6 +113,32 @@ export function NotificationClient({ roles = [], diagnostics }: { roles: any[], 
               </p>
             </div>
           </div>
+
+          {diagnostics.deviceList.length > 0 && (
+            <div className="mt-4 overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950">
+              <table className="w-full text-[10px] text-left">
+                <thead className="bg-slate-50 dark:bg-slate-900 text-slate-400 font-bold uppercase">
+                  <tr>
+                    <th className="px-3 py-2">User</th>
+                    <th className="px-3 py-2">Role Utama</th>
+                    <th className="px-3 py-2">Role Tambahan</th>
+                    <th className="px-3 py-2">Endpoint (Hax)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                  {diagnostics.deviceList.map((d, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2 font-medium">{d.nama_lengkap || 'Unknown'}</td>
+                      <td className="px-3 py-2 uppercase text-blue-600 dark:text-blue-400 font-semibold">{d.primary_role}</td>
+                      <td className="px-3 py-2 text-slate-500">{d.secondary_roles || '-'}</td>
+                      <td className="px-3 py-2 truncate max-w-[100px] text-slate-400 font-mono">...{d.endpoint.slice(-10)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           <p className="mt-3 text-[10px] text-slate-400 leading-relaxed italic">
             *Jika angka di atas 0 tapi pengiriman tetap 0, berarti ada ketidakcocokan Role atau User ID.
             Jika angka 0, berarti belum ada user yang mengklik tombol "Aktifkan" di profil mereka (cek koneksi DB).

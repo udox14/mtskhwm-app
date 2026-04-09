@@ -18,10 +18,17 @@ export default async function AdminNotificationsPage() {
     redirect('/dashboard');
   }
 
-  // DIAGNOSTIK: Cek jumlah langganan di DB
-  const stats = await db.prepare(
-    'SELECT COUNT(*) as total FROM web_push_subscriptions'
-  ).first<{ total: number }>();
+  // DIAGNOSTIK: Ambil detail langganan dan mapping user/role
+  const deviceDetails = await db.prepare(`
+    SELECT 
+      wp.endpoint, 
+      u.nama_lengkap, 
+      u.role as primary_role,
+      (SELECT GROUP_CONCAT(role) FROM user_roles WHERE user_id = u.id) as secondary_roles
+    FROM web_push_subscriptions wp
+    LEFT JOIN "user" u ON wp.user_id = u.id
+    LIMIT 5
+  `).all<any>();
 
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'N/A';
 
@@ -39,7 +46,8 @@ export default async function AdminNotificationsPage() {
       <NotificationClient 
         roles={[...ALL_ROLES]} 
         diagnostics={{
-          totalDevices: stats?.total || 0,
+          totalDevices: deviceDetails.results?.length || 0,
+          deviceList: deviceDetails.results || [],
           vapidKey: vapidKey
         }}
       />
