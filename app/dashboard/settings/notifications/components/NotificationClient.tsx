@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { sendCustomNotification } from '../actions'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 const initialState: any = {}
@@ -33,6 +34,7 @@ export function NotificationClient({ roles = [], diagnostics }: {
 }) {
   const [state, action] = useActionState(sendCustomNotification, initialState)
   const [targetType, setTargetType] = useState('role')
+  const [targetRole, setTargetRole] = useState(roles[0]?.value || '')
 
   return (
     <div className="space-y-4">
@@ -64,28 +66,32 @@ export function NotificationClient({ roles = [], diagnostics }: {
             <div className="flex gap-3">
               <div className="space-y-1.5 flex-1">
                 <Label className="text-xs font-medium text-slate-500">Target Penerima</Label>
-                <select
-                  name="targetType"
-                  value={targetType}
-                  onChange={(e) => setTargetType(e.target.value)}
-                  className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="all">Semua Pengguna</option>
-                  <option value="role">Berdasarkan Role</option>
-                </select>
+                <input type="hidden" name="targetType" value={targetType} />
+                <Select value={targetType} onValueChange={setTargetType}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg">
+                    <SelectValue placeholder="Target" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Pengguna</SelectItem>
+                    <SelectItem value="role">Berdasarkan Role</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {targetType === 'role' && (
                 <div className="space-y-1.5 flex-1">
                   <Label className="text-xs font-medium text-slate-500">Pilih Role</Label>
-                  <select
-                    name="targetRole"
-                    className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    {roles.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
+                  <input type="hidden" name="targetRole" value={targetRole} />
+                  <Select value={targetRole} onValueChange={setTargetRole}>
+                    <SelectTrigger className="h-9 text-xs rounded-lg">
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>

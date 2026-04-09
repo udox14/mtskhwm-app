@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { buatUndanganRapat, konfirmasiKehadiran } from '../actions'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +29,7 @@ export function RapatClient({ undanganMasuk, rapatDibuat, canCreate, roles = [] 
   const [activeTab, setActiveTab] = useState('masuk')
   const [createState, createAction] = useActionState(buatUndanganRapat, initialState)
   const [targetType, setTargetType] = useState('all')
+  const [targetRole, setTargetRole] = useState(roles[0]?.value || '')
 
   // Untuk form konfirmasi
   const [isConfirming, setIsConfirming] = useState<string | null>(null)
@@ -90,47 +92,59 @@ export function RapatClient({ undanganMasuk, rapatDibuat, canCreate, roles = [] 
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Agenda Rapat</Label>
-                  <Input name="agenda" required placeholder="Cth: Rapat Pleno Kelulusan" className="h-9 text-sm" />
+                  <Input name="agenda" required placeholder="Cth: Rapat Pleno Kelulusan" className="h-9 text-sm rounded-lg" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Tanggal</Label>
-                    <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="h-9 text-sm" />
+                    <Input name="tanggal" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="h-9 text-sm rounded-lg" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Waktu</Label>
-                    <Input name="waktu" type="time" required defaultValue="09:00" className="h-9 text-sm" />
+                    <Input name="waktu" type="time" required defaultValue="09:00" className="h-9 text-sm rounded-lg" />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Tempat</Label>
-                  <Input name="tempat" required placeholder="Cth: Ruang Guru" className="h-9 text-sm" />
+                  <Input name="tempat" required placeholder="Cth: Ruang Guru" className="h-9 text-sm rounded-lg" />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Target Undangan</Label>
-                  <select name="targetType" value={targetType} onChange={e => setTargetType(e.target.value)} className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                    <option value="all">Semua Pengguna</option>
-                    <option value="role">Berdasarkan Role</option>
-                  </select>
+                  <input type="hidden" name="targetType" value={targetType} />
+                  <Select value={targetType} onValueChange={setTargetType}>
+                    <SelectTrigger className="h-9 text-sm rounded-lg">
+                      <SelectValue placeholder="Target" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Pengguna</SelectItem>
+                      <SelectItem value="role">Berdasarkan Role</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 {targetType === 'role' && (
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Pilih Role</Label>
-                    <select name="targetRole" className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                      {roles.map((r) => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
+                    <input type="hidden" name="targetRole" value={targetRole} />
+                    <Select value={targetRole} onValueChange={setTargetRole}>
+                      <SelectTrigger className="h-9 text-sm rounded-lg">
+                        <SelectValue placeholder="Role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles.map((r) => (
+                          <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Catatan (Opsional)</Label>
-                  <Textarea name="catatan" placeholder="Cth: Membawa buku nilai" className="h-20 resize-none text-sm" />
+                  <Textarea name="catatan" placeholder="Cth: Membawa buku nilai" className="h-20 resize-none text-sm rounded-lg" />
                 </div>
 
                 <SubmitBuatRapatBtn />
@@ -199,8 +213,8 @@ export function RapatClient({ undanganMasuk, rapatDibuat, canCreate, roles = [] 
                         <DialogContent className="sm:max-w-sm">
                           <DialogHeader><DialogTitle>Alasan Berhalangan</DialogTitle></DialogHeader>
                           <div className="space-y-3 pt-3">
-                            <Textarea id={`alasan-${u.peserta_id}`} placeholder="Tuliskan alasannya..." className="min-h-[100px] text-sm"/>
-                            <Button className="w-full h-10 bg-blue-600" onClick={() => {
+                            <Textarea id={`alasan-${u.peserta_id}`} placeholder="Tuliskan alasannya..." className="min-h-[100px] text-sm rounded-lg"/>
+                            <Button className="w-full h-10 bg-blue-600 rounded-lg" onClick={() => {
                               const textarea = document.getElementById(`alasan-${u.peserta_id}`) as HTMLTextAreaElement
                               handleKonfirmasi(u.peserta_id, 'TIDAK_HADIR', textarea?.value)
                             }}>Simpan Konfirmasi</Button>
