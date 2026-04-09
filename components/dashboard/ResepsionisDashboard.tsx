@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { getDB } from '@/utils/db'
 import { todayWIB } from '@/lib/time'
 import { WelcomeStrip } from './shared/WelcomeStrip'
+import { FeatureShortcuts } from './shared/FeatureShortcuts'
+import { JadwalMengajarToday } from './shared/JadwalMengajarToday'
 import { KehadiranPribadiCard } from './shared/KehadiranPribadiCard'
 import {
   MapPin, CheckCircle2, Plus, UserCog, ArrowRight,
@@ -60,6 +62,8 @@ export async function ResepsionisDashboard({ userId, nama, namaDepan, avatarUrl,
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
 
+      <JadwalMengajarToday userId={userId} taAktif={taAktif} />
+
       {/* Live Counter */}
       <div className="grid grid-cols-2 gap-3">
         <div className={`rounded-xl border shadow-sm p-4 transition-all ${
@@ -94,25 +98,7 @@ export async function ResepsionisDashboard({ userId, nama, namaDepan, avatarUrl,
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link href="/dashboard/izin"
-          className="flex flex-col items-center gap-2 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
-          <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
-            <Plus className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">Catat Izin Keluar</p>
-          <p className="text-[10px] text-blue-500 dark:text-blue-400 text-center">Input baru siswa keluar</p>
-        </Link>
-        <Link href="/dashboard/presensi"
-          className="flex flex-col items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
-          <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
-            <ClipboardCheck className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Presensi Pegawai</p>
-          <p className="text-[10px] text-emerald-500 dark:text-emerald-400 text-center">Input kehadiran harian</p>
-        </Link>
-      </div>
+      {/* Remove Quick Actions */}
 
       {/* Log Perizinan Hari Ini */}
       <div className="rounded-xl border border-surface bg-surface shadow-sm overflow-hidden">
@@ -202,6 +188,9 @@ export async function ResepsionisDashboard({ userId, nama, namaDepan, avatarUrl,
           </div>
         )}
       </div>
+
+      {/* Shortcut Dinamis */}
+      <FeatureShortcuts userId={userId} />
 
       {/* Kehadiran Pribadi */}
       <KehadiranPribadiCard userId={userId} />

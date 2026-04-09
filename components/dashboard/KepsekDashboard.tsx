@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { getDB } from '@/utils/db'
 import { todayWIB } from '@/lib/time'
 import { WelcomeStrip } from './shared/WelcomeStrip'
-import { QuickLink } from './shared/QuickLink'
+import { FeatureShortcuts } from './shared/FeatureShortcuts'
+import { JadwalMengajarToday } from './shared/JadwalMengajarToday'
 import { KehadiranPribadiCard } from './shared/KehadiranPribadiCard'
 import {
   ClipboardCheck, UserCog, Activity, BarChart3,
@@ -78,6 +79,8 @@ export async function KepsekDashboard({ userId, nama, namaDepan, avatarUrl, role
     <div className="space-y-3 animate-in fade-in duration-500 pb-12">
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
+
+      <JadwalMengajarToday userId={userId} taAktif={taAktif} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
 
@@ -213,32 +216,8 @@ export async function KepsekDashboard({ userId, nama, namaDepan, avatarUrl, role
         </div>
       </div>
 
-      {/* Shortcut Monitoring */}
-      <div className="rounded-xl border border-surface bg-surface shadow-sm">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-surface-2">
-          <div className="p-1.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-            <Activity className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">Akses Laporan</p>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">Monitoring & rekap untuk pengambilan keputusan</p>
-          </div>
-        </div>
-        <div className="p-2 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
-          <QuickLink href="/dashboard/monitoring-agenda"
-            icon={<Activity className="h-4 w-4" />} iconBg="bg-purple-50" iconColor="text-purple-600"
-            title="Monitoring Agenda" desc="Kepatuhan pengisian jurnal guru" />
-          <QuickLink href="/dashboard/monitoring-presensi"
-            icon={<BarChart3 className="h-4 w-4" />} iconBg="bg-blue-50" iconColor="text-blue-600"
-            title="Monitoring Presensi" desc="Rekap kehadiran pegawai" />
-          <QuickLink href="/dashboard/rekap-absensi"
-            icon={<ClipboardList className="h-4 w-4" />} iconBg="bg-emerald-50" iconColor="text-emerald-600"
-            title="Rekap Absensi Siswa" desc="Kehadiran siswa per kelas" />
-          <QuickLink href="/dashboard/akademik/nilai"
-            icon={<FileSpreadsheet className="h-4 w-4" />} iconBg="bg-amber-50" iconColor="text-amber-600"
-            title="Rekap Nilai" desc="Capaian akademik siswa" />
-        </div>
-      </div>
+      {/* Shortcut Dinamis */}
+      <FeatureShortcuts userId={userId} />
 
       {/* Kehadiran Pribadi */}
       <KehadiranPribadiCard userId={userId} />

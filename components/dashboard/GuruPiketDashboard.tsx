@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { getDB } from '@/utils/db'
 import { todayWIB } from '@/lib/time'
 import { WelcomeStrip } from './shared/WelcomeStrip'
+import { FeatureShortcuts } from './shared/FeatureShortcuts'
+import { JadwalMengajarToday } from './shared/JadwalMengajarToday'
 import { KehadiranPribadiCard } from './shared/KehadiranPribadiCard'
 import {
   MapPin, Clock, DoorOpen, AlertTriangle,
@@ -56,6 +58,8 @@ export async function GuruPiketDashboard({ userId, nama, namaDepan, avatarUrl, r
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
 
+      <JadwalMengajarToday userId={userId} taAktif={taAktif} />
+
       {/* Live Status Cards */}
       <div className="grid grid-cols-2 gap-3">
         {/* Siswa di Luar Komplek */}
@@ -100,27 +104,7 @@ export async function GuruPiketDashboard({ userId, nama, namaDepan, avatarUrl, r
         </Link>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link href="/dashboard/izin"
-          className="flex flex-col items-center gap-2 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
-          <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
-            <Plus className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">Catat Izin Keluar</p>
-          <p className="text-[10px] text-blue-500 dark:text-blue-400 text-center">Siswa keluar komplek</p>
-        </Link>
-        <Link href="/dashboard/kedisiplinan"
-          className="flex flex-col items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 p-4 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors">
-          <div className="h-10 w-10 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
-            <AlertTriangle className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">Lapor Pelanggaran</p>
-          <p className="text-[10px] text-rose-500 dark:text-rose-400 text-center">
-            {pelanggaranHariIni > 0 ? `${pelanggaranHariIni} kasus hari ini` : 'Belum ada kasus'}
-          </p>
-        </Link>
-      </div>
+      {/* Remove Quick Actions */}
 
       {/* Log Izin Keluar Hari Ini */}
       <div className="rounded-xl border border-surface bg-surface shadow-sm overflow-hidden">
@@ -189,6 +173,9 @@ export async function GuruPiketDashboard({ userId, nama, namaDepan, avatarUrl, r
           <ArrowRight className="h-4 w-4 text-purple-400 shrink-0" />
         </Link>
       )}
+
+      {/* Shortcut Dinamis */}
+      <FeatureShortcuts userId={userId} />
 
       {/* Kehadiran Pribadi */}
       <KehadiranPribadiCard userId={userId} />

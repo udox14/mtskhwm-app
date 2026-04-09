@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { getDB } from '@/utils/db'
 import { todayWIB } from '@/lib/time'
 import { WelcomeStrip } from './shared/WelcomeStrip'
-import { QuickLink } from './shared/QuickLink'
+import { FeatureShortcuts } from './shared/FeatureShortcuts'
+import { JadwalMengajarToday } from './shared/JadwalMengajarToday'
 import { KehadiranPribadiCard } from './shared/KehadiranPribadiCard'
 import {
   HeartHandshake, AlertTriangle, DoorOpen, Brain,
@@ -72,6 +73,8 @@ export async function GuruBKDashboard({ userId, nama, namaDepan, avatarUrl, role
     <div className="space-y-3 animate-in fade-in duration-500 pb-12">
       <WelcomeStrip nama={nama} namaDepan={namaDepan} avatarUrl={avatarUrl}
         roleLabel={roleLabel} roleColor={roleColor} taAktif={taAktif} sapaan={sapaan} />
+
+      <JadwalMengajarToday userId={userId} taAktif={taAktif} />
 
       {/* Summary Hari Ini */}
       <div className="grid grid-cols-3 gap-3">
@@ -211,23 +214,8 @@ export async function GuruBKDashboard({ userId, nama, namaDepan, avatarUrl, role
         </div>
       )}
 
-      {/* Quick Links */}
-      <div className="rounded-xl border border-surface bg-surface shadow-sm">
-        <div className="p-2 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
-          <QuickLink href="/dashboard/kedisiplinan"
-            icon={<AlertTriangle className="h-4 w-4" />} iconBg="bg-rose-50" iconColor="text-rose-500"
-            title="Kedisiplinan" desc="Input & monitoring pelanggaran" />
-          <QuickLink href="/dashboard/izin"
-            icon={<DoorOpen className="h-4 w-4" />} iconBg="bg-amber-50" iconColor="text-amber-600"
-            title="Perizinan Siswa" desc="Izin keluar & tidak masuk kelas" />
-          <QuickLink href="/dashboard/bk"
-            icon={<HeartHandshake className="h-4 w-4" />} iconBg="bg-rose-50" iconColor="text-rose-500"
-            title="Bimbingan Konseling" desc="Catatan & sesi konseling" />
-          <QuickLink href="/dashboard/psikotes"
-            icon={<Brain className="h-4 w-4" />} iconBg="bg-purple-50" iconColor="text-purple-600"
-            title="Psikotes & Minat" desc="Asesmen & rekomendasi" />
-        </div>
-      </div>
+      {/* Shortcut Dinamis */}
+      <FeatureShortcuts userId={userId} />
 
       {/* Kehadiran Pribadi */}
       <KehadiranPribadiCard userId={userId} />
