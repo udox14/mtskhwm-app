@@ -62,6 +62,7 @@ export async function sendPushNotification(
       try {
         const subscription = {
           endpoint: row.endpoint,
+          expirationTime: null,
           keys: {
             p256dh: row.p256dh,
             auth: row.auth
@@ -80,7 +81,7 @@ export async function sendPushNotification(
           vapid
         );
 
-        const response = await fetch(row.endpoint, pushPayload);
+        const response = await fetch(row.endpoint, pushPayload as any);
 
         if (response.ok) {
           return { success: true, endpoint: row.endpoint };
