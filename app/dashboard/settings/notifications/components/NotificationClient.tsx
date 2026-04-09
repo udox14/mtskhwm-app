@@ -6,10 +6,10 @@ import { Loader2, Send, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { Textarea } from '../../../../../components/ui/textarea'
 import { sendCustomNotification } from '../actions'
 
-const initialState = { error: null as string | null, success: null as string | null }
+const initialState: any = {}
 
 function SubmitBtn() {
   const { pending } = useFormStatus()

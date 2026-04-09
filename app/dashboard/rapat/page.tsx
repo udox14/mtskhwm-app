@@ -3,6 +3,8 @@ import { getDB } from '@/utils/db'
 import { RapatClient } from './components/RapatClient'
 import { formatTanggalPanjang } from '@/lib/time'
 
+export const dynamic = 'force-dynamic'
+
 export default async function RapatPage() {
   const user = await getCurrentUser()
   if (!user) return null
