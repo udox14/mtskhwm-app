@@ -55,6 +55,7 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request).catch(() => {
       return caches.match(event.request)
     })
+  )
 })
 
 // ==========================================

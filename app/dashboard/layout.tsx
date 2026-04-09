@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { getUserAllowedFeatures, getUserRoles, getPrimaryRole } from '@/lib/features'
+import { PushNotificationBanner } from '@/components/shared/PushNotificationBanner'
 
 export const metadata = {
   title: 'Dashboard - MSS',
@@ -52,6 +53,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
+      <PushNotificationBanner />
       <Sidebar
         userRoles={userRoles}
         primaryRole={primaryRole}
