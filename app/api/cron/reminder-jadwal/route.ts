@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
         },
         { userId: guruId }
       );
-      if (act.success) sentCount += act.sent;
+      if (act.success) sentCount += (act.sent || 0);
     }
 
     return NextResponse.json({ 

@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { endpoint, keys: { p256dh, auth } } = subscription;
     const userAgent = req.headers.get('user-agent') || '';
 
-    const db = getDB();
+    const db = await getDB();
 
     // Cek apakah endpoint ini sudah ada
     const existing = await db
