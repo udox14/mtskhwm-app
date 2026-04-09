@@ -2,10 +2,22 @@
 
 import * as React from 'react'
 import { useState, useRef, useTransition, useMemo } from 'react'
-import { SarprasAset, SarprasKategori, deleteAset, getAsetList } from './actions'
+import { SarprasAset, SarprasKategori, deleteAset } from './actions'
 import { AsetFormModal } from './aset-form-modal'
 import { Printer, Plus, Search, Filter, Trash2, Edit2, Loader2, Image as ImageIcon } from 'lucide-react'
 import { useReactToPrint } from 'react-to-print'
+
+// UI Components
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table'
 
 interface AsetTabProps {
   aset: SarprasAset[]
@@ -37,9 +49,6 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
     documentTitle: 'Laporan_Inventaris_Madrasah',
   })
 
-  // Refetch data jika diperlukan (tapi kita handle locally dulu buat gampang search + active real-time via revalidatePath Next.js)
-  // Kalau ada next.js revalidatePath, page akan fresh render initialAset barunya.
-  // Tapi local state 'data' juga di update oleh effect supaya responsive, walau server component pass in props.
   useMemo(() => setData(initialAset), [initialAset])
 
   const filteredData = data.filter(a => {
@@ -77,7 +86,7 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
     if (!confirm('Yakin ingin menghapus data aset ini?')) return
     startTransition(async () => {
       const res = await deleteAset(id)
-      if (res.error) alert(res.error)
+      if (res?.error) alert(res.error)
     })
   }
 
@@ -86,27 +95,30 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
     setIsFormOpen(true)
   }
 
+  const selectStyle = "flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 whitespace-nowrap min-w-[150px]"
+
   return (
     <div className="p-4 sm:p-6 space-y-4">
       {/* TOOLBAR */}
       <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
         <div className="flex flex-wrap gap-3 items-center w-full xl:w-auto">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-            <input 
+            <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+            <Input 
               type="text" 
               placeholder="Cari barang / merek..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-[200px]"
+              className="pl-9 w-[220px]"
             />
           </div>
+
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
+            <Filter className="w-4 h-4 text-muted-foreground hidden sm:block" />
             <select 
               value={filterKategori} 
               onChange={e => setFilterKategori(e.target.value)}
-              className="py-2 px-3 text-sm border rounded-lg focus:outline-none bg-white min-w-[150px]"
+              className={selectStyle}
             >
               <option value="">Semua Kategori</option>
               {kategori.map(k => <option key={k.id} value={k.id}>{k.nama}</option>)}
@@ -114,7 +126,7 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
             <select 
               value={filterKeadaan} 
               onChange={e => setFilterKeadaan(e.target.value)}
-              className="py-2 px-3 text-sm border rounded-lg focus:outline-none bg-white"
+              className={selectStyle}
             >
               <option value="">Semua Kondisi</option>
               <option value="BAIK">Baik</option>
@@ -122,121 +134,120 @@ export function AsetTab({ aset: initialAset, kategori, options }: AsetTabProps) 
               <option value="RUSAK">Rusak</option>
             </select>
           </div>
-          <div className="flex items-center gap-2 bg-white border rounded-lg px-2 h-[38px]">
-             <span className="text-xs text-slate-500 font-medium whitespace-nowrap hidden sm:inline">Periode:</span>
-             <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="text-sm outline-none bg-transparent" title="Dari Tanggal" />
-             <span className="text-slate-300">-</span>
-             <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="text-sm outline-none bg-transparent" title="Sampai Tanggal" />
+
+          <div className="flex items-center gap-2 rounded-md border px-3 h-10 bg-background text-sm ring-offset-background">
+             <span className="text-muted-foreground font-medium hidden sm:inline">Periode:</span>
+             <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="bg-transparent outline-none cursor-pointer" title="Dari Tanggal" />
+             <span className="text-muted-foreground">-</span>
+             <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="bg-transparent outline-none cursor-pointer" title="Sampai Tanggal" />
           </div>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <button 
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
+          <Button variant="outline" onClick={handlePrint} className="gap-2">
             <Printer className="w-4 h-4" /> Cetak PDF
-          </button>
-          <button 
-            onClick={() => { setEditingAset(null); setIsFormOpen(true) }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
+          </Button>
+          <Button onClick={() => { setEditingAset(null); setIsFormOpen(true) }} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="w-4 h-4" /> Tambah Aset
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* TABLE */}
-      <div className="border rounded-xl bg-white shadow-sm overflow-hidden overflow-x-auto relative min-h-[400px]">
+      <div className="border rounded-xl bg-white shadow-sm relative min-h-[400px]">
         {isPending && (
-          <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-sm">
+          <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center backdrop-blur-sm rounded-xl">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
         )}
-        <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50 text-slate-600 border-b">
-            <tr>
-              <th className="py-3 px-4 font-semibold w-12 text-center">No</th>
-              <th className="py-3 px-4 font-semibold">Nama & Merek</th>
-              <th className="py-3 px-4 font-semibold">Kuantitas</th>
-              <th className="py-3 px-4 font-semibold">Tahun / Tgl</th>
-              <th className="py-3 px-4 font-semibold">Sumber Dana</th>
-              <th className="py-3 px-4 font-semibold">Keadaan</th>
-              <th className="py-3 px-4 font-semibold">Harga</th>
-              <th className="py-3 px-4 font-semibold text-center">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+        <Table>
+          <TableHeader className="bg-slate-50/80">
+            <TableRow>
+              <TableHead className="w-12 text-center">No</TableHead>
+              <TableHead>Nama & Merek</TableHead>
+              <TableHead>Kuantitas</TableHead>
+              <TableHead>Tahun & Lapor</TableHead>
+              <TableHead>Sumber Dana</TableHead>
+              <TableHead>Kondisi</TableHead>
+              <TableHead>Harga</TableHead>
+              <TableHead className="text-center">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {Object.keys(groupedData).length === 0 ? (
-              <tr><td colSpan={8} className="py-8 text-center text-slate-500">Data aset tidak ditemukan</td></tr>
+              <TableRow>
+                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground">
+                  Data aset tidak ditemukan
+                </TableCell>
+              </TableRow>
             ) : (
               Object.entries(groupedData).map(([kategoriName, items]) => (
                 <React.Fragment key={kategoriName}>
                   {/* Header Group */}
-                  <tr className="bg-blue-50/50">
-                    <td colSpan={8} className="py-2 px-4 font-semibold text-blue-700 text-[13px] uppercase tracking-wider">
+                  <TableRow className="bg-blue-50/40 hover:bg-blue-50/40 cursor-default">
+                    <TableCell colSpan={8} className="py-2 text-blue-700 text-[13px] uppercase tracking-wider font-semibold border-y border-blue-100">
                       {kategoriName} ({items.length} item)
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                   {items.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
-                      <td className="py-3 px-4 text-center text-slate-500">{index + 1}</td>
-                      <td className="py-3 px-4">
+                    <TableRow key={item.id} className="group">
+                      <TableCell className="text-center text-muted-foreground font-medium">{index + 1}</TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-3">
                           {item.foto_url ? (
-                            <img src={item.foto_url} alt="foto" className="w-10 h-10 rounded object-cover border" />
+                            <img src={item.foto_url} alt="foto" className="w-10 h-10 rounded-md object-cover border shadow-sm" />
                           ) : (
-                            <div className="w-10 h-10 rounded bg-slate-100 flex items-center justify-center text-slate-300 border">
-                              <ImageIcon className="w-5 h-5" />
+                            <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200">
+                              <ImageIcon className="w-4 h-4" />
                             </div>
                           )}
                           <div>
-                            <div className="font-medium text-slate-800">{item.nama_barang}</div>
-                            <div className="text-xs text-slate-500">{item.merek || '-'}</div>
+                            <div className="font-semibold text-slate-800">{item.nama_barang}</div>
+                            <div className="text-xs text-muted-foreground">{item.merek || '-'}</div>
                           </div>
                         </div>
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-slate-700">{item.kuantitas}</td>
-                      <td className="py-3 px-4">
-                        <div className="text-slate-800">{item.tahun_pembuatan || '-'}</div>
-                        <div className="text-[11px] text-slate-400">{item.tanggal_pembukuan}</div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
+                      </TableCell>
+                      <TableCell className="font-semibold text-slate-700">{item.kuantitas}</TableCell>
+                      <TableCell>
+                        <div className="text-slate-800 font-medium">{item.tahun_pembuatan || '-'}</div>
+                        <div className="text-xs text-muted-foreground">{item.tanggal_pembukuan}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px] font-medium border border-slate-200">
                           {item.asal_anggaran || '-'}
                         </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          item.keadaan_barang === 'BAIK' ? 'bg-green-100 text-green-700' :
-                          item.keadaan_barang === 'KURANG BAIK' ? 'bg-amber-100 text-amber-700' :
-                          item.keadaan_barang === 'RUSAK' ? 'bg-red-100 text-red-700' :
-                          'bg-slate-100 text-slate-600'
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide border ${
+                          item.keadaan_barang === 'BAIK' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          item.keadaan_barang === 'KURANG BAIK' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          item.keadaan_barang === 'RUSAK' ? 'bg-red-50 text-red-700 border-red-200' :
+                          'bg-slate-50 text-slate-600 border-slate-200'
                         }`}>
                           {item.keadaan_barang || '-'}
                         </span>
-                        {item.keterangan && <div className="text-[11px] text-slate-500 mt-1">{item.keterangan}</div>}
-                      </td>
-                      <td className="py-3 px-4 font-mono text-xs">
+                        {item.keterangan && <div className="text-[11px] text-slate-500 mt-1 max-w-[150px] truncate" title={item.keterangan}>{item.keterangan}</div>}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm tracking-tight">
                         {item.harga ? `Rp ${item.harga.toLocaleString('id-ID')}` : '-'}
-                      </td>
-                      <td className="py-3 px-4 text-center">
+                      </TableCell>
+                      <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEdit(item)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded" title="Edit">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100" onClick={() => handleEdit(item)} title="Edit">
                             <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDelete(item.id)} className="p-1.5 text-red-600 hover:bg-red-100 rounded" title="Hapus">
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100" onClick={() => handleDelete(item.id)} title="Hapus">
                             <Trash2 className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
                 </React.Fragment>
               ))
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* HIDDEN PRINT CONTENT */}
