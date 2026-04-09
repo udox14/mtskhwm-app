@@ -82,11 +82,22 @@ export async function sendPushNotification(
       };
 
       try {
+        console.log(`[PushService] Sending to endpoint: ...${row.endpoint.slice(-20)}`);
+        
+        if (!publicVapidKey || !privateVapidKey) {
+          throw new Error('VAPID keys are missing at runtime - check your .env');
+        }
+
         await webpush.sendNotification(pushSubscription, payload);
+        console.log(`[PushService] ✅ Successfully sent to ...${row.endpoint.slice(-20)}`);
         return { success: true, endpoint: row.endpoint };
       } catch (err: any) {
+        console.error(`[PushService] ❌ Failed to send to ...${row.endpoint.slice(-20)}:`, err.message);
+        if (err.statusCode) console.error(`[PushService] HTTP Status Error: ${err.statusCode}`);
+        
         // Jika 410 Gone atau 404 Not Found, berarti subscription expired/unsubscribed
         if (err.statusCode === 410 || err.statusCode === 404) {
+          console.warn(`[PushService] Subscription expired, removing from DB.`);
           // Hapus dari DB
           await db.prepare('DELETE FROM web_push_subscriptions WHERE endpoint = ?')
             .bind(row.endpoint)
