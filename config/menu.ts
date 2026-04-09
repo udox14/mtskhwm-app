@@ -24,6 +24,8 @@ import {
   SlidersHorizontal,
   PackageSearch,
   Send,
+  Eye,
+  Calendar,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -132,6 +134,20 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/monitoring-agenda',
     icon: Activity,
     roles: ['super_admin', 'admin_tu', 'kepsek']
+  },
+  {
+    id: 'monitoring-penugasan',
+    title: 'Monitoring Penugasan',
+    href: '/dashboard/monitoring-penugasan',
+    icon: Eye,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
+  },
+  {
+    id: 'jadwal-piket',
+    title: 'Jadwal Guru Piket',
+    href: '/dashboard/jadwal-piket',
+    icon: Calendar,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
   },
   {
     id: 'izin',

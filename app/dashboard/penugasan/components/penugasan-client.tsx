@@ -45,7 +45,7 @@ interface PenugasanClientProps {
       items: Array<{ kelas_label: string; tugas: string; absen_selesai: boolean }>
     }>
   }
-  userRole: string
+  isGuruPiket: boolean
   tanggalHariIni: string
 }
 
@@ -56,25 +56,27 @@ const HARI_NAMA = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Mi
 // ============================================================
 export function PenugasanClient({
   initialJadwal, initialUsers, initialTugasMasuk, initialTerkirim,
-  userRole, tanggalHariIni,
+  isGuruPiket, tanggalHariIni,
 }: PenugasanClientProps) {
   const tugasMasukCount = initialTugasMasuk.data.length
 
   return (
-    <Tabs defaultValue={tugasMasukCount > 0 ? 'masuk' : 'kirim'} className="space-y-3">
-      <TabsList className="grid w-full grid-cols-2 max-w-md">
+    <Tabs defaultValue={isGuruPiket && tugasMasukCount > 0 ? 'masuk' : 'kirim'} className="space-y-3">
+      <TabsList className={`grid w-full ${isGuruPiket ? 'grid-cols-2 max-w-md' : 'grid-cols-1 max-w-[200px]'}`}>
         <TabsTrigger value="kirim" className="text-xs sm:text-sm">
           <Send className="h-3.5 w-3.5 mr-1.5" />Kirim Tugas
         </TabsTrigger>
-        <TabsTrigger value="masuk" className="text-xs sm:text-sm">
-          <Inbox className="h-3.5 w-3.5 mr-1.5" />
-          Tugas Masuk
-          {tugasMasukCount > 0 && (
-            <span className="ml-1.5 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
-              {tugasMasukCount}
-            </span>
-          )}
-        </TabsTrigger>
+        {isGuruPiket && (
+          <TabsTrigger value="masuk" className="text-xs sm:text-sm">
+            <Inbox className="h-3.5 w-3.5 mr-1.5" />
+            Tugas Masuk
+            {tugasMasukCount > 0 && (
+              <span className="ml-1.5 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                {tugasMasukCount}
+              </span>
+            )}
+          </TabsTrigger>
+        )}
       </TabsList>
 
       <TabsContent value="kirim">
@@ -86,12 +88,14 @@ export function PenugasanClient({
         />
       </TabsContent>
 
-      <TabsContent value="masuk">
-        <TabTugasMasuk
-          initialData={initialTugasMasuk}
-          tanggalHariIni={tanggalHariIni}
-        />
-      </TabsContent>
+      {isGuruPiket && (
+        <TabsContent value="masuk">
+          <TabTugasMasuk
+            initialData={initialTugasMasuk}
+            tanggalHariIni={tanggalHariIni}
+          />
+        </TabsContent>
+      )}
     </Tabs>
   )
 }
@@ -121,10 +125,27 @@ function TabKirimTugas({
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'error'; teks: string } | null>(null)
 
   const filteredUsers = useMemo(() => {
-    if (!searchUser.trim()) return users.slice(0, 20)
+    let minJam = 999
+    let maxJam = 0
+    if (selected.size > 0) {
+      selected.forEach(pid => {
+        const b = blocks.find(x => x.penugasan_id === pid)
+        if (b) {
+          if (b.jam_ke_mulai < minJam) minJam = b.jam_ke_mulai
+          if (b.jam_ke_selesai > maxJam) maxJam = b.jam_ke_selesai
+        }
+      })
+    }
+
+    let allowedUsers = users
+    if (selected.size > 0 && minJam <= maxJam) {
+      allowedUsers = users.filter(u => !(u.jam_selesai < minJam || u.jam_mulai > maxJam))
+    }
+
+    if (!searchUser.trim()) return allowedUsers.slice(0, 20)
     const q = searchUser.toLowerCase()
-    return users.filter(u => u.nama.toLowerCase().includes(q)).slice(0, 20)
-  }, [users, searchUser])
+    return allowedUsers.filter(u => u.nama.toLowerCase().includes(q)).slice(0, 20)
+  }, [users, searchUser, selected, blocks])
 
   const selectedPelaksana = users.find(u => u.id === pelaksanaId)
 

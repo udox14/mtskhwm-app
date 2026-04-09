@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { getCurrentUser } from '@/utils/auth/server'
 import { redirect } from 'next/navigation'
 import { getDB } from '@/utils/db'
-import { checkFeatureAccess, getPrimaryRole } from '@/lib/features'
+import { checkFeatureAccess, getPrimaryRole, getUserRoles } from '@/lib/features'
 import { Send } from 'lucide-react'
 import { PageLoading } from '@/components/layout/page-loading'
 import { PageHeader } from '@/components/layout/page-header'
@@ -15,11 +15,11 @@ export const metadata = { title: 'Penugasan - MTSKHWM App' }
 
 export const dynamic = 'force-dynamic'
 
-async function PenugasanDataFetcher({ userId, role }: { userId: string; role: string }) {
+async function PenugasanDataFetcher({ userId, role, isGuruPiket }: { userId: string; role: string; isGuruPiket: boolean }) {
   const tanggal = todayWIB()
   const [jadwal, users, tugasMasuk, terkirim] = await Promise.all([
     getJadwalUntukDelegasi(tanggal),
-    getDaftarUser(),
+    getDaftarUser(tanggal),
     getTugasMasuk(tanggal),
     getDelegasiTerkirim(tanggal),
   ])
@@ -31,6 +31,7 @@ async function PenugasanDataFetcher({ userId, role }: { userId: string; role: st
       initialTugasMasuk={tugasMasuk}
       initialTerkirim={terkirim}
       userRole={role}
+      isGuruPiket={isGuruPiket}
       tanggalHariIni={tanggal}
     />
   )
@@ -44,7 +45,11 @@ export default async function PenugasanPage() {
   const allowed = await checkFeatureAccess(db, user.id, 'penugasan')
   if (!allowed) redirect('/dashboard')
 
-  const role = await getPrimaryRole(db, user.id)
+  const [role, allRoles] = await Promise.all([
+    getPrimaryRole(db, user.id),
+    getUserRoles(db, user.id)
+  ])
+  const isGuruPiket = allRoles.includes('guru_piket')
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
@@ -56,7 +61,7 @@ export default async function PenugasanPage() {
       />
 
       <Suspense fallback={<PageLoading text="Memuat data penugasan..." />}>
-        <PenugasanDataFetcher userId={user.id} role={role} />
+        <PenugasanDataFetcher userId={user.id} role={role} isGuruPiket={isGuruPiket} />
       </Suspense>
     </div>
   )

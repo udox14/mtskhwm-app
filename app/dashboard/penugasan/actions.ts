@@ -45,6 +45,9 @@ export type DelegasiMasuk = {
 export type UserOption = {
   id: string
   nama: string
+  jam_mulai: number
+  jam_selesai: number
+  shift_nama: string
 }
 
 // ============================================================
@@ -149,18 +152,28 @@ export async function getJadwalUntukDelegasi(tanggal: string): Promise<{
 // ============================================================
 // 2. AMBIL DAFTAR USER (untuk pilih pelaksana)
 // ============================================================
-export async function getDaftarUser(): Promise<UserOption[]> {
+export async function getDaftarUser(tanggal: string): Promise<UserOption[]> {
   const user = await getCurrentUser()
   if (!user) return []
 
   const db = await getDB()
+  const hari = getHariFromDate(tanggal)
+
   const result = await db.prepare(
-    `SELECT id, nama_lengkap FROM "user" WHERE id != ? AND banned = 0 ORDER BY nama_lengkap`
-  ).bind(user.id).all<any>()
+    `SELECT u.id, u.nama_lengkap, sp.jam_mulai, sp.jam_selesai, sp.nama_shift
+     FROM "user" u
+     JOIN jadwal_guru_piket j ON u.id = j.user_id
+     JOIN pengaturan_shift_piket sp ON j.shift_id = sp.id
+     WHERE j.hari = ? AND u.banned = 0 AND u.id != ?
+     ORDER BY sp.id ASC, u.nama_lengkap ASC`
+  ).bind(hari, user.id).all<any>()
 
   return (result.results || []).map((u: any) => ({
     id: u.id,
-    nama: u.nama_lengkap || u.name || 'Tanpa Nama',
+    nama: u.nama_lengkap || 'Tanpa Nama',
+    jam_mulai: u.jam_mulai,
+    jam_selesai: u.jam_selesai,
+    shift_nama: u.nama_shift,
   }))
 }
 
