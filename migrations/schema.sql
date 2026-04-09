@@ -235,11 +235,13 @@ CREATE TABLE IF NOT EXISTS izin_tidak_masuk_kelas (
 );
 
 CREATE TABLE IF NOT EXISTS pengaturan_akademik (
-  id              TEXT PRIMARY KEY DEFAULT 'global',
-  bobot_rapor     INTEGER DEFAULT 60,
-  bobot_um        INTEGER DEFAULT 40,
-  daftar_jurusan  TEXT DEFAULT '["KEAGAMAAN","BAHASA ARAB","BAHASA INGGRIS","OLIMPIADE"]',
-  updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  id                  TEXT PRIMARY KEY DEFAULT 'global',
+  bobot_rapor         INTEGER DEFAULT 60,
+  bobot_um            INTEGER DEFAULT 40,
+  daftar_jurusan      TEXT DEFAULT '["KEAGAMAAN","BAHASA ARAB","BAHASA INGGRIS","OLIMPIADE"]',
+  mobile_nav_enabled  INTEGER DEFAULT 1,
+  mobile_nav_links    TEXT DEFAULT '["dashboard", "kehadiran", "agenda", "kedisiplinan"]',
+  updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS rekap_nilai_akademik (

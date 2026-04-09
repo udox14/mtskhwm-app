@@ -4,6 +4,7 @@ import { getSession } from '@/utils/auth/server'
 import { getDB } from '@/utils/db'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { BottomNav } from '@/components/layout/bottom-nav'
 import { getUserAllowedFeatures, getUserRoles, getPrimaryRole } from '@/lib/features'
 
 export const metadata = {
@@ -34,6 +35,22 @@ export default async function DashboardLayout({
     getUserAllowedFeatures(db, user.id),
   ])
 
+  // Ambil pengaturan akademik global
+  let globalConfig = null
+  try {
+    globalConfig = await db.prepare("SELECT * FROM pengaturan_akademik WHERE id = 'global'").first<any>()
+  } catch(e) {}
+  
+  let navEnabled = true
+  let navLinks = ["dashboard", "kehadiran", "agenda", "kedisiplinan"]
+
+  if (globalConfig) {
+    if (globalConfig.mobile_nav_enabled !== undefined) navEnabled = globalConfig.mobile_nav_enabled === 1
+    if (globalConfig.mobile_nav_links) {
+      try { navLinks = JSON.parse(globalConfig.mobile_nav_links) } catch {}
+    }
+  }
+
   const primaryRole = freshUser?.role || (user as any).role || 'guru'
   const userName = freshUser?.nama_lengkap || (user as any).nama_lengkap || user.name || 'User MSS'
   const avatarUrl = freshUser?.avatar_url || null
@@ -55,11 +72,14 @@ export default async function DashboardLayout({
           avatarUrl={avatarUrl}
         />
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-5">
-          <div className="mx-auto max-w-7xl pb-8">
+          <div className={`mx-auto max-w-7xl ${navEnabled ? 'pb-24' : 'pb-8'}`}>
             {children}
           </div>
         </main>
       </div>
+      {navEnabled && (
+        <BottomNav activeIds={navLinks} allowedItems={allowedFeatures} />
+      )}
     </div>
   )
 }

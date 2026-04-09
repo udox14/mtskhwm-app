@@ -55,6 +55,22 @@ export default async function SettingsPage() {
     jam_pelajaran: normalizeJamPelajaran(ta.jam_pelajaran),
   }))
 
+  // Fetch global config
+  let globalConfig = null
+  try {
+    globalConfig = await db.prepare("SELECT * FROM pengaturan_akademik WHERE id = 'global'").first<any>()
+  } catch(e) {}
+
+  let navEnabled = true
+  let navLinks = ["dashboard", "kehadiran", "agenda", "kedisiplinan"]
+
+  if (globalConfig) {
+    if (globalConfig.mobile_nav_enabled !== undefined) navEnabled = globalConfig.mobile_nav_enabled === 1
+    if (globalConfig.mobile_nav_links) {
+      try { navLinks = JSON.parse(globalConfig.mobile_nav_links) } catch {}
+    }
+  }
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
       <PageHeader
@@ -63,7 +79,11 @@ export default async function SettingsPage() {
         icon={Settings}
         iconColor="text-slate-500 dark:text-slate-400"
       />
-      <SettingsClient taData={taData} />
+      <SettingsClient 
+        taData={taData} 
+        navEnabled={navEnabled}
+        navLinks={navLinks}
+      />
     </div>
   )
 }
