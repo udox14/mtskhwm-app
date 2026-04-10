@@ -390,3 +390,121 @@ export async function getDataCetakLaporan(
   const result = await db.prepare(sql).bind(...params).all<any>()
   return result.results || []
 }
+
+// ============================================================
+// 6. MONITORING PIKET HARIAN
+//    Semua guru piket yang punya jadwal di tanggal tertentu
+//    beserta status kehadiran (HADIR/TELAT/ALFA/SAKIT/IZIN)
+// ============================================================
+export async function getMonitoringPiketHarian(tanggal: string) {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'Unauthorized', data: [] }
+
+  const db = await getDB()
+  const hari = getHariFromDate(tanggal)
+  if (hari === 7) return { error: null, data: [], hariNama: 'Minggu' }
+
+  const ta = await db.prepare(
+    'SELECT id, jam_pelajaran FROM tahun_ajaran WHERE is_active = 1 LIMIT 1'
+  ).first<any>()
+
+  const polaList = ta ? parsePolaJam(ta.jam_pelajaran || '[]') : []
+  const slots = getSlotsForHari(polaList, hari)
+
+  const result = await db.prepare(`
+    SELECT
+      j.id as jadwal_id,
+      j.user_id,
+      u.nama_lengkap as guru_nama,
+      s.id as shift_id,
+      s.nama_shift,
+      s.jam_mulai,
+      s.jam_selesai,
+      ap.id as agenda_id,
+      ap.foto_url,
+      ap.status as agenda_status,
+      ap.waktu_submit,
+      ap.catatan_admin
+    FROM jadwal_guru_piket j
+    JOIN pengaturan_shift_piket s ON j.shift_id = s.id
+    JOIN "user" u ON j.user_id = u.id
+    LEFT JOIN agenda_piket ap ON ap.jadwal_id = j.id AND ap.tanggal = ?
+    WHERE j.hari = ?
+    ORDER BY u.nama_lengkap ASC, s.id ASC
+  `).bind(tanggal, hari).all<any>()
+
+  const rows = result.results || []
+
+  const data = rows.map((r: any) => {
+    const slotMulai = slots.find(s => s.id === r.jam_mulai)
+    const slotSelesai = slots.find(s => s.id === r.jam_selesai)
+    const status = r.agenda_id ? (r.agenda_status || 'HADIR') : 'ALFA'
+
+    return {
+      jadwal_id: r.jadwal_id,
+      user_id: r.user_id,
+      guru_nama: r.guru_nama,
+      shift_id: r.shift_id,
+      shift_nama: r.nama_shift,
+      jam_mulai: r.jam_mulai,
+      jam_selesai: r.jam_selesai,
+      slot_mulai: slotMulai?.mulai ?? '-',
+      slot_selesai: slotSelesai?.selesai ?? '-',
+      agenda_id: r.agenda_id ?? null,
+      foto_url: r.foto_url ?? null,
+      status,
+      waktu_submit: r.waktu_submit ?? null,
+      catatan_admin: r.catatan_admin ?? null,
+    }
+  })
+
+  return { error: null, data, hariNama: HARI_NAMA[hari] || '' }
+}
+
+// ============================================================
+// 7. ADMIN: EDIT STATUS AGENDA PIKET
+//    Bisa ubah ALFA → SAKIT/IZIN/HADIR, dll
+//    Jika belum ada record, buat baru (tandai admin sebagai pembuat)
+// ============================================================
+export async function editAgendaPiketStatus(
+  agendaId: string | null,
+  jadwalId: string,
+  userId: string,
+  shiftId: number,
+  tanggal: string,
+  newStatus: string,
+  catatanAdmin: string
+): Promise<{ error?: string; success?: string }> {
+  const user = await getCurrentUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const isAdmin = ['super_admin', 'admin_tu', 'kepsek'].includes(user.role)
+  if (!isAdmin) return { error: 'Hanya admin yang bisa mengubah status.' }
+
+  const db = await getDB()
+
+  if (agendaId) {
+    const result = await dbUpdate(db, 'agenda_piket', {
+      status: newStatus,
+      catatan_admin: catatanAdmin || null,
+      diubah_oleh: user.id,
+    }, { id: agendaId })
+    if (result.error) return { error: result.error }
+  } else {
+    const result = await dbInsert(db, 'agenda_piket', {
+      user_id: userId,
+      jadwal_id: jadwalId,
+      shift_id: shiftId,
+      tanggal,
+      foto_url: null,
+      status: newStatus,
+      waktu_submit: null,
+      catatan_admin: catatanAdmin || null,
+      diubah_oleh: user.id,
+    })
+    if (result.error) return { error: result.error }
+  }
+
+  revalidatePath('/dashboard/monitoring-agenda')
+  return { success: `Status piket berhasil diubah menjadi ${newStatus}.` }
+}

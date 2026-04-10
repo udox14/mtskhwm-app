@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Search, Loader2, Eye, Edit3, CheckCircle2, Clock, XCircle,
   AlertTriangle, Calendar, BarChart3, Printer,
-  ChevronLeft, ChevronRight, Send,
+  ChevronLeft, ChevronRight, Send, ShieldCheck,
 } from 'lucide-react'
 import {
   getMonitoringHarian, getRekapKehadiranGuru,
   editAgendaStatus, getDataCetakLaporan,
+  getMonitoringPiketHarian, editAgendaPiketStatus,
 } from '../actions'
 import { todayWIB, nowWIB } from '@/lib/time'
 
@@ -31,6 +32,7 @@ interface MonitoringClientProps {
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; icon: any; label: string; dot: string }> = {
   TEPAT_WAKTU: { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: CheckCircle2, label: 'Tepat Waktu', dot: 'bg-emerald-500' },
+  HADIR:       { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: CheckCircle2, label: 'Hadir', dot: 'bg-emerald-500' },
   TELAT:       { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700', icon: Clock, label: 'Telat', dot: 'bg-amber-500' },
   TUGAS:       { bg: 'bg-violet-50 border-violet-200', text: 'text-violet-700', icon: Send, label: 'Tugas', dot: 'bg-violet-500' },
   ALFA:        { bg: 'bg-red-50 border-red-200', text: 'text-red-700', icon: XCircle, label: 'Alfa', dot: 'bg-red-500' },
@@ -53,15 +55,17 @@ function todayStr() { return todayWIB() }
 export function MonitoringClient({ filterOptions, userRole }: MonitoringClientProps) {
   return (
     <Tabs defaultValue="harian" className="space-y-3">
-      <TabsList className="grid w-full grid-cols-3 max-w-lg">
+      <TabsList className="grid w-full grid-cols-4 max-w-2xl">
         <TabsTrigger value="harian" className="text-xs sm:text-sm"><Calendar className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />Harian</TabsTrigger>
         <TabsTrigger value="rekap" className="text-xs sm:text-sm"><BarChart3 className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />Rekap</TabsTrigger>
         <TabsTrigger value="cetak" className="text-xs sm:text-sm"><Printer className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />Cetak</TabsTrigger>
+        <TabsTrigger value="mon-piket" className="text-xs sm:text-sm"><ShieldCheck className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />Mon. Piket</TabsTrigger>
       </TabsList>
 
       <TabsContent value="harian"><TabHarian filterOptions={filterOptions} /></TabsContent>
       <TabsContent value="rekap"><TabRekap filterOptions={filterOptions} /></TabsContent>
       <TabsContent value="cetak"><TabCetak filterOptions={filterOptions} /></TabsContent>
+      <TabsContent value="mon-piket"><TabMonitoringPiket /></TabsContent>
     </Tabs>
   )
 }
@@ -614,6 +618,243 @@ function TabCetak({ filterOptions }: { filterOptions: MonitoringClientProps['fil
           <p className="text-sm text-slate-500">Pilih periode dan klik &quot;Muat Data&quot; untuk preview laporan.</p>
         </div>
       )}
+    </div>
+  )
+}
+
+// ============================================================
+// TAB: MONITORING PIKET
+// ============================================================
+function TabMonitoringPiket() {
+  const [tanggal, setTanggal] = useState(todayStr())
+  const [data, setData] = useState<any[]>([])
+  const [hariNama, setHariNama] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'error'; teks: string } | null>(null)
+
+  // Detail foto modal
+  const [fotoModal, setFotoModal] = useState<{ url: string; nama: string } | null>(null)
+  // Edit status modal
+  const [editItem, setEditItem] = useState<any>(null)
+  const [editStatus, setEditStatus] = useState('')
+  const [editCatatan, setEditCatatan] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+
+  const PIKET_STATUS_OPTIONS = ['HADIR', 'TELAT', 'ALFA', 'SAKIT', 'IZIN']
+
+  const handleSearch = async () => {
+    setIsLoading(true); setPesan(null)
+    const result = await getMonitoringPiketHarian(tanggal)
+    if (result.error) setPesan({ tipe: 'error', teks: result.error })
+    else { setData(result.data || []); setHariNama(result.hariNama || '') }
+    setIsLoading(false)
+  }
+
+  const handleEdit = async () => {
+    if (!editItem) return
+    setIsEditing(true)
+    const result = await editAgendaPiketStatus(
+      editItem.agenda_id || null,
+      editItem.jadwal_id,
+      editItem.user_id,
+      editItem.shift_id,
+      tanggal,
+      editStatus,
+      editCatatan,
+    )
+    if (result.error) setPesan({ tipe: 'error', teks: result.error })
+    else { setPesan({ tipe: 'sukses', teks: result.success || 'Berhasil' }); setEditItem(null); handleSearch() }
+    setIsEditing(false)
+  }
+
+  const navigateDate = (offset: number) => {
+    const d = new Date(tanggal + 'T00:00:00')
+    d.setDate(d.getDate() + offset)
+    setTanggal(d.toISOString().split('T')[0])
+  }
+
+  const summary = data.reduce((acc, item) => {
+    acc[item.status] = (acc[item.status] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  return (
+    <div className="space-y-3">
+      {/* Date Picker */}
+      <div className="rounded-lg border bg-white p-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => navigateDate(-1)} className="px-2">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Input type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} className="max-w-[180px] text-sm" />
+          <Button variant="outline" size="sm" onClick={() => navigateDate(1)} className="px-2">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setTanggal(todayStr())} className="text-xs">Hari Ini</Button>
+          <Button onClick={handleSearch} disabled={isLoading} size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-1.5" />}
+            Cari
+          </Button>
+        </div>
+      </div>
+
+      {/* Pesan */}
+      {pesan && (
+        <div className={`rounded-lg border px-4 py-2.5 text-sm ${
+          pesan.tipe === 'sukses' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'
+        }`}>{pesan.teks}</div>
+      )}
+
+      {/* Summary badges */}
+      {data.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">
+            {hariNama} &middot; {data.length} guru piket
+          </span>
+          {Object.entries(summary).map(([status, count]) => {
+            const s = STATUS_STYLE[status]
+            return s ? (
+              <span key={status} className={`text-xs px-2.5 py-1 rounded-full font-medium border ${s.bg} ${s.text}`}>
+                {s.label}: {count as number}
+              </span>
+            ) : null
+          })}
+        </div>
+      )}
+
+      {/* Table */}
+      {data.length > 0 && (
+        <div className="rounded-lg border bg-white overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs w-8">#</TableHead>
+                <TableHead className="text-xs">Guru</TableHead>
+                <TableHead className="text-xs">Shift</TableHead>
+                <TableHead className="text-xs">Waktu Shift</TableHead>
+                <TableHead className="text-xs">Waktu Submit</TableHead>
+                <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="text-xs text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((item, idx) => {
+                const style = STATUS_STYLE[item.status] || STATUS_STYLE.ALFA
+                const StatusIcon = style.icon
+                return (
+                  <TableRow key={`${item.jadwal_id}-${idx}`}>
+                    <TableCell className="text-xs text-slate-400">{idx + 1}</TableCell>
+                    <TableCell className="text-xs font-medium text-slate-800">{item.guru_nama}</TableCell>
+                    <TableCell className="text-xs text-slate-600">{item.shift_nama}</TableCell>
+                    <TableCell className="text-xs text-slate-500">
+                      {item.slot_mulai !== '-' ? `${item.slot_mulai}–${item.slot_selesai}` : `Jam ${item.jam_mulai}–${item.jam_selesai}`}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-500">
+                      {item.waktu_submit
+                        ? new Date(item.waktu_submit).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB'
+                        : <span className="text-slate-300">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${style.bg} ${style.text}`}>
+                        <StatusIcon className="h-3 w-3" />{style.label}
+                      </span>
+                      {item.catatan_admin && (
+                        <p className="text-[10px] text-amber-600 mt-0.5">{item.catatan_admin}</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      {item.foto_url && (
+                        <Button
+                          variant="ghost" size="sm" className="h-7 w-7 p-0"
+                          onClick={() => setFotoModal({ url: item.foto_url, nama: item.guru_nama })}
+                          title="Lihat Foto"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-slate-500" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost" size="sm" className="h-7 w-7 p-0"
+                        onClick={() => { setEditItem(item); setEditStatus(item.status); setEditCatatan(item.catatan_admin || '') }}
+                        title="Ubah Status"
+                      >
+                        <Edit3 className="h-3.5 w-3.5 text-teal-600" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {data.length === 0 && !isLoading && (
+        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+          <ShieldCheck className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm text-slate-500">Pilih tanggal dan klik &quot;Cari&quot; untuk melihat kehadiran guru piket.</p>
+        </div>
+      )}
+
+      {/* Modal Foto */}
+      <Dialog open={!!fotoModal} onOpenChange={() => setFotoModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Foto Kehadiran Piket</DialogTitle>
+          </DialogHeader>
+          {fotoModal && (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-500">{fotoModal.nama}</p>
+              <img
+                src={fotoModal.url}
+                alt={`Foto piket ${fotoModal.nama}`}
+                className="w-full max-h-96 object-cover rounded-lg border"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Edit Status */}
+      <Dialog open={!!editItem} onOpenChange={() => setEditItem(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Ubah Status Piket</DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <div className="space-y-4">
+              <div className="text-sm">
+                <p className="font-medium text-slate-800">{editItem.guru_nama}</p>
+                <p className="text-xs text-slate-500">{editItem.shift_nama} &mdash; {tanggal}</p>
+              </div>
+              <div>
+                <Label className="text-xs">Status Baru</Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger className="h-9 text-sm mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PIKET_STATUS_OPTIONS.map(s => (
+                      <SelectItem key={s} value={s}>{STATUS_STYLE[s]?.label || s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Catatan Admin</Label>
+                <textarea
+                  value={editCatatan}
+                  onChange={(e) => setEditCatatan(e.target.value)}
+                  placeholder="Alasan perubahan status..."
+                  rows={2}
+                  className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 outline-none resize-none"
+                />
+              </div>
+              <Button onClick={handleEdit} disabled={isEditing} className="w-full bg-teal-600 hover:bg-teal-700 text-white">
+                {isEditing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Edit3 className="h-4 w-4 mr-2" />}
+                Simpan Perubahan
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
