@@ -161,7 +161,7 @@ export function NotificationClient({ roles = [], allUsers = [], diagnostics }: {
     deviceList: any[]
   }
 }) {
-  const [state, action] = useActionState(sendCustomNotification, { error: '', success: '' } as { error?: string; success?: string })
+  const [state, action] = useActionState(sendCustomNotification, {} as any)
   const [targetType, setTargetType] = useState('all')
   const [targetRole, setTargetRole] = useState(roles[0]?.value || '')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(allUsers.map(u => u.id)))
