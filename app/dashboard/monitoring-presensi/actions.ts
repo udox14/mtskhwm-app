@@ -159,14 +159,21 @@ export async function hitungTunjanganBulanan(bulan: number, tahun: number) {
 
   // Hitung total hari kerja dalam bulan
   const daysInMonth = new Date(tahun, bulan, 0).getDate()
+
+  // Untuk bulan berjalan: hitung s/d hari ini (WIB), bukan sampai akhir bulan
+  // Untuk bulan lampau: hitung semua hari kerja dalam bulan
+  const todayWIB = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const isCurrentMonth = todayWIB.getUTCFullYear() === tahun && (todayWIB.getUTCMonth() + 1) === bulan
+  const lastDay = isCurrentMonth ? Math.min(daysInMonth, todayWIB.getUTCDate()) : daysInMonth
+
   let totalHariKerja = 0
-  for (let d = 1; d <= daysInMonth; d++) {
+  for (let d = 1; d <= lastDay; d++) {
     const dayOfWeek = new Date(tahun, bulan - 1, d).getDay()
     const mappedDay = dayOfWeek === 0 ? 7 : dayOfWeek
     if (hariKerja.includes(mappedDay)) totalHariKerja++
   }
 
-  // Date range
+  // Date range (tetap query full bulan agar data yang sudah diinput tidak hilang)
   const dari   = `${tahun}-${String(bulan).padStart(2, '0')}-01`
   const sampai = `${tahun}-${String(bulan).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
 
