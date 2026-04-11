@@ -5,4 +5,9 @@ const config = defineCloudflareConfig({
   incrementalCache: kvIncrementalCache,
 });
 
+config.edgeExternals = ["@vercel/og", "node:crypto"];
+
+// Paksa minifikasi bundle server secara agresif
+config.default.minify = true;
+
 export default config;
