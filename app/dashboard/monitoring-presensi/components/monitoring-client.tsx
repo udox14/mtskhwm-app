@@ -19,8 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   getPresensiByTanggal, getPresensiByRange, getPresensiPerOrang,
   simpanPengaturanPresensi, simpanPengaturanTunjangan, hitungTunjanganBulanan,
-  getDefaultJamTiers, type JamMasukTier,
 } from '../actions'
+import { getDefaultJamTiers, type JamMasukTier } from '@/lib/tunjangan'
 import { cn } from '@/lib/utils'
 import { nowWIB } from '@/lib/time'
 

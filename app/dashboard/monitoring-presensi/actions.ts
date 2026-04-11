@@ -3,6 +3,7 @@
 
 import { getDB, dbUpdate } from '@/utils/db'
 import { revalidatePath } from 'next/cache'
+import { getDefaultJamTiers, hitungPersenHari, type JamMasukTier } from '@/lib/tunjangan'
 
 // ============================================================
 // GET PRESENSI HARIAN (semua pegawai untuk 1 tanggal)
@@ -131,35 +132,6 @@ export async function simpanPengaturanTunjangan(data: {
 // Tier terakhir (sampai_jam = null) berlaku untuk semua jam setelahnya (0%)
 // ============================================================
 
-export type JamMasukTier = {
-  sampai_jam: string | null  // "HH:MM:SS" atau null (= tidak terbatas / 0%)
-  persen: number
-  label: string
-}
-
-/** Tier default — dipakai jika DB belum memiliki aturan baru */
-export function getDefaultJamTiers(): JamMasukTier[] {
-  return [
-    { sampai_jam: '07:15:00', persen: 100, label: 's/d 07.15' },
-    { sampai_jam: '07:30:00', persen: 75,  label: '07.15 – 07.30' },
-    { sampai_jam: '08:00:00', persen: 50,  label: '07.30 – 08.00' },
-    { sampai_jam: null,       persen: 0,   label: '> 08.00' },
-  ]
-}
-
-/**
- * Hitung persen tunjangan untuk 1 hari berdasarkan jam_masuk dan tiers dari DB.
- * Jika jam_masuk null (tidak hadir) → 0%.
- */
-export function hitungPersenHari(jamMasuk: string | null, tiers: JamMasukTier[]): number {
-  if (!jamMasuk) return 0
-  const jam = jamMasuk.length === 5 ? jamMasuk + ':00' : jamMasuk
-  for (const tier of tiers) {
-    if (tier.sampai_jam === null) return tier.persen  // catch-all tier
-    if (jam <= tier.sampai_jam) return tier.persen
-  }
-  return 0
-}
 
 export async function hitungTunjanganBulanan(bulan: number, tahun: number) {
   const db = await getDB()
