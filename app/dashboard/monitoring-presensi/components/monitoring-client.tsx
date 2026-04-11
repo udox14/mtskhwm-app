@@ -18,7 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 import {
   getPresensiByTanggal, getPresensiByRange, getPresensiPerOrang,
-  simpanPengaturanPresensi, simpanPengaturanTunjangan, hitungTunjanganBulanan
+  simpanPengaturanPresensi, simpanPengaturanTunjangan, hitungTunjanganBulanan,
+  getDefaultJamTiers, type JamMasukTier,
 } from '../actions'
 import { cn } from '@/lib/utils'
 import { nowWIB } from '@/lib/time'
@@ -35,10 +36,9 @@ type PengaturanPresensi = {
   batas_telat_menit: number; batas_pulang_cepat_menit: number;
   hari_kerja: string
 }
-type Tier = { min: number; max: number; persen: number }
 type PengaturanTunjangan = {
   nominal_dalam: number; nominal_luar: number;
-  tanggal_bayar: number; aturan_tiers: Tier[]
+  tanggal_bayar: number; aturan_tiers: any[]
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -125,10 +125,16 @@ export function MonitoringClient({
   const [tNominalDalam, setTNominalDalam] = useState(pengaturanTunjangan.nominal_dalam)
   const [tNominalLuar, setTNominalLuar] = useState(pengaturanTunjangan.nominal_luar)
   const [tTglBayar, setTTglBayar] = useState(pengaturanTunjangan.tanggal_bayar)
-  const [tTiers, setTTiers] = useState<Tier[]>(pengaturanTunjangan.aturan_tiers.length > 0 ? pengaturanTunjangan.aturan_tiers : [
-    { min: 90, max: 100, persen: 100 }, { min: 75, max: 89, persen: 75 },
-    { min: 50, max: 74, persen: 50 }, { min: 0, max: 49, persen: 0 },
-  ])
+  // Tiers jam masuk — coba parse dari DB, fallback ke default
+  const [tTiers, setTTiers] = useState<JamMasukTier[]>(() => {
+    try {
+      const raw = pengaturanTunjangan.aturan_tiers
+      if (Array.isArray(raw) && raw.length > 0 && 'sampai_jam' in raw[0]) {
+        return raw as JamMasukTier[]
+      }
+    } catch {}
+    return getDefaultJamTiers()
+  })
 
   const savePresensiSettings = () => {
     startTransition(async () => {
@@ -145,7 +151,8 @@ export function MonitoringClient({
     startTransition(async () => {
       const res = await simpanPengaturanTunjangan({
         nominal_dalam: tNominalDalam, nominal_luar: tNominalLuar,
-        tanggal_bayar: tTglBayar, aturan_tiers: tTiers,
+        tanggal_bayar: tTglBayar,
+        aturan_tiers: tTiers,
       })
       alert(res.success || res.error)
     })
@@ -475,6 +482,23 @@ export function MonitoringClient({
                   <p className="text-lg font-bold text-emerald-700">{tunjData.data.length} orang</p>
                 </div>
               </div>
+
+              {/* Keterangan tabel tier — dinamis dari tunjData.tiers */}
+              <div className="rounded-lg border bg-slate-50 border-slate-200 px-4 py-2.5">
+                <p className="text-[10px] font-semibold text-slate-500 mb-1.5">Aturan Tunjangan Berdasarkan Jam Masuk</p>
+                <div className="flex flex-wrap gap-2">
+                  {(tunjData.tiers as JamMasukTier[]).map((tier, i) => {
+                    const colors = ['bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700', 'bg-orange-100 text-orange-700', 'bg-rose-100 text-rose-700']
+                    const c = colors[i] || 'bg-slate-100 text-slate-700'
+                    return (
+                      <span key={i} className={`text-[10px] px-2 py-0.5 rounded font-semibold ${c}`}>
+                        {tier.persen}% → {tier.label}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div className="bg-surface rounded-lg border border-surface overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -483,33 +507,42 @@ export function MonitoringClient({
                       <TableHead className="h-8 text-[11px] font-semibold text-slate-500">Nama</TableHead>
                       <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-20">Jabatan</TableHead>
                       <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-14">Dom.</TableHead>
-                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-10 text-center">H</TableHead>
-                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-10 text-center">S</TableHead>
-                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-10 text-center">I</TableHead>
-                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-10 text-center">A</TableHead>
-                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-10 text-center">%</TableHead>
-                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-24 text-right">Tunjangan</TableHead>
+                      {(tunjData.tiers as JamMasukTier[]).map((tier, i) => {
+                        const colors = ['text-emerald-600', 'text-amber-600', 'text-orange-600', 'text-rose-600']
+                        return (
+                          <TableHead key={i} className={`h-8 text-[11px] font-semibold w-12 text-center ${colors[i] || 'text-slate-500'}`}
+                            title={`${tier.persen}% — ${tier.label}`}>
+                            {tier.persen}%
+                          </TableHead>
+                        )
+                      })}
+                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-12 text-center">Rata²</TableHead>
+                      <TableHead className="h-8 text-[11px] font-semibold text-slate-500 w-28 text-right">Tunjangan</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tunjData.data.map((r: any, i: number) => (
-                      <TableRow key={r.id} className="border-surface-2 hover:bg-amber-50/30">
-                        <TableCell className="px-3 text-[11px] text-slate-400">{i + 1}</TableCell>
-                        <TableCell className="text-xs font-medium text-slate-800 dark:text-slate-100">{r.nama_lengkap}</TableCell>
-                        <TableCell className="text-[10px] text-violet-600">{r.jabatan_nama}</TableCell>
-                        <TableCell className={cn("text-[10px] font-semibold", r.domisili === 'dalam' ? 'text-blue-600' : r.domisili === 'luar' ? 'text-amber-600' : 'text-slate-400')}>
-                          {r.domisili === 'dalam' ? 'DLM' : r.domisili === 'luar' ? 'LR' : '-'}
-                        </TableCell>
-                        <TableCell className="text-center text-xs font-semibold text-emerald-600">{r.hadir}</TableCell>
-                        <TableCell className="text-center text-xs text-yellow-600">{r.sakit || '-'}</TableCell>
-                        <TableCell className="text-center text-xs text-blue-600">{r.izin || '-'}</TableCell>
-                        <TableCell className="text-center text-xs text-rose-600">{r.alfa || '-'}</TableCell>
-                        <TableCell className={cn("text-center text-xs font-bold", r.persenKehadiran >= 90 ? 'text-emerald-600' : r.persenKehadiran >= 75 ? 'text-amber-600' : 'text-rose-600')}>
-                          {r.persenKehadiran}%
-                        </TableCell>
-                        <TableCell className="text-right text-xs font-bold text-slate-800 dark:text-slate-100">{formatRupiah(r.tunjanganDiterima)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {tunjData.data.map((r: any, i: number) => {
+                      const tierColors = ['text-emerald-600', 'text-amber-600', 'text-orange-600', 'text-rose-600']
+                      return (
+                        <TableRow key={r.id} className="border-surface-2 hover:bg-amber-50/30">
+                          <TableCell className="px-3 text-[11px] text-slate-400">{i + 1}</TableCell>
+                          <TableCell className="text-xs font-medium text-slate-800 dark:text-slate-100">{r.nama_lengkap}</TableCell>
+                          <TableCell className="text-[10px] text-violet-600">{r.jabatan_nama}</TableCell>
+                          <TableCell className={cn("text-[10px] font-semibold", r.domisili === 'dalam' ? 'text-blue-600' : r.domisili === 'luar' ? 'text-amber-600' : 'text-slate-400')}>
+                            {r.domisili === 'dalam' ? 'DLM' : r.domisili === 'luar' ? 'LR' : '-'}
+                          </TableCell>
+                          {(r.tierBreakdown as number[]).map((count: number, ti: number) => (
+                            <TableCell key={ti} className={`text-center text-xs font-semibold ${tierColors[ti] || 'text-slate-600'}`}>
+                              {count || '-'}
+                            </TableCell>
+                          ))}
+                          <TableCell className={cn("text-center text-xs font-bold",
+                            r.persenRataRata >= 90 ? 'text-emerald-600' : r.persenRataRata >= 70 ? 'text-amber-600' : 'text-rose-600'
+                          )}>{r.persenRataRata}%</TableCell>
+                          <TableCell className="text-right text-xs font-bold text-slate-800 dark:text-slate-100">{formatRupiah(r.tunjanganDiterima)}</TableCell>
+                        </TableRow>
+                      )
+                    })}
                     {tunjData.data.length > 0 && (
                       <TableRow className="bg-surface-2 font-bold">
                         <TableCell colSpan={9} className="px-3 text-xs text-slate-600 text-right">TOTAL TUNJANGAN</TableCell>
@@ -590,36 +623,77 @@ export function MonitoringClient({
               </div>
             </div>
 
-            {/* Tiers */}
+            {/* Aturan Tiers Jam Masuk — bisa diedit */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-semibold text-slate-500">Aturan Tiers Tunjangan</Label>
-                <button onClick={() => setTTiers(prev => [...prev, { min: 0, max: 0, persen: 0 }])} className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5 hover:underline">
-                  <PlusCircle className="h-3 w-3" /> Tambah Tier
+                <Label className="text-[10px] font-semibold text-slate-500">Aturan Tunjangan Berdasarkan Jam Masuk</Label>
+                <button
+                  onClick={() => setTTiers(prev => [...prev.slice(0, -1), { sampai_jam: '00:00:00', persen: 0, label: '' }, prev[prev.length - 1]])}
+                  className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5 hover:underline"
+                >
+                  <PlusCircle className="h-3 w-3" /> Tambah Baris
                 </button>
               </div>
+              <p className="text-[10px] text-slate-400">Urutkan dari jam paling awal ke paling akhir. Baris terakhir (Sampai = kosong) adalah catch-all untuk jam di luar batas.</p>
               <div className="space-y-1.5">
-                {tTiers.map((tier, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-surface-2 border border-surface rounded-lg px-2.5 py-1.5">
-                    <span className="text-[10px] text-slate-400 w-12 shrink-0">Hadir</span>
-                    <Input type="number" value={tier.min} onChange={e => {
-                      const n = [...tTiers]; n[idx] = { ...n[idx], min: Number(e.target.value) }; setTTiers(n)
-                    }} className="h-7 w-14 text-xs rounded-md text-center" />
-                    <span className="text-[10px] text-slate-400">—</span>
-                    <Input type="number" value={tier.max} onChange={e => {
-                      const n = [...tTiers]; n[idx] = { ...n[idx], max: Number(e.target.value) }; setTTiers(n)
-                    }} className="h-7 w-14 text-xs rounded-md text-center" />
-                    <span className="text-[10px] text-slate-400">% →</span>
-                    <Input type="number" value={tier.persen} onChange={e => {
-                      const n = [...tTiers]; n[idx] = { ...n[idx], persen: Number(e.target.value) }; setTTiers(n)
-                    }} className="h-7 w-16 text-xs rounded-md text-center" />
-                    <span className="text-[10px] text-slate-500 font-semibold">% tunjangan</span>
-                    <button onClick={() => setTTiers(prev => prev.filter((_, i) => i !== idx))} className="p-1 text-rose-400 hover:text-rose-600 ml-auto">
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
+                {tTiers.map((tier, idx) => {
+                  const isLast = tier.sampai_jam === null
+                  return (
+                    <div key={idx} className="flex items-center gap-2 bg-surface-2 border border-surface rounded-lg px-2.5 py-1.5">
+                      <span className="text-[10px] text-slate-400 w-10 shrink-0">Sampai</span>
+                      <Input
+                        type="time"
+                        step="1"
+                        value={tier.sampai_jam ?? ''}
+                        disabled={isLast}
+                        placeholder="—"
+                        onChange={e => {
+                          const n = [...tTiers]
+                          n[idx] = { ...n[idx], sampai_jam: e.target.value ? e.target.value + ':00'.slice(e.target.value.length > 5 ? 0 : undefined) : null }
+                          setTTiers(n)
+                        }}
+                        className="h-7 w-28 text-xs rounded-md text-center"
+                      />
+                      <span className="text-[10px] text-slate-400">→</span>
+                      <Input
+                        type="number" min={0} max={100}
+                        value={tier.persen}
+                        onChange={e => {
+                          const n = [...tTiers]; n[idx] = { ...n[idx], persen: Number(e.target.value) }; setTTiers(n)
+                        }}
+                        className="h-7 w-16 text-xs rounded-md text-center"
+                      />
+                      <span className="text-[10px] text-slate-500 font-semibold">%</span>
+                      <Input
+                        type="text"
+                        value={tier.label}
+                        placeholder="Label (contoh: s/d 07.15)"
+                        onChange={e => {
+                          const n = [...tTiers]; n[idx] = { ...n[idx], label: e.target.value }; setTTiers(n)
+                        }}
+                        className="h-7 flex-1 text-xs rounded-md"
+                      />
+                      {tTiers.length > 1 && (
+                        <button
+                          onClick={() => setTTiers(prev => {
+                            const filtered = prev.filter((_, i) => i !== idx)
+                            // Pastikan tier terakhir selalu punya sampai_jam = null
+                            const last = filtered[filtered.length - 1]
+                            if (last && last.sampai_jam !== null) {
+                              filtered[filtered.length - 1] = { ...last, sampai_jam: null }
+                            }
+                            return filtered
+                          })}
+                          className="p-1 text-rose-400 hover:text-rose-600"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
+              <p className="text-[10px] text-slate-400">* Baris terakhir otomatis berlaku untuk semua jam di luar batas atas (catch-all).</p>
             </div>
 
             <Button size="sm" onClick={saveTunjanganSettings} disabled={isPending} className="h-8 text-xs rounded-md bg-amber-600 hover:bg-amber-700 text-white gap-1">

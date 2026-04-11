@@ -101,7 +101,7 @@ export async function simpanPengaturanPresensi(data: {
 export async function simpanPengaturanTunjangan(data: {
   nominal_dalam: number; nominal_luar: number;
   tanggal_bayar: number;
-  aturan_tiers: { min: number; max: number; persen: number }[]
+  aturan_tiers: { sampai_jam: string | null; persen: number; label: string }[]
 }): Promise<{ success?: string; error?: string }> {
   const db = await getDB()
   try {
@@ -124,7 +124,43 @@ export async function simpanPengaturanTunjangan(data: {
 
 // ============================================================
 // HITUNG TUNJANGAN PER ORANG UNTUK 1 BULAN
+// Logika: tunjangan ditentukan per hari berdasarkan jam masuk
+// Tiers dikonfigurasi dari DB (pengaturan_tunjangan.aturan_tiers)
+//
+// Format tier: { sampai_jam: "HH:MM:SS" | null, persen: number, label: string }
+// Tier terakhir (sampai_jam = null) berlaku untuk semua jam setelahnya (0%)
 // ============================================================
+
+export type JamMasukTier = {
+  sampai_jam: string | null  // "HH:MM:SS" atau null (= tidak terbatas / 0%)
+  persen: number
+  label: string
+}
+
+/** Tier default — dipakai jika DB belum memiliki aturan baru */
+export function getDefaultJamTiers(): JamMasukTier[] {
+  return [
+    { sampai_jam: '07:15:00', persen: 100, label: 's/d 07.15' },
+    { sampai_jam: '07:30:00', persen: 75,  label: '07.15 – 07.30' },
+    { sampai_jam: '08:00:00', persen: 50,  label: '07.30 – 08.00' },
+    { sampai_jam: null,       persen: 0,   label: '> 08.00' },
+  ]
+}
+
+/**
+ * Hitung persen tunjangan untuk 1 hari berdasarkan jam_masuk dan tiers dari DB.
+ * Jika jam_masuk null (tidak hadir) → 0%.
+ */
+export function hitungPersenHari(jamMasuk: string | null, tiers: JamMasukTier[]): number {
+  if (!jamMasuk) return 0
+  const jam = jamMasuk.length === 5 ? jamMasuk + ':00' : jamMasuk
+  for (const tier of tiers) {
+    if (tier.sampai_jam === null) return tier.persen  // catch-all tier
+    if (jam <= tier.sampai_jam) return tier.persen
+  }
+  return 0
+}
+
 export async function hitungTunjanganBulanan(bulan: number, tahun: number) {
   const db = await getDB()
 
@@ -133,28 +169,36 @@ export async function hitungTunjanganBulanan(bulan: number, tahun: number) {
   const presSetting = await db.prepare('SELECT * FROM pengaturan_presensi WHERE id = ?').bind('global').first<any>()
 
   const nominalDalam = tunjSetting?.nominal_dalam || 0
-  const nominalLuar = tunjSetting?.nominal_luar || 0
-  let tiers: { min: number; max: number; persen: number }[] = []
-  try { tiers = JSON.parse(tunjSetting?.aturan_tiers || '[]') } catch {}
+  const nominalLuar  = tunjSetting?.nominal_luar  || 0
+
+  // Parse tiers dari DB — fallback ke default jika belum dikonfigurasi / format lama
+  let tiers: JamMasukTier[] = getDefaultJamTiers()
+  try {
+    const raw = JSON.parse(tunjSetting?.aturan_tiers || '[]')
+    // Deteksi format baru: harus punya field sampai_jam
+    if (Array.isArray(raw) && raw.length > 0 && 'sampai_jam' in raw[0]) {
+      tiers = raw as JamMasukTier[]
+    }
+    // Format lama (min/max/persen) → abaikan, pakai default
+  } catch {}
 
   let hariKerja: number[] = []
   try { hariKerja = JSON.parse(presSetting?.hari_kerja || '[1,2,3,4,5,6]') } catch {}
 
-  // Calculate working days in this month
+  // Hitung total hari kerja dalam bulan
   const daysInMonth = new Date(tahun, bulan, 0).getDate()
   let totalHariKerja = 0
   for (let d = 1; d <= daysInMonth; d++) {
     const dayOfWeek = new Date(tahun, bulan - 1, d).getDay()
-    // JS: 0=Minggu, 1=Senin.. we store 1=Senin..6=Sabtu
     const mappedDay = dayOfWeek === 0 ? 7 : dayOfWeek
     if (hariKerja.includes(mappedDay)) totalHariKerja++
   }
 
   // Date range
-  const dari = `${tahun}-${String(bulan).padStart(2, '0')}-01`
+  const dari   = `${tahun}-${String(bulan).padStart(2, '0')}-01`
   const sampai = `${tahun}-${String(bulan).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
 
-  // Get all structural staff
+  // Ambil semua pegawai struktural
   const staffResult = await db.prepare(`
     SELECT u.id, u.nama_lengkap, u.domisili_pegawai, j.nama as jabatan_nama
     FROM "user" u
@@ -162,9 +206,9 @@ export async function hitungTunjanganBulanan(bulan: number, tahun: number) {
     ORDER BY j.urutan ASC, u.nama_lengkap ASC
   `).all<any>()
 
-  // Get all presensi in range
+  // Ambil semua presensi dalam range
   const presensiResult = await db.prepare(`
-    SELECT user_id, status, is_telat, is_pulang_cepat
+    SELECT user_id, tanggal, status, jam_masuk, is_telat, is_pulang_cepat
     FROM presensi_pegawai
     WHERE tanggal >= ? AND tanggal <= ?
   `).bind(dari, sampai).all<any>()
@@ -177,32 +221,48 @@ export async function hitungTunjanganBulanan(bulan: number, tahun: number) {
     presensiByUser.set(p.user_id, arr)
   }
 
-  // Calculate per person
+  // Hitung tunjangan per orang
   const hasil = (staffResult.results || []).map((s: any) => {
     const records = presensiByUser.get(s.id) || []
-    const hadir = records.filter((r: any) => r.status === 'hadir').length
-    const sakit = records.filter((r: any) => r.status === 'sakit').length
-    const izin = records.filter((r: any) => r.status === 'izin').length
-    const alfa = records.filter((r: any) => r.status === 'alfa').length
+
+    const hadir     = records.filter((r: any) => r.status === 'hadir').length
+    const sakit     = records.filter((r: any) => r.status === 'sakit').length
+    const izin      = records.filter((r: any) => r.status === 'izin').length
+    const alfa      = records.filter((r: any) => r.status === 'alfa').length
     const dinasLuar = records.filter((r: any) => r.status === 'dinas_luar').length
-    const telat = records.filter((r: any) => r.is_telat).length
+    const telat     = records.filter((r: any) => r.is_telat).length
     const pulangCepat = records.filter((r: any) => r.is_pulang_cepat).length
 
-    // Kehadiran efektif = hadir + dinas_luar (sakit/izin/alfa = tidak hadir untuk tunjangan)
-    const kehadiranEfektif = hadir + dinasLuar
-    const persenKehadiran = totalHariKerja > 0 ? Math.round((kehadiranEfektif / totalHariKerja) * 100) : 0
+    // Hitung total persen dari setiap hari yang tercatat
+    const totalPersenTercatat = records.reduce((sum: number, r: any) => {
+      return sum + hitungPersenHari(r.jam_masuk, tiers)
+    }, 0)
 
-    // Find matching tier
-    let persenTunjangan = 0
-    for (const tier of tiers) {
-      if (persenKehadiran >= tier.min && persenKehadiran <= tier.max) {
-        persenTunjangan = tier.persen
-        break
-      }
-    }
+    const persenRataRata = totalHariKerja > 0
+      ? Math.round((totalPersenTercatat / totalHariKerja))
+      : 0
 
     const nominal = s.domisili_pegawai === 'dalam' ? nominalDalam : nominalLuar
-    const tunjanganDiterima = Math.round((nominal * persenTunjangan) / 100)
+    const tunjanganDiterima = totalHariKerja > 0
+      ? Math.round((totalPersenTercatat / totalHariKerja / 100) * nominal)
+      : 0
+
+    // Breakdown per tier — dinamis sesuai jumlah tiers di DB
+    const tierBreakdown = tiers.map(tier =>
+      records.filter((r: any) => hitungPersenHari(r.jam_masuk, tiers) === tier.persen &&
+        // pastikan tier yang sama tidak double-count jika ada 2 tier dengan persen sama
+        tiers.indexOf(tier) === tiers.findIndex(t => t.persen === tier.persen)
+      ).length
+    )
+    // Hari tidak hadir (tidak ada record) hitung ke tier 0%
+    const hariTidakHadir = totalHariKerja - records.length
+
+    // Shorthand untuk kolom UI (4 tier standar: 100/75/50/0)
+    const persenList = tiers.map(t => t.persen)
+    const tier100 = records.filter((r: any) => hitungPersenHari(r.jam_masuk, tiers) === 100).length
+    const tier75  = records.filter((r: any) => hitungPersenHari(r.jam_masuk, tiers) === 75).length
+    const tier50  = records.filter((r: any) => hitungPersenHari(r.jam_masuk, tiers) === 50).length
+    const tier0   = hariTidakHadir + records.filter((r: any) => hitungPersenHari(r.jam_masuk, tiers) === 0).length
 
     return {
       id: s.id,
@@ -211,16 +271,20 @@ export async function hitungTunjanganBulanan(bulan: number, tahun: number) {
       domisili: s.domisili_pegawai || '-',
       hadir, sakit, izin, alfa, dinasLuar, telat, pulangCepat,
       totalHariKerja,
-      persenKehadiran,
+      tier100, tier75, tier50, tier0,
+      tierBreakdown,
+      persenList,
+      totalPersenTercatat,
+      persenRataRata,
       nominal,
-      persenTunjangan,
       tunjanganDiterima,
     }
   })
 
   return {
     bulan, tahun, totalHariKerja,
-    nominalDalam, nominalLuar, tiers,
+    nominalDalam, nominalLuar,
+    tiers,  // expose ke UI agar bisa render header tabel dinamis
     data: hasil,
   }
 }

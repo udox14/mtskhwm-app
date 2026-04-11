@@ -5,7 +5,7 @@ const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
 const subject = process.env.VAPID_SUBJECT || 'mailto:admin@localhost';
 
-type PushTarget = { userId?: string, role?: string, all?: boolean };
+type PushTarget = { userId?: string; userIds?: string[]; role?: string; all?: boolean };
 
 /**
  * Mengirim push notification ke user menggunakan Web Crypto (Cloudflare Workers Compatible)
@@ -25,6 +25,11 @@ export async function sendPushNotification(
     if (target.userId) {
       conditions.push(`LOWER(user_id) = LOWER(?)`);
       bindings.push(target.userId);
+    } else if (target.userIds && target.userIds.length > 0) {
+      // Kirim ke daftar user spesifik
+      const placeholders = target.userIds.map(() => '?').join(',');
+      query = `SELECT wp.endpoint, wp.p256dh, wp.auth FROM web_push_subscriptions wp WHERE LOWER(wp.user_id) IN (${placeholders})`;
+      bindings = target.userIds.map(id => id.toLowerCase());
     } else if (target.role) {
       query = `
         SELECT wp.endpoint, wp.p256dh, wp.auth 
