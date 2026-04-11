@@ -212,18 +212,21 @@ export async function hitungTunjanganBulanan(bulan: number, tahun: number) {
     const telat     = records.filter((r: any) => r.is_telat).length
     const pulangCepat = records.filter((r: any) => r.is_pulang_cepat).length
 
-    // Hitung total persen dari setiap hari yang tercatat
+    // Tunjangan = Σ per hari: (persen_hari / 100) × nominal_harian
+    // nominal dalam pengaturan = nilai tunjangan PER HARI penuh (100%)
+    const nominal = s.domisili_pegawai === 'dalam' ? nominalDalam : nominalLuar
+
+    const tunjanganDiterima = records.reduce((sum: number, r: any) => {
+      const persen = hitungPersenHari(r.jam_masuk, tiers)
+      return sum + Math.round((persen / 100) * nominal)
+    }, 0)
+
+    // Persen rata-rata (informatif saja, untuk kolom Rata²)
     const totalPersenTercatat = records.reduce((sum: number, r: any) => {
       return sum + hitungPersenHari(r.jam_masuk, tiers)
     }, 0)
-
-    const persenRataRata = totalHariKerja > 0
-      ? Math.round((totalPersenTercatat / totalHariKerja))
-      : 0
-
-    const nominal = s.domisili_pegawai === 'dalam' ? nominalDalam : nominalLuar
-    const tunjanganDiterima = totalHariKerja > 0
-      ? Math.round((totalPersenTercatat / totalHariKerja / 100) * nominal)
+    const persenRataRata = records.length > 0
+      ? Math.round(totalPersenTercatat / records.length)
       : 0
 
     // Breakdown per tier — dinamis sesuai jumlah tiers di DB

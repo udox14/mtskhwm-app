@@ -610,11 +610,11 @@ export function MonitoringClient({
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-semibold text-slate-500">Nominal Dalam (Rp)</Label>
+                <Label className="text-[10px] font-semibold text-slate-500">Nominal Dalam / Hari (Rp)</Label>
                 <Input type="number" value={tNominalDalam} onChange={e => setTNominalDalam(Number(e.target.value))} className="h-8 text-xs rounded-md" />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-semibold text-slate-500">Nominal Luar (Rp)</Label>
+                <Label className="text-[10px] font-semibold text-slate-500">Nominal Luar / Hari (Rp)</Label>
                 <Input type="number" value={tNominalLuar} onChange={e => setTNominalLuar(Number(e.target.value))} className="h-8 text-xs rounded-md" />
               </div>
               <div className="space-y-1">
