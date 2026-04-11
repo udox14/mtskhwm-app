@@ -705,12 +705,19 @@ export function MonitoringClient({
 
       {/* ================= HIDDEN PRINT AREA ================= */}
       <div className="hidden">
-        <div ref={printRef} className="p-6 bg-white text-black" style={{ fontFamily: 'serif', fontSize: '11px' }}>
-          <div className="text-center mb-4">
-            <h2 className="text-base font-bold">MTs KH. Ahmad Wahab Muhsin Sukahideng</h2>
-            <p className="text-[10px]">Kab. Tasikmalaya, Jawa Barat</p>
-            <hr className="my-2 border-black" />
-            <h3 className="text-sm font-bold mt-2">{printTitle}</h3>
+        <style>{`
+          @media print {
+            @page { size: 215mm 330mm; margin: 20mm; }
+            body { -webkit-print-color-adjust: exact; }
+          }
+        `}</style>
+        <div ref={printRef} style={{ fontFamily: 'Times New Roman, serif', fontSize: '11px', color: '#000', background: '#fff' }}>
+          {/* Kop Surat — full width rata kiri kanan */}
+          <img src="/kopsurat.png" alt="Kop Surat" style={{ width: '100%', display: 'block' }} />
+
+          {/* Judul Laporan */}
+          <div style={{ textAlign: 'center', margin: '8px 0 10px' }}>
+            <h3 style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>{printTitle}</h3>
           </div>
 
           {/* Cetak data sesuai konteks aktif */}
