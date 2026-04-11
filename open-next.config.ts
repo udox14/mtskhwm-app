@@ -7,7 +7,7 @@ const config = defineCloudflareConfig({
 
 config.edgeExternals = ["@vercel/og", "node:crypto"];
 
-// Paksa minifikasi bundle server secara agresif
-config.default.minify = true;
+// Matikan minifikasi OpenNext karena merusak runtime
+config.default.minify = false;
 
 export default config;
