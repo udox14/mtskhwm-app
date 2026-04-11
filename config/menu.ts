@@ -28,6 +28,7 @@ import {
   Calendar,
   Megaphone,
   Bell,
+  ClipboardEdit,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -80,6 +81,13 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/akademik/nilai',
     icon: FileSpreadsheet,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
+  },
+  {
+    id: 'nilai-harian',
+    title: 'Nilai Harian',
+    href: '/dashboard/nilai-harian',
+    icon: ClipboardEdit,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas', 'guru_ppl']
   },
   {
     id: 'program-unggulan',
