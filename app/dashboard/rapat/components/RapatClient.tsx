@@ -348,51 +348,72 @@ function DialogCetak({ rapat }: { rapat: any }) {
 
         {/* ===== HIDDEN PRINT AREA ===== */}
         <div className="hidden">
-          <div ref={printRef} className="p-8 bg-white text-black" style={{ fontFamily: 'serif', fontSize: '11pt' }}>
-            {/* Kop Surat */}
-            <img src="/kopsurat.png" alt="Kop Surat" className="w-full mb-4" style={{ maxHeight: '120px', objectFit: 'contain', objectPosition: 'top' }} />
-            <hr style={{ borderTop: '2px solid black', marginBottom: '8px' }} />
+          <style>{`
+            @media print {
+              @page {
+                size: 215mm 330mm;
+                margin: 20mm;
+              }
+              body { -webkit-print-color-adjust: exact; }
+            }
+          `}</style>
+          <div ref={printRef} style={{ fontFamily: 'Times New Roman, serif', fontSize: '11pt', color: '#000', background: '#fff' }}>
+            {/* Kop Surat — full width, rata kiri kanan */}
+            <img
+              src="/kopsurat.png"
+              alt="Kop Surat"
+              style={{ width: '100%', display: 'block' }}
+            />
 
             {/* Judul */}
-            <div className="text-center mb-4">
-              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <div style={{ textAlign: 'center', marginTop: '10px', marginBottom: '8px' }}>
+              <h2 style={{ fontSize: '12pt', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
                 Daftar Hadir Rapat
               </h2>
-              <p style={{ fontSize: '11pt', fontWeight: 'bold', marginTop: '2px' }}>{rapat.agenda}</p>
+              <p style={{ fontSize: '11pt', fontWeight: 'bold', margin: '3px 0 0' }}>{rapat.agenda}</p>
             </div>
 
             {/* Info Rapat */}
-            <table style={{ fontSize: '10pt', marginBottom: '12px', width: '60%' }}>
+            <table style={{ fontSize: '10pt', marginBottom: '10px', borderCollapse: 'collapse' }}>
               <tbody>
-                <tr><td style={{ paddingRight: '12px', verticalAlign: 'top' }}>Tanggal</td><td>: {rapat.tanggalFmt}</td></tr>
-                <tr><td style={{ verticalAlign: 'top' }}>Waktu</td><td>: {rapat.waktu} WIB</td></tr>
-                <tr><td style={{ verticalAlign: 'top' }}>Tempat</td><td>: {rapat.tempat}</td></tr>
+                <tr>
+                  <td style={{ paddingRight: '8px', paddingBottom: '1px', width: '60px' }}>Tanggal</td>
+                  <td style={{ paddingBottom: '1px' }}>: {rapat.tanggalFmt}</td>
+                </tr>
+                <tr>
+                  <td style={{ paddingBottom: '1px' }}>Waktu</td>
+                  <td style={{ paddingBottom: '1px' }}>: {rapat.waktu} WIB</td>
+                </tr>
+                <tr>
+                  <td>Tempat</td>
+                  <td>: {rapat.tempat}</td>
+                </tr>
               </tbody>
             </table>
 
             {/* Tabel Peserta */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt', marginBottom: '24px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt', marginBottom: '16px' }}>
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid black', padding: '4px 8px', width: '28px', textAlign: 'center' }}>No</th>
-                  <th style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'left' }}>Nama</th>
-                  <th style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'left' }}>Jabatan/Role</th>
-                  {showStatus && <th style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', width: '80px' }}>Status</th>}
-                  {showTtd && <th style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', width: '120px' }}>Tanda Tangan</th>}
+                  <th style={{ border: '1px solid black', padding: '3px 6px', width: '24px', textAlign: 'center' }}>No</th>
+                  <th style={{ border: '1px solid black', padding: '3px 6px', textAlign: 'left' }}>Nama</th>
+                  <th style={{ border: '1px solid black', padding: '3px 6px', textAlign: 'left', width: '130px' }}>Jabatan/Role</th>
+                  {showStatus && <th style={{ border: '1px solid black', padding: '3px 6px', textAlign: 'center', width: '70px' }}>Status</th>}
+                  {showTtd && <th style={{ border: '1px solid black', padding: '3px 6px', textAlign: 'center', width: '110px' }}>Tanda Tangan</th>}
                 </tr>
               </thead>
               <tbody>
                 {data.map((p, i) => (
                   <tr key={p.peserta_id}>
-                    <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center' }}>{i + 1}</td>
-                    <td style={{ border: '1px solid black', padding: '4px 8px' }}>{p.nama_lengkap}</td>
-                    <td style={{ border: '1px solid black', padding: '4px 8px' }}>{getRoleLabel(p.role)}</td>
+                    <td style={{ border: '1px solid black', padding: '3px 6px', textAlign: 'center' }}>{i + 1}</td>
+                    <td style={{ border: '1px solid black', padding: '3px 6px' }}>{p.nama_lengkap}</td>
+                    <td style={{ border: '1px solid black', padding: '3px 6px' }}>{getRoleLabel(p.role)}</td>
                     {showStatus && (
-                      <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center' }}>
+                      <td style={{ border: '1px solid black', padding: '3px 6px', textAlign: 'center' }}>
                         {STATUS_LABEL[p.status_kehadiran] || p.status_kehadiran}
                       </td>
                     )}
-                    {showTtd && <td style={{ border: '1px solid black', padding: '4px 8px', height: '32px' }}></td>}
+                    {showTtd && <td style={{ border: '1px solid black', padding: '3px 6px', height: '28px' }}></td>}
                   </tr>
                 ))}
               </tbody>
@@ -400,26 +421,24 @@ function DialogCetak({ rapat }: { rapat: any }) {
 
             {/* Tanda Tangan Bawah */}
             {showTtd && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
                 {/* Kiri */}
-                <div style={{ textAlign: 'center', minWidth: '180px' }}>
-                  <p style={{ marginBottom: '2px' }}>Mengetahui,</p>
-                  <p style={{ fontWeight: 'bold' }}>{ttdKiri}</p>
-                  <div style={{ height: '56px' }}></div>
-                  <p style={{ borderTop: '1px solid black', paddingTop: '2px' }}>
+                <div style={{ textAlign: 'center', minWidth: '170px' }}>
+                  <p style={{ margin: '0 0 1px' }}>Mengetahui,</p>
+                  <p style={{ fontWeight: 'bold', margin: '0 0 44px' }}>{ttdKiri}</p>
+                  <p style={{ borderTop: '1px solid black', paddingTop: '2px', margin: 0 }}>
                     {namaKiri || '(____________________________)'}
                   </p>
                 </div>
                 {/* Kanan */}
-                <div style={{ textAlign: 'center', minWidth: '180px' }}>
-                  <p style={{ marginBottom: '2px' }}>
+                <div style={{ textAlign: 'center', minWidth: '170px' }}>
+                  <p style={{ margin: '0 0 1px' }}>
                     Tasikmalaya, {new Date(Date.now() + 7 * 60 * 60 * 1000).toLocaleDateString('id-ID', {
                       day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
                     })}
                   </p>
-                  <p style={{ fontWeight: 'bold' }}>{ttdKanan}</p>
-                  <div style={{ height: '56px' }}></div>
-                  <p style={{ borderTop: '1px solid black', paddingTop: '2px' }}>
+                  <p style={{ fontWeight: 'bold', margin: '0 0 44px' }}>{ttdKanan}</p>
+                  <p style={{ borderTop: '1px solid black', paddingTop: '2px', margin: 0 }}>
                     {namaKanan || '(____________________________)'}
                   </p>
                 </div>
