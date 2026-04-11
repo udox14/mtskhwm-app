@@ -29,6 +29,7 @@ import {
   Megaphone,
   Bell,
   ClipboardEdit,
+  BookHeart,
 } from 'lucide-react'
 
 export type MenuItem = {
@@ -83,13 +84,6 @@ export const MENU_ITEMS: MenuItem[] = [
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
   },
   {
-    id: 'nilai-harian',
-    title: 'Nilai Harian',
-    href: '/dashboard/nilai-harian',
-    icon: ClipboardEdit,
-    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas', 'guru_ppl']
-  },
-  {
     id: 'program-unggulan',
     title: 'Program Unggulan',
     href: '/dashboard/program-unggulan',
@@ -102,6 +96,13 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/program-unggulan/kelola',
     icon: Crown,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad']
+  },
+  {
+    id: 'tahfidz',
+    title: 'Tahfidz Qur\'an',
+    href: '/dashboard/tahfidz',
+    icon: BookHeart,
+    roles: ['super_admin', 'kepsek', 'wakamad', 'guru_tahfidz']
   },
   {
     id: 'guru',
@@ -130,6 +131,13 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/agenda',
     icon: ClipboardPen,
     roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas', 'guru_bk', 'guru_piket', 'guru_ppl']
+  },
+  {
+    id: 'nilai-harian',
+    title: 'Nilai Harian',
+    href: '/dashboard/nilai-harian',
+    icon: ClipboardEdit,
+    roles: ['super_admin', 'admin_tu', 'kepsek', 'wakamad', 'guru', 'wali_kelas', 'guru_ppl']
   },
   {
     id: 'penugasan',
@@ -261,6 +269,7 @@ export const ALL_ROLES = [
   { value: 'guru', label: 'Guru Mata Pelajaran' },
   { value: 'guru_bk', label: 'Guru BK' },
   { value: 'guru_piket', label: 'Guru Piket' },
+  { value: 'guru_tahfidz', label: 'Guru Tahfidz' },
   { value: 'wali_kelas', label: 'Wali Kelas' },
   { value: 'resepsionis', label: 'Resepsionis' },
   { value: 'guru_ppl', label: 'Guru PPL' },
