@@ -36,7 +36,7 @@ const MENU_GROUPS = [
   { label: 'Kepegawaian (HR)', hrefs: ['/dashboard/guru', '/dashboard/jadwal-piket', '/dashboard/presensi', '/dashboard/monitoring-presensi'] },
   { label: 'Kedisiplinan & BK', hrefs: ['/dashboard/kedisiplinan', '/dashboard/izin', '/dashboard/bk', '/dashboard/psikotes'] },
   { label: 'Operasional', hrefs: ['/dashboard/sarpras', '/dashboard/surat'] },
-  { label: 'Sistem',    hrefs: ['/dashboard/settings', '/dashboard/settings/notifications', '/dashboard/settings/fitur'] },
+  { label: 'Sistem',    hrefs: ['/dashboard/settings', '/dashboard/settings/notifications', '/dashboard/settings/jadwal-notif', '/dashboard/settings/fitur'] },
 ]
 
 function getActiveMenu(pathname: string, menuItems: typeof MENU_ITEMS) {
