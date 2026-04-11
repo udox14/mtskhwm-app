@@ -1,4 +1,6 @@
+// @ts-nocheck
 import { default as nextHandler } from "./.open-next/worker.js";
+
 
 interface ScheduledEvent {
   cron: string;
