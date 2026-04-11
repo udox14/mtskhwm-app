@@ -22,8 +22,9 @@ export async function sendCustomNotification(
   const title = formData.get('title') as string
   const body = formData.get('body') as string
   const url = (formData.get('url') as string) || '/dashboard'
-  const targetType = formData.get('targetType') as string // 'all', 'role'
+  const targetType = formData.get('targetType') as string
   const targetRole = formData.get('targetRole') as string
+  const targetUserIdsRaw = formData.get('targetUserIds') as string
 
   if (!title || !body) {
     return { error: 'Judul dan Konten tidak boleh kosong.' }
@@ -35,21 +36,21 @@ export async function sendCustomNotification(
   } else if (targetType === 'role') {
     if (!targetRole) return { error: 'Pilih role penerima.' }
     target.role = targetRole
+  } else if (targetType === 'custom') {
+    let userIds: string[] = []
+    try { userIds = JSON.parse(targetUserIdsRaw || '[]') } catch {}
+    if (userIds.length === 0) return { error: 'Pilih minimal 1 penerima.' }
+    target.userIds = userIds
   } else {
     return { error: 'Target tidak valid.' }
   }
 
-  console.log(`[Action] Sending notification: ${title}, Target:`, target);
   try {
-    const act = await sendPushNotification(
-      { title, body, url },
-      target
-    )
-
+    const act = await sendPushNotification({ title, body, url }, target)
     if (act.success) {
       return { success: `Notifikasi berhasil dikirim ke ${act.sent} perangkat.` }
     } else {
-      return { error: 'Terjadi kesalahan sistem saat mengirim: ' + act.message }
+      return { error: 'Terjadi kesalahan saat mengirim: ' + (act as any).message }
     }
   } catch (error: any) {
     return { error: error.message }

@@ -358,11 +358,17 @@ function DialogCetak({ rapat }: { rapat: any }) {
             }
           `}</style>
           <div ref={printRef} style={{ fontFamily: 'Times New Roman, serif', fontSize: '11pt', color: '#000', background: '#fff' }}>
-            {/* Kop Surat — full width, rata kiri kanan */}
+            {/* Kop Surat — mentok kiri kanan */}
             <img
               src="/kopsurat.png"
               alt="Kop Surat"
-              style={{ width: '100%', display: 'block' }}
+              style={{
+                display: 'block',
+                width: 'calc(100% + 40mm)',
+                marginLeft: '-20mm',
+                marginRight: '-20mm',
+                marginTop: '-20mm',
+              }}
             />
 
             {/* Judul */}

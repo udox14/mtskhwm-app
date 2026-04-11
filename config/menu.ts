@@ -234,6 +234,13 @@ export const MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/settings/notifications',
     icon: Bell,
     roles: ['super_admin']
+  },
+  {
+    id: 'settings-jadwal-notif',
+    title: 'Jadwal Notifikasi',
+    href: '/dashboard/settings/jadwal-notif',
+    icon: Bell,
+    roles: ['super_admin']
   }
 ]
 

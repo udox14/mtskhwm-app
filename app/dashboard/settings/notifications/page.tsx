@@ -5,6 +5,7 @@ import { checkFeatureAccess } from '@/lib/features';
 import { getDB } from '@/utils/db';
 import { ALL_ROLES } from '@/config/menu';
 import { PageHeader } from '@/components/layout/page-header';
+import { getAllUsersForCheckbox } from '@/app/dashboard/rapat/actions';
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export default async function AdminNotificationsPage() {
     redirect('/dashboard');
   }
 
-  // DIAGNOSTIK: Ambil detail langganan dan mapping user/role
+  // Diagnostik
   const deviceDetails = await db.prepare(`
     SELECT 
       wp.endpoint, 
@@ -32,6 +33,7 @@ export default async function AdminNotificationsPage() {
   `).all<any>();
 
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'N/A';
+  const allUsers = await getAllUsersForCheckbox();
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
@@ -41,7 +43,8 @@ export default async function AdminNotificationsPage() {
       />
 
       <NotificationClient 
-        roles={[...ALL_ROLES]} 
+        roles={[...ALL_ROLES]}
+        allUsers={allUsers}
         diagnostics={{
           totalDevices: deviceDetails.results?.length || 0,
           deviceList: deviceDetails.results || [],

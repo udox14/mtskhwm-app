@@ -712,8 +712,18 @@ export function MonitoringClient({
           }
         `}</style>
         <div ref={printRef} style={{ fontFamily: 'Times New Roman, serif', fontSize: '11px', color: '#000', background: '#fff' }}>
-          {/* Kop Surat — full width rata kiri kanan */}
-          <img src="/kopsurat.png" alt="Kop Surat" style={{ width: '100%', display: 'block' }} />
+          {/* Kop Surat — full width mentok kiri kanan (negatif margin = @page margin) */}
+          <img
+            src="/kopsurat.png"
+            alt="Kop Surat"
+            style={{
+              display: 'block',
+              width: 'calc(100% + 40mm)',
+              marginLeft: '-20mm',
+              marginRight: '-20mm',
+              marginTop: '-20mm',
+            }}
+          />
 
           {/* Judul Laporan */}
           <div style={{ textAlign: 'center', margin: '8px 0 10px' }}>
