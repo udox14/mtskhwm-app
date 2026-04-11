@@ -230,14 +230,14 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'settings-notifications',
-    title: 'Pusat Notifikasi',
+    title: 'Broadcast',
     href: '/dashboard/settings/notifications',
     icon: Bell,
     roles: ['super_admin']
   },
   {
     id: 'settings-jadwal-notif',
-    title: 'Jadwal Notifikasi',
+    title: 'Notifikasi Terjadwal',
     href: '/dashboard/settings/jadwal-notif',
     icon: Bell,
     roles: ['super_admin']

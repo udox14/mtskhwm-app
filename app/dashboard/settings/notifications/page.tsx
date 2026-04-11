@@ -38,8 +38,8 @@ export default async function AdminNotificationsPage() {
   return (
     <div className="space-y-4 animate-in fade-in duration-500 pb-12">
       <PageHeader
-        title="Pusat Notifikasi (Admin)"
-        description="Kirim pemberitahuan push langsung ke perangkat pengguna (Broadcasting)."
+        title="Broadcast Notifikasi"
+        description="Kirim pemberitahuan push langsung ke perangkat pengguna."
       />
 
       <NotificationClient 
